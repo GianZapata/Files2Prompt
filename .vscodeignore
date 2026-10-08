@@ -12,6 +12,8 @@ vsc-extension-quickstart.md
 !node_modules/ignore/**
 !node_modules/fast-xml-parser/**
 .github/**
+.atl/**
+.serena/**
 odd/**
 test/**
 demo.gif
