@@ -9,3 +9,6 @@ docs/
 prompt
 .aider*
 .env
+odd/
+.atl/
+.serena/
