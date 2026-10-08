@@ -188,13 +188,17 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src"
   },
   "devDependencies": {
     "@types/node": "^24.19.1",
     "@types/vscode": "1.125.0",
+    "@typescript-eslint/eslint-plugin": "^8.71.1",
+    "@typescript-eslint/parser": "^8.71.1",
     "@vscode/vsce": "^4.0.0",
-    "typescript": "^7.0.2"
+    "eslint": "^9.39.5",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "fast-xml-parser": "^5.11.2",
