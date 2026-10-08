@@ -1,10 +1,10 @@
 {
   "name": "files2prompt",
-  "displayName": "Files2Prompt",
+  "displayName": "Files2Prompt Fork",
   "icon": "./files2prompt-icon.webp",
-  "description": "Copy file contents for LLM prompts",
+  "description": "Fork of Thomas-McKanna/Files2Prompt. Copy file contents for LLM prompts.",
   "version": "1.8.0",
-  "publisher": "thomas-mckanna",
+  "publisher": "gianzapata",
   "keywords": [
     "files",
     "prompt",
@@ -14,7 +14,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Thomas-McKanna/Files2Prompt"
+    "url": "https://github.com/GianZapata/Files2Prompt"
   },
   "engines": {
     "vscode": "^1.125.0"
@@ -31,7 +31,7 @@
       "activitybar": [
         {
           "id": "files2prompt",
-          "title": "Files2Prompt",
+          "title": "Files2Prompt Fork",
           "icon": "resources/files2prompt-icon.svg"
         }
       ]

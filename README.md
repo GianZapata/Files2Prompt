@@ -1,6 +1,10 @@
-# Files2Prompt
+# Files2Prompt Fork
 
-[![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/Thomas-McKanna/Files2Prompt) [![Build](https://github.com/Thomas-McKanna/Files2Prompt/actions/workflows/publish.yml/badge.svg)](https://github.com/Thomas-McKanna/Files2Prompt/actions/workflows/publish.yml)
+Local fork of [Thomas-McKanna/Files2Prompt](https://github.com/Thomas-McKanna/Files2Prompt), maintained by Gian Zapata. This is not the Marketplace extension `thomas-mckanna.files2prompt`. Install the local VSIX so editor updates do not replace it with upstream.
+
+Original project: [Thomas-McKanna/Files2Prompt](https://github.com/Thomas-McKanna/Files2Prompt). License: MIT, Copyright 2024 Thomas McKanna.
+
+[![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/GianZapata/Files2Prompt)
 
 Copy file contents in XML format for LLM prompts effortlessly.
 
