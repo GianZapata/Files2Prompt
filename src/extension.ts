@@ -1,11 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { XMLParser } from 'fast-xml-parser';
 import * as vscode from 'vscode';
 
 import { FileTreeProvider } from './fileTreeProvider';
 import { planPaste } from './pastePlan';
+import { parsePrompt, serializePrompt } from './promptXml';
+import { readContextText } from './readContextFile';
 
 export function activate(context: vscode.ExtensionContext) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -47,22 +48,15 @@ export function activate(context: vscode.ExtensionContext) {
           historyPosition++;
         }
 
-        const xmlOutput = await generateXmlOutput(checkedFiles);
-
         const config = vscode.workspace.getConfiguration('files2prompt');
         const systemMessage = config.get<string>('systemMessage');
-
-        let finalOutput = xmlOutput;
-
-        if (systemMessage && systemMessage.trim() !== '') {
-          finalOutput =
-            `<systemMessage>
-<![CDATA[
-${systemMessage}
-]]>
-</systemMessage>
-` + finalOutput;
-        }
+        const finalOutput = serializePrompt({
+          systemMessage,
+          files: checkedFiles.map(filePath => ({
+            name: path.relative(workspaceRoot, filePath),
+            content: readContextText(filePath, openTextFor)
+          }))
+        });
 
         await vscode.env.clipboard.writeText(finalOutput);
 
@@ -109,41 +103,32 @@ ${systemMessage}
           const tabGroups: ReadonlyArray<vscode.TabGroup> =
             vscode.window.tabGroups.all;
 
-          let xmlContent = '';
+          const files = new Map<string, string>();
 
           for (const group of tabGroups) {
             for (const tab of group.tabs) {
               if (tab.input instanceof vscode.TabInputText) {
-                const fileUri = tab.input.uri;
-                const filePath = fileUri.fsPath;
+                const filePath = tab.input.uri.fsPath;
 
-                if (fs.existsSync(filePath)) {
-                  const content = fs.readFileSync(filePath, 'utf-8');
-
-                  const fileName = path.relative(
-                    vscode.workspace.workspaceFolders![0].uri.fsPath,
-                    filePath
-                  );
-
-                  xmlContent += `<file name="${fileName}">
-<![CDATA[
-${content}
-]]>
-</file>
-`;
+                if (fs.existsSync(filePath) && !files.has(filePath)) {
+                  files.set(filePath, readContextText(filePath, openTextFor));
                 }
               }
             }
           }
 
-          if (xmlContent === '') {
+          if (files.size === 0) {
             vscode.window.showWarningMessage('No open files to copy.');
 
             return;
           }
 
-          const finalOutput = `<files>
-${xmlContent}</files>`;
+          const finalOutput = serializePrompt({
+            files: [...files.entries()].map(([filePath, content]) => ({
+              name: path.relative(workspaceRoot, filePath),
+              content
+            }))
+          });
 
           await vscode.env.clipboard.writeText(finalOutput);
           vscode.window.showInformationMessage(
@@ -175,27 +160,13 @@ ${xmlContent}</files>`;
 
 export function deactivate() {}
 
-async function generateXmlOutput(filePaths: string[]): Promise<string> {
-  let xmlContent = '';
+const openTextFor = (filePath: string) => {
+  const document = vscode.workspace.textDocuments.find(
+    item => !item.isUntitled && item.uri.fsPath === filePath
+  );
 
-  for (const filePath of filePaths) {
-    const content = fs.readFileSync(filePath, 'utf-8');
-    const fileName = path.relative(
-      vscode.workspace.workspaceFolders![0].uri.fsPath,
-      filePath
-    );
-
-    xmlContent += `<file name="${fileName}">
-<![CDATA[
-${content}
-]]>
-</file>
-`;
-  }
-
-  return `<files>
-${xmlContent}</files>`;
-}
+  return document ? document.getText() : undefined;
+};
 
 function arraysEqual(a: string[], b: string[]): boolean {
   if (a.length !== b.length) {
@@ -214,23 +185,9 @@ function arraysEqual(a: string[], b: string[]): boolean {
 }
 
 async function processXmlContent(xmlContent: string) {
-  const parser = new XMLParser({
-    ignoreAttributes: false,
-    cdataPropName: '__cdata',
-    trimValues: false
-  });
+  const parsed = parsePrompt(xmlContent);
 
-  let jsonObj;
-
-  try {
-    jsonObj = parser.parse(xmlContent);
-  } catch (error) {
-    vscode.window.showErrorMessage('Error parsing XML content from clipboard.');
-
-    return;
-  }
-
-  if (!jsonObj || !jsonObj.files || !jsonObj.files.file) {
+  if (!parsed || parsed.files.length === 0) {
     vscode.window.showErrorMessage(
       'No file content found. See documentation for usage.'
     );
@@ -238,31 +195,14 @@ async function processXmlContent(xmlContent: string) {
     return;
   }
 
-  const files = Array.isArray(jsonObj.files.file)
-    ? jsonObj.files.file
-    : [jsonObj.files.file];
   const workspaceRoot = vscode.workspace.workspaceFolders![0].uri.fsPath;
-  const planned = planPaste(
-    workspaceRoot,
-    files
-      .filter((fileObj: { '@_name'?: string }) => fileObj['@_name'])
-      .map(
-        (fileObj: {
-          '@_name': string;
-          __cdata?: string;
-          '#text'?: string;
-        }) => ({
-          name: fileObj['@_name'],
-          content: fileObj['__cdata'] ?? fileObj['#text'] ?? ''
-        })
-      ),
-    absolutePath =>
-      vscode.workspace.textDocuments.some(
-        document =>
-          !document.isUntitled &&
-          document.isDirty &&
-          document.uri.fsPath === absolutePath
-      )
+  const planned = planPaste(workspaceRoot, parsed.files, absolutePath =>
+    vscode.workspace.textDocuments.some(
+      document =>
+        !document.isUntitled &&
+        document.isDirty &&
+        document.uri.fsPath === absolutePath
+    )
   );
 
   if (!planned.ok) {
