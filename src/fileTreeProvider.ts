@@ -159,22 +159,17 @@ export class FileTreeProvider
       const isGitIgnored = this.isGitIgnored(relativePath);
 
       const key = fullPath;
+      const parentChecked =
+        this.checkedItems.get(path.dirname(fullPath)) ===
+        vscode.TreeItemCheckboxState.Checked;
+      const allowed = !isGitIgnored && !isIgnoredExtension;
       let checkboxState = this.checkedItems.get(key);
 
-      if (checkboxState === undefined) {
-        const parentPath = path.dirname(fullPath);
-        const parentCheckboxState = this.checkedItems.get(parentPath);
-
-        if (
-          parentCheckboxState === vscode.TreeItemCheckboxState.Checked &&
-          !isGitIgnored &&
-          !isIgnoredExtension
-        ) {
-          checkboxState = vscode.TreeItemCheckboxState.Checked;
-          this.checkedItems.set(fullPath, checkboxState);
-        } else {
-          checkboxState = vscode.TreeItemCheckboxState.Unchecked;
-        }
+      if (parentChecked && allowed) {
+        checkboxState = vscode.TreeItemCheckboxState.Checked;
+        this.checkedItems.set(fullPath, checkboxState);
+      } else if (checkboxState === undefined) {
+        checkboxState = vscode.TreeItemCheckboxState.Unchecked;
       }
 
       const item = new FileItem(
@@ -215,12 +210,21 @@ export class FileTreeProvider
       this.lastOmittedFolders = omittedFolders;
 
       for (const filePath of selected) {
-        this.checkedItems.set(
-          filePath,
+        const nextState =
           state === vscode.TreeItemCheckboxState.Checked
             ? vscode.TreeItemCheckboxState.Checked
-            : vscode.TreeItemCheckboxState.Unchecked
-        );
+            : vscode.TreeItemCheckboxState.Unchecked;
+
+        this.checkedItems.set(filePath, nextState);
+        let parent = path.dirname(filePath);
+
+        while (parent.startsWith(key)) {
+          this.checkedItems.set(parent, nextState);
+          if (parent === key) {
+            break;
+          }
+          parent = path.dirname(parent);
+        }
       }
 
       if (state !== vscode.TreeItemCheckboxState.Checked) {
