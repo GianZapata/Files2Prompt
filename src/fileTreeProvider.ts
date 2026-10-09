@@ -1,10 +1,12 @@
-import * as vscode from "vscode";
-import * as fs from "fs";
-import * as path from "path";
-import ignore from "ignore";
+import * as fs from 'fs';
+import * as path from 'path';
+
+import ignore from 'ignore';
+import * as vscode from 'vscode';
 
 export class FileTreeProvider
-  implements vscode.TreeDataProvider<FileItem>, vscode.Disposable {
+  implements vscode.TreeDataProvider<FileItem>, vscode.Disposable
+{
   private _onDidChangeTreeData: vscode.EventEmitter<
     FileItem | undefined | null | void
   > = new vscode.EventEmitter<FileItem | undefined | null | void>();
@@ -24,15 +26,15 @@ export class FileTreeProvider
     this.loadIgnoredExtensions();
 
     // Create a file system watcher
-    this.watcher = vscode.workspace.createFileSystemWatcher("**/*");
+    this.watcher = vscode.workspace.createFileSystemWatcher('**/*');
 
-    this.watcher.onDidCreate((uri) => this.onFileSystemChanged(uri));
-    this.watcher.onDidDelete((uri) => this.onFileSystemChanged(uri));
-    this.watcher.onDidChange((uri) => this.onFileSystemChanged(uri));
+    this.watcher.onDidCreate(uri => this.onFileSystemChanged(uri));
+    this.watcher.onDidDelete(uri => this.onFileSystemChanged(uri));
+    this.watcher.onDidChange(uri => this.onFileSystemChanged(uri));
 
     // Listen for configuration changes
-    vscode.workspace.onDidChangeConfiguration((event) => {
-      if (event.affectsConfiguration("files2prompt.ignoredExtensions")) {
+    vscode.workspace.onDidChangeConfiguration(event => {
+      if (event.affectsConfiguration('files2prompt.ignoredExtensions')) {
         this.loadIgnoredExtensions();
         this.refresh();
       }
@@ -60,32 +62,42 @@ export class FileTreeProvider
     const key = element.resourceUri.fsPath;
     const checkboxState =
       this.checkedItems.get(key) ?? vscode.TreeItemCheckboxState.Unchecked;
+
     element.checkboxState = checkboxState;
+
     return element;
   }
 
   async getChildren(element?: FileItem): Promise<FileItem[]> {
     if (!this.workspaceRoot) {
-      vscode.window.showInformationMessage("No workspace folder found.");
+      vscode.window.showInformationMessage('No workspace folder found.');
+
       return [];
     }
 
     const dirPath = element ? element.resourceUri.fsPath : this.workspaceRoot;
+
     return this.getFilesAndDirectories(dirPath);
   }
 
   private async getFilesAndDirectories(dirPath: string): Promise<FileItem[]> {
     const items: FileItem[] = [];
     const dirEntries = await fs.promises.readdir(dirPath, {
-      withFileTypes: true,
+      withFileTypes: true
     });
 
     // Sort directories above files and alphabetically
     dirEntries.sort((a, b) => {
       const aIsDir = a.isDirectory() || a.isSymbolicLink();
       const bIsDir = b.isDirectory() || b.isSymbolicLink();
-      if (aIsDir && !bIsDir) return -1;
-      if (!aIsDir && bIsDir) return 1;
+
+      if (aIsDir && !bIsDir) {
+        return -1;
+      }
+      if (!aIsDir && bIsDir) {
+        return 1;
+      }
+
       return a.name.localeCompare(b.name);
     });
 
@@ -101,6 +113,7 @@ export class FileTreeProvider
       if (isSymbolicLink) {
         try {
           const stats = await fs.promises.stat(fullPath);
+
           isDirectory = stats.isDirectory();
         } catch (err) {
           // The symlink is broken
@@ -113,7 +126,7 @@ export class FileTreeProvider
         continue;
       }
 
-      const extension = path.extname(entry.name).toLowerCase().replace(".", "");
+      const extension = path.extname(entry.name).toLowerCase().replace('.', '');
       const isIgnoredExtension = this.ignoredExtensions.has(extension);
       const isGitIgnored = this.isGitIgnored(relativePath);
 
@@ -159,16 +172,19 @@ export class FileTreeProvider
     state: vscode.TreeItemCheckboxState
   ): Promise<void> {
     const key = item.resourceUri.fsPath;
+
     this.checkedItems.set(key, state);
 
     if (item.isDirectory) {
       const relativePath = path.relative(this.workspaceRoot, key);
       const isGitIgnored = this.isGitIgnored(relativePath);
+
       await this.updateDirectoryCheckState(key, state, isGitIgnored);
     }
 
     // Update parent directories' states
     let dirPath = path.dirname(key);
+
     while (dirPath.startsWith(this.workspaceRoot)) {
       await this.updateParentState(dirPath);
       dirPath = path.dirname(dirPath);
@@ -179,7 +195,7 @@ export class FileTreeProvider
 
   private async updateParentState(dirPath: string): Promise<void> {
     const dirEntries = await fs.promises.readdir(dirPath, {
-      withFileTypes: true,
+      withFileTypes: true
     });
 
     let allChecked = true;
@@ -189,7 +205,7 @@ export class FileTreeProvider
       const siblingPath = path.join(dirPath, entry.name);
       const relativePath = path.relative(this.workspaceRoot, siblingPath);
 
-      const extension = path.extname(entry.name).toLowerCase().replace(".", "");
+      const extension = path.extname(entry.name).toLowerCase().replace('.', '');
       const isIgnoredExtension = this.ignoredExtensions.has(extension);
 
       if (this.isGitIgnored(relativePath) || isIgnoredExtension) {
@@ -226,7 +242,7 @@ export class FileTreeProvider
     parentIsGitIgnored: boolean
   ): Promise<void> {
     const dirEntries = await fs.promises.readdir(dirPath, {
-      withFileTypes: true,
+      withFileTypes: true
     });
 
     for (const entry of dirEntries) {
@@ -234,7 +250,7 @@ export class FileTreeProvider
       const relativePath = path.relative(this.workspaceRoot, fullPath);
       const isGitIgnored = this.isGitIgnored(relativePath);
 
-      const extension = path.extname(entry.name).toLowerCase().replace(".", "");
+      const extension = path.extname(entry.name).toLowerCase().replace('.', '');
       const isIgnoredExtension = this.ignoredExtensions.has(extension);
 
       if (!parentIsGitIgnored && (isGitIgnored || isIgnoredExtension)) {
@@ -251,6 +267,7 @@ export class FileTreeProvider
       if (isSymbolicLink) {
         try {
           const stats = await fs.promises.stat(fullPath);
+
           isDirectory = stats.isDirectory();
         } catch (err) {
           // The symlink is broken
@@ -289,6 +306,7 @@ export class FileTreeProvider
     // Update parent directories' checkbox states
     for (const filePath of filePaths) {
       let dirPath = path.dirname(filePath);
+
       while (dirPath.startsWith(this.workspaceRoot)) {
         await this.updateParentState(dirPath);
         dirPath = path.dirname(dirPath);
@@ -299,10 +317,11 @@ export class FileTreeProvider
   }
 
   private loadGitignore() {
-    const gitignorePath = path.join(this.workspaceRoot, ".gitignore");
+    const gitignorePath = path.join(this.workspaceRoot, '.gitignore');
 
     if (fs.existsSync(gitignorePath)) {
-      const gitignoreContent = fs.readFileSync(gitignorePath, "utf-8");
+      const gitignoreContent = fs.readFileSync(gitignorePath, 'utf-8');
+
       this.gitignore = ignore().add(gitignoreContent);
     } else {
       this.gitignore = ignore();
@@ -314,14 +333,15 @@ export class FileTreeProvider
   }
 
   private loadIgnoredExtensions() {
-    const config = vscode.workspace.getConfiguration("files2prompt");
+    const config = vscode.workspace.getConfiguration('files2prompt');
     const extensionsString = config.get<string>(
-      "ignoredExtensions",
-      "png,jpg,jpeg,gif,svg"
+      'ignoredExtensions',
+      'png,jpg,jpeg,gif,svg'
     );
     const extensionsArray = extensionsString
-      .split(",")
-      .map((ext) => ext.trim().toLowerCase());
+      .split(',')
+      .map(ext => ext.trim().toLowerCase());
+
     this.ignoredExtensions = new Set(extensionsArray);
   }
 }
@@ -339,14 +359,14 @@ export class FileItem extends vscode.TreeItem {
     super(label, collapsibleState);
 
     this.tooltip = this.resourceUri.fsPath;
-    this.iconPath = new vscode.ThemeIcon(this.isDirectory ? "folder" : "file");
+    this.iconPath = new vscode.ThemeIcon(this.isDirectory ? 'folder' : 'file');
     this.checkboxState = checkboxState;
 
     if (this.isSymbolicLink) {
       // Optionally, you can adjust the icon or label to indicate a symlink
       this.description = this.description
-        ? this.description + " (symlink)"
-        : "(symlink)";
+        ? this.description + ' (symlink)'
+        : '(symlink)';
     }
   }
 }
