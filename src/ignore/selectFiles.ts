@@ -46,3 +46,33 @@ export const filesSelectedByFolder = (
 
   return selected.sort();
 };
+
+export const omittedFoldersForSelection = (
+  workspaceRoot: string,
+  checkedDirectories: string[],
+  resolve: (relativePath: string, kind: 'file' | 'directory') => IgnoreDecision
+) => {
+  const normalized = [
+    ...new Set(checkedDirectories.map(directory => path.resolve(directory)))
+  ];
+  const roots = normalized.filter(
+    directory =>
+      !normalized.some(
+        other =>
+          other !== directory && directory.startsWith(`${other}${path.sep}`)
+      )
+  );
+  const found = new Set<string>();
+
+  for (const directory of roots) {
+    const discovered: string[] = [];
+
+    filesSelectedByFolder(workspaceRoot, directory, resolve, discovered);
+
+    for (const folder of discovered) {
+      found.add(folder);
+    }
+  }
+
+  return [...found].sort();
+};

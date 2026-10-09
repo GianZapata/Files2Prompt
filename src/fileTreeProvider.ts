@@ -4,7 +4,10 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { createIgnoreResolver } from './ignore/ignoreResolver';
-import { filesSelectedByFolder } from './ignore/selectFiles';
+import {
+  filesSelectedByFolder,
+  omittedFoldersForSelection
+} from './ignore/selectFiles';
 
 export class FileTreeProvider
   implements vscode.TreeDataProvider<FileItem>, vscode.Disposable
@@ -19,7 +22,6 @@ export class FileTreeProvider
   private workspaceRoot: string;
   private checkedItems: Map<string, vscode.TreeItemCheckboxState> = new Map();
   private resolver = createIgnoreResolver({ workspaceRoot: '' });
-  private lastOmittedFolders: string[] = [];
   private ignoredExtensions: Set<string> = new Set();
   private watcher: vscode.FileSystemWatcher;
 
@@ -199,15 +201,11 @@ export class FileTreeProvider
     this.checkedItems.set(key, state);
 
     if (item.isDirectory) {
-      const omittedFolders: string[] = [];
       const selected = filesSelectedByFolder(
         this.workspaceRoot,
         key,
-        this.resolver.resolve,
-        omittedFolders
+        this.resolver.resolve
       );
-
-      this.lastOmittedFolders = omittedFolders;
 
       for (const filePath of selected) {
         const nextState =
@@ -332,7 +330,20 @@ export class FileTreeProvider
   }
 
   omittedFolders(): string[] {
-    return this.lastOmittedFolders;
+    const directories = [...this.checkedItems.entries()]
+      .filter(
+        ([filePath, state]) =>
+          state === vscode.TreeItemCheckboxState.Checked &&
+          fs.existsSync(filePath) &&
+          fs.lstatSync(filePath).isDirectory()
+      )
+      .map(([filePath]) => filePath);
+
+    return omittedFoldersForSelection(
+      this.workspaceRoot,
+      directories,
+      this.resolver.resolve
+    );
   }
 
   resolvePath(relativePath: string, kind: 'file' | 'directory') {

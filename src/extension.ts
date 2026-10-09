@@ -34,6 +34,18 @@ export function activate(context: vscode.ExtensionContext) {
       });
     };
 
+    const selectionSummary = (
+      built: Awaited<ReturnType<typeof collectPrompt>>
+    ) => ({
+      ...built,
+      omittedFolders: [
+        ...new Set([
+          ...built.omittedFolders,
+          ...fileTreeProvider.omittedFolders()
+        ])
+      ].sort()
+    });
+
     const showOmissionDetails = (
       built: Awaited<ReturnType<typeof collectPrompt>>
     ) => {
@@ -45,6 +57,10 @@ export function activate(context: vscode.ExtensionContext) {
         `Omitted folders: ${built.omittedFolders.length}. A pruned folder is one folder, not a guessed file count.`
       );
 
+      for (const folder of built.omittedFolders) {
+        channel.appendLine(`${folder} — pruned-folder`);
+      }
+
       for (const file of built.omittedFiles) {
         channel.appendLine(
           `${file.path} — ${file.reason}${file.pattern ? ` (${file.pattern})` : ''}`
@@ -53,12 +69,6 @@ export function activate(context: vscode.ExtensionContext) {
     };
 
     const copyCollected = async (filePaths: string[]) => {
-      if (filePaths.length === 0) {
-        vscode.window.showWarningMessage('No files selected.');
-
-        return;
-      }
-
       const built = await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
@@ -69,22 +79,44 @@ export function activate(context: vscode.ExtensionContext) {
           collectPrompt(filePaths, () => token.isCancellationRequested)
       );
 
-      if (built.stop === 'user-cancelled' || built.xml === '') {
+      const summary = selectionSummary(built);
+
+      if (summary.stop === 'user-cancelled') {
         vscode.window.showWarningMessage(
-          built.stop === 'total-bytes'
-            ? 'Prompt exceeds the total byte limit.'
-            : 'Copy cancelled. Clipboard unchanged.'
+          'Copy cancelled. Clipboard unchanged.'
         );
 
         return;
       }
 
-      await vscode.env.clipboard.writeText(built.xml);
-      showOmissionDetails(built);
+      if (
+        summary.included.length === 0 &&
+        summary.omittedFiles.length === 0 &&
+        summary.omittedFolders.length === 0
+      ) {
+        vscode.window.showWarningMessage('No files selected.');
+
+        return;
+      }
+
+      if (summary.stop === 'total-bytes' && summary.included.length === 0) {
+        vscode.window.showWarningMessage(
+          'Prompt exceeds the total byte limit.'
+        );
+        showOmissionDetails(summary);
+
+        return;
+      }
+
+      if (summary.included.length > 0) {
+        await vscode.env.clipboard.writeText(summary.xml);
+      }
+
+      showOmissionDetails(summary);
       vscode.window.showInformationMessage(
-        built.stop === 'completed'
-          ? `Copied ${built.included.length} files. Omitted ${built.omittedFiles.length} files and ${fileTreeProvider.omittedFolders().length} folders.`
-          : `Partial copy (${built.stop}).`
+        summary.stop === 'completed'
+          ? `Copied ${summary.included.length} files. Omitted ${summary.omittedFiles.length} files and ${summary.omittedFolders.length} folders.`
+          : `Partial copy (${summary.stop}).`
       );
     };
 
@@ -104,13 +136,6 @@ export function activate(context: vscode.ExtensionContext) {
       ),
       vscode.commands.registerCommand('files2prompt.copyFiles', async () => {
         const checkedFiles = fileTreeProvider.getCheckedFiles();
-
-        if (checkedFiles.length === 0) {
-          vscode.window.showWarningMessage('No files selected.');
-
-          return;
-        }
-
         const lastSelection = history[historyPosition] || [];
 
         if (!arraysEqual(checkedFiles, lastSelection)) {
@@ -197,7 +222,7 @@ export function activate(context: vscode.ExtensionContext) {
           });
 
           await vscode.window.showTextDocument(document, { preview: true });
-          showOmissionDetails(built);
+          showOmissionDetails(selectionSummary(built));
         }
       ),
       vscode.commands.registerCommand('files2prompt.pasteXml', async () => {
