@@ -1,8 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import ignore from 'ignore';
 import * as vscode from 'vscode';
+
+import { createIgnoreResolver } from './ignore/ignoreResolver';
+import { filesSelectedByFolder } from './ignore/selectFiles';
 
 export class FileTreeProvider
   implements vscode.TreeDataProvider<FileItem>, vscode.Disposable
@@ -16,14 +18,13 @@ export class FileTreeProvider
 
   private workspaceRoot: string;
   private checkedItems: Map<string, vscode.TreeItemCheckboxState> = new Map();
-  private gitignore = ignore();
+  private resolver = createIgnoreResolver({ workspaceRoot: '' });
   private ignoredExtensions: Set<string> = new Set();
   private watcher: vscode.FileSystemWatcher;
 
   constructor(workspaceRoot: string) {
     this.workspaceRoot = workspaceRoot;
-    this.loadGitignore();
-    this.loadIgnoredExtensions();
+    this.reloadRules();
 
     // Create a file system watcher
     this.watcher = vscode.workspace.createFileSystemWatcher('**/*');
@@ -34,8 +35,12 @@ export class FileTreeProvider
 
     // Listen for configuration changes
     vscode.workspace.onDidChangeConfiguration(event => {
-      if (event.affectsConfiguration('files2prompt.ignoredExtensions')) {
-        this.loadIgnoredExtensions();
+      if (
+        event.affectsConfiguration('files2prompt.ignoredExtensions') ||
+        event.affectsConfiguration('files2prompt.exclude') ||
+        event.affectsConfiguration('files2prompt.maxFileBytes')
+      ) {
+        this.reloadRules();
         this.refresh();
       }
     });
@@ -46,6 +51,13 @@ export class FileTreeProvider
   }
 
   private onFileSystemChanged(uri: vscode.Uri): void {
+    if (
+      uri.fsPath.endsWith('.gitignore') ||
+      uri.fsPath.endsWith('.promptignore')
+    ) {
+      this.reloadRules();
+    }
+
     this.refresh();
   }
 
@@ -75,7 +87,22 @@ export class FileTreeProvider
       return [];
     }
 
-    const dirPath = element ? element.resourceUri.fsPath : this.workspaceRoot;
+    if (!element) {
+      return [
+        new FileItem(
+          path.basename(this.workspaceRoot),
+          vscode.Uri.file(this.workspaceRoot),
+          vscode.TreeItemCollapsibleState.Expanded,
+          true,
+          this.checkedItems.get(this.workspaceRoot) ??
+            vscode.TreeItemCheckboxState.Unchecked,
+          false,
+          false
+        )
+      ];
+    }
+
+    const dirPath = element.resourceUri.fsPath;
 
     return this.getFilesAndDirectories(dirPath);
   }
@@ -176,10 +203,24 @@ export class FileTreeProvider
     this.checkedItems.set(key, state);
 
     if (item.isDirectory) {
-      const relativePath = path.relative(this.workspaceRoot, key);
-      const isGitIgnored = this.isGitIgnored(relativePath);
+      const selected = filesSelectedByFolder(
+        this.workspaceRoot,
+        key,
+        this.resolver.resolve
+      );
 
-      await this.updateDirectoryCheckState(key, state, isGitIgnored);
+      for (const filePath of selected) {
+        this.checkedItems.set(
+          filePath,
+          state === vscode.TreeItemCheckboxState.Checked
+            ? vscode.TreeItemCheckboxState.Checked
+            : vscode.TreeItemCheckboxState.Unchecked
+        );
+      }
+
+      if (state !== vscode.TreeItemCheckboxState.Checked) {
+        this.clearDescendantChecks(key);
+      }
     }
 
     // Update parent directories' states
@@ -284,12 +325,16 @@ export class FileTreeProvider
   getCheckedFiles(): string[] {
     return Array.from(this.checkedItems.entries())
       .filter(
-        ([path, state]) =>
+        ([filePath, state]) =>
           state === vscode.TreeItemCheckboxState.Checked &&
-          fs.existsSync(path) &&
-          (fs.lstatSync(path).isFile() || fs.lstatSync(path).isSymbolicLink())
+          fs.existsSync(filePath) &&
+          fs.lstatSync(filePath).isFile() &&
+          this.resolver.resolve(
+            path.relative(this.workspaceRoot, filePath),
+            'file'
+          ).included
       )
-      .map(([path, _]) => path);
+      .map(([filePath]) => filePath);
   }
 
   public async setCheckedFiles(filePaths: string[]): Promise<void> {
@@ -316,33 +361,33 @@ export class FileTreeProvider
     this.refresh();
   }
 
-  private loadGitignore() {
-    const gitignorePath = path.join(this.workspaceRoot, '.gitignore');
+  private isGitIgnored(relativePath: string): boolean {
+    return !this.resolver.resolve(relativePath, 'file').included;
+  }
 
-    if (fs.existsSync(gitignorePath)) {
-      const gitignoreContent = fs.readFileSync(gitignorePath, 'utf-8');
-
-      this.gitignore = ignore().add(gitignoreContent);
-    } else {
-      this.gitignore = ignore();
+  private clearDescendantChecks(dirPath: string): void {
+    for (const key of [...this.checkedItems.keys()]) {
+      if (key !== dirPath && key.startsWith(dirPath + path.sep)) {
+        this.checkedItems.set(key, vscode.TreeItemCheckboxState.Unchecked);
+      }
     }
   }
 
-  private isGitIgnored(relativePath: string): boolean {
-    return this.gitignore.ignores(relativePath);
-  }
-
-  private loadIgnoredExtensions() {
+  private reloadRules(): void {
     const config = vscode.workspace.getConfiguration('files2prompt');
     const extensionsString = config.get<string>(
       'ignoredExtensions',
       'png,jpg,jpeg,gif,svg'
     );
-    const extensionsArray = extensionsString
-      .split(',')
-      .map(ext => ext.trim().toLowerCase());
 
-    this.ignoredExtensions = new Set(extensionsArray);
+    this.ignoredExtensions = new Set(
+      extensionsString.split(',').map(ext => ext.trim().toLowerCase())
+    );
+    this.resolver = createIgnoreResolver({
+      workspaceRoot: this.workspaceRoot,
+      excludePatterns: config.get<string[]>('exclude', []),
+      ignoredExtensions: [...this.ignoredExtensions]
+    });
   }
 }
 

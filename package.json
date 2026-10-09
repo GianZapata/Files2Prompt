@@ -96,9 +96,19 @@
       {
         "command": "files2prompt.copyOpenFiles",
         "title": "Copy Open Files"
+      },
+      {
+        "command": "files2prompt.copyExplorerSelection",
+        "title": "Copy as Prompt"
       }
     ],
     "menus": {
+      "explorer/context": [
+        {
+          "command": "files2prompt.copyExplorerSelection",
+          "group": "navigation"
+        }
+      ],
       "view/title": [
         {
           "command": "files2prompt.pasteXml",
@@ -176,6 +186,22 @@
           "type": "string",
           "description": "Optional system message to include in the output.",
           "default": ""
+        },
+        "files2prompt.exclude": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Extra gitignore-style patterns excluded from copied context."
+        },
+        "files2prompt.maxFileBytes": {
+          "type": "number",
+          "default": 1048576,
+          "description": "Skip a file larger than this many bytes."
+        },
+        "files2prompt.maxTotalBytes": {
+          "type": "number",
+          "default": 8388608,
+          "description": "Stop copying when the serialized prompt would exceed this many UTF-8 bytes."
         },
         "files2prompt.ignoredExtensions": {
           "type": "string",

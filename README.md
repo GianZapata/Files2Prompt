@@ -18,6 +18,7 @@ Copy file contents in XML format for LLM prompts effortlessly.
 - **Custom System Message**: Optionally include a system message in your copied output, encapsulated within a `<systemMessage>` XML element.
 - **Configurable Shortcuts**: Quickly refresh the file tree or copy files using customizable keyboard shortcuts.
 - **Git Ignore Support**: Automatically ignores files and directories specified in your .gitignore.
+- **Prompt Ignore**: `.promptignore` controls what is copied into an LLM prompt. It does not replace `.gitignore`. A `!` rule cannot bring back a file while its parent directory stays excluded.
 - **Selection History**: Quickly switch between sets of previously selected files.
 - **Paste XML Response**: If XML is pasted into the editor in the same format as the copied output, the files will automatically be updated or created in your workspace. This allows for rapid iteration. See [recommended workflow](#recommended-workflow) for more information.
 
@@ -63,7 +64,7 @@ Copy file contents in XML format for LLM prompts effortlessly.
 ### Clear Selection:
 
 - To clear all file selections, click the Clear Selection button or use the keyboard shortcut:
-  - Windows/Linux: `Ctrl+Shift+C`
+  - Windows/Linux: `Ctrl+Shift+X`
   - macOS: `Cmd+Shift+C`
 
 ### Paste XML Response:

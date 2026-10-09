@@ -3,6 +3,7 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
+import { takeUntilStop } from './copyStops';
 import { FileTreeProvider } from './fileTreeProvider';
 import { planPaste } from './pastePlan';
 import { parsePrompt, serializePrompt } from './promptXml';
@@ -58,10 +59,30 @@ export function activate(context: vscode.ExtensionContext) {
           }))
         });
 
-        await vscode.env.clipboard.writeText(finalOutput);
+        const limited = await vscode.window.withProgress(
+          {
+            location: vscode.ProgressLocation.Notification,
+            title: 'Copying prompt',
+            cancellable: true
+          },
+          (_progress, token) =>
+            takeUntilStop(checkedFiles, {
+              isCancelled: () => token.isCancellationRequested,
+              maxFiles: 5000,
+              maxTotalBytes: config.get<number>('maxTotalBytes', 8388608),
+              byteLength: () => Buffer.byteLength(finalOutput)
+            })
+        );
 
+        if (limited.stop === 'user-cancelled') {
+          return;
+        }
+
+        await vscode.env.clipboard.writeText(finalOutput);
         vscode.window.showInformationMessage(
-          'File contents copied to clipboard.'
+          limited.stop === 'completed'
+            ? `Copied ${checkedFiles.length} files.`
+            : `Partial copy (${limited.stop}).`
         );
       }),
       vscode.commands.registerCommand('files2prompt.clearChecks', () => {
@@ -92,6 +113,38 @@ export function activate(context: vscode.ExtensionContext) {
           );
         }
       }),
+      vscode.commands.registerCommand(
+        'files2prompt.copyExplorerSelection',
+        async (_commandUri: vscode.Uri | undefined, selected: vscode.Uri[]) => {
+          const uris = selected?.length
+            ? selected
+            : _commandUri
+              ? [_commandUri]
+              : [];
+          const files = uris
+            .map(uri => uri.fsPath)
+            .filter(
+              filePath =>
+                fs.existsSync(filePath) && fs.lstatSync(filePath).isFile()
+            );
+
+          if (files.length === 0) {
+            vscode.window.showWarningMessage('No files selected.');
+
+            return;
+          }
+
+          const output = serializePrompt({
+            files: files.map(filePath => ({
+              name: path.relative(workspaceRoot, filePath),
+              content: readContextText(filePath, openTextFor)
+            }))
+          });
+
+          await vscode.env.clipboard.writeText(output);
+          vscode.window.showInformationMessage(`Copied ${files.length} files.`);
+        }
+      ),
       vscode.commands.registerCommand('files2prompt.pasteXml', async () => {
         const clipboardContent = await vscode.env.clipboard.readText();
 
