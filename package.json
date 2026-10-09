@@ -104,6 +104,10 @@
       {
         "command": "files2prompt.previewPrompt",
         "title": "Preview Prompt"
+      },
+      {
+        "command": "files2prompt.showDetails",
+        "title": "Ver detalles"
       }
     ],
     "menus": {
@@ -128,6 +132,11 @@
           "command": "files2prompt.previewPrompt",
           "when": "view == files2PromptView",
           "group": "navigation@6"
+        },
+        {
+          "command": "files2prompt.showDetails",
+          "when": "view == files2PromptView",
+          "group": "navigation@7"
         },
         {
           "command": "files2prompt.refresh",

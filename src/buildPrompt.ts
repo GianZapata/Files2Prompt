@@ -20,6 +20,8 @@ export type PromptBuild = {
   included: PromptFile[];
   omittedFiles: OmittedFile[];
   omittedFolders: string[];
+  pending: number;
+  byteLength: number;
 };
 
 export type BuildPromptInput = {
@@ -53,26 +55,42 @@ export const buildPrompt = async (
   });
 
   if (Buffer.byteLength(empty) > input.maxTotalBytes) {
-    return {
-      stop: 'total-bytes',
-      xml: '',
+    return finish(
+      'total-bytes',
+      input,
       included,
       omittedFiles,
-      omittedFolders
-    };
+      omittedFolders,
+      0
+    );
   }
 
-  for (const filePath of input.filePaths) {
+  for (let index = 0; index < input.filePaths.length; index += 1) {
+    const filePath = input.filePaths[index];
+    const pending = input.filePaths.length - index;
+
     await new Promise(resolve => setImmediate(resolve));
 
     if (input.isCancelled()) {
-      return {
-        stop: 'user-cancelled',
-        xml: '',
+      return finish(
+        'user-cancelled',
+        input,
         included,
         omittedFiles,
-        omittedFolders
-      };
+        omittedFolders,
+        pending
+      );
+    }
+
+    if (included.length >= input.maxFiles) {
+      return finish(
+        'file-budget',
+        input,
+        included,
+        omittedFiles,
+        omittedFolders,
+        pending
+      );
     }
 
     const normalized = path.resolve(filePath);
@@ -120,16 +138,6 @@ export const buildPrompt = async (
       continue;
     }
 
-    if (included.length >= input.maxFiles) {
-      return finish(
-        'file-budget',
-        input,
-        included,
-        omittedFiles,
-        omittedFolders
-      );
-    }
-
     const content =
       input.openText(normalized) ?? fs.readFileSync(normalized, 'utf8');
     const next = [...included, { name, content }];
@@ -144,14 +152,15 @@ export const buildPrompt = async (
         input,
         included,
         omittedFiles,
-        omittedFolders
+        omittedFolders,
+        input.filePaths.length - index
       );
     }
 
     included.push({ name, content });
   }
 
-  return finish('completed', input, included, omittedFiles, omittedFolders);
+  return finish('completed', input, included, omittedFiles, omittedFolders, 0);
 };
 
 const finish = (
@@ -159,20 +168,27 @@ const finish = (
   input: BuildPromptInput,
   included: PromptFile[],
   omittedFiles: OmittedFile[],
-  omittedFolders: string[]
-): PromptBuild => ({
-  stop,
-  xml:
+  omittedFolders: string[],
+  pending: number
+): PromptBuild => {
+  const xml =
     stop === 'user-cancelled'
       ? ''
       : serializePrompt({
           systemMessage: input.systemMessage,
           files: included
-        }),
-  included,
-  omittedFiles,
-  omittedFolders
-});
+        });
+
+  return {
+    stop,
+    xml,
+    included,
+    omittedFiles,
+    omittedFolders,
+    pending,
+    byteLength: Buffer.byteLength(xml)
+  };
+};
 
 export const countPrunedFolder = (relativePath: string) => {
   omittedFolderName(relativePath);

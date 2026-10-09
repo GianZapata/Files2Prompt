@@ -20,4 +20,8 @@ test('uses the open buffer when it differs from disk', () => {
     readContextText(filePath, () => undefined),
     'disk'
   );
+  assert.equal(
+    readContextText(filePath, () => ''),
+    ''
+  );
 });

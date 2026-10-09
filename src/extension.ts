@@ -1,14 +1,13 @@
 import * as fs from 'fs';
-import * as path from 'path';
 
 import * as vscode from 'vscode';
 
+import { applyPastedXml } from './applyPastedXml';
 import { buildPrompt } from './buildPrompt';
+import { createCopyGate } from './copyGate';
 import { FileTreeProvider } from './fileTreeProvider';
-import { filesSelectedByFolder } from './ignore/selectFiles';
-import { planPaste } from './pastePlan';
-import { parsePrompt, serializePrompt } from './promptXml';
-import { readContextText } from './readContextFile';
+import { dedupeResolved, filesSelectedByFolder } from './ignore/selectFiles';
+import { runCopy, runPreview } from './promptRun';
 
 export function activate(context: vscode.ExtensionContext) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -16,14 +15,24 @@ export function activate(context: vscode.ExtensionContext) {
   if (workspaceFolders) {
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
     const fileTreeProvider = new FileTreeProvider(workspaceRoot);
+    const copyGate = createCopyGate();
+    const details = vscode.window.createOutputChannel('Files2Prompt');
 
-    const collectPrompt = (filePaths: string[], cancelled = () => false) => {
+    context.subscriptions.push(details);
+
+    const collectPrompt = (
+      filePaths: string[],
+      cancelled = () => false,
+      includeSystemMessage = true
+    ) => {
       const config = vscode.workspace.getConfiguration('files2prompt');
 
       return buildPrompt({
         workspaceRoot,
         filePaths,
-        systemMessage: config.get<string>('systemMessage'),
+        systemMessage: includeSystemMessage
+          ? config.get<string>('systemMessage')
+          : undefined,
         resolve: (relativePath, kind) =>
           fileTreeProvider.resolvePath(relativePath, kind),
         openText: openTextFor,
@@ -49,42 +58,81 @@ export function activate(context: vscode.ExtensionContext) {
     const showOmissionDetails = (
       built: Awaited<ReturnType<typeof collectPrompt>>
     ) => {
-      const channel = vscode.window.createOutputChannel('Files2Prompt');
-
-      channel.appendLine(`Included files: ${built.included.length}`);
-      channel.appendLine(`Omitted files: ${built.omittedFiles.length}`);
-      channel.appendLine(
+      details.appendLine(`--- ${built.stop} ---`);
+      details.appendLine(`Bytes: ${built.byteLength}`);
+      details.appendLine(`Pending: ${built.pending}`);
+      details.appendLine(`Included files: ${built.included.length}`);
+      details.appendLine(`Omitted files: ${built.omittedFiles.length}`);
+      details.appendLine(
         `Omitted folders: ${built.omittedFolders.length}. A pruned folder is one folder, not a guessed file count.`
       );
 
+      if (built.pending > 0) {
+        details.appendLine(
+          `Pending: ${built.pending} not processed because ${built.stop}.`
+        );
+      }
+
       for (const folder of built.omittedFolders) {
-        channel.appendLine(`${folder} — pruned-folder`);
+        details.appendLine(`${folder} — pruned-folder`);
       }
 
       for (const file of built.omittedFiles) {
-        channel.appendLine(
+        details.appendLine(
           `${file.path} — ${file.reason}${file.pattern ? ` (${file.pattern})` : ''}`
         );
       }
     };
 
-    const copyCollected = async (filePaths: string[]) => {
-      const built = await vscode.window.withProgress(
-        {
-          location: vscode.ProgressLocation.Notification,
-          title: 'Copying prompt',
-          cancellable: true
+    const copyCollected = async (
+      filePaths: string[],
+      includeSystemMessage = true
+    ) => {
+      const result = await runCopy({
+        gate: copyGate,
+        clipboard: {
+          read: () => '',
+          write: text => vscode.env.clipboard.writeText(text)
         },
-        (_progress, token) =>
-          collectPrompt(filePaths, () => token.isCancellationRequested)
-      );
+        summarize: selectionSummary,
+        build: cancelled =>
+          collectPrompt(filePaths, cancelled, includeSystemMessage),
+        withProgress: work =>
+          vscode.window.withProgress(
+            {
+              location: vscode.ProgressLocation.Notification,
+              title: 'Copying prompt',
+              cancellable: true
+            },
+            (_progress, token) => work(() => token.isCancellationRequested)
+          )
+      });
 
-      const summary = selectionSummary(built);
+      if (!result.started) {
+        vscode.window.showWarningMessage('A copy is already in progress.');
+
+        return;
+      }
+
+      const summary = result.summary;
+
+      if (!summary) {
+        return;
+      }
+
+      showOmissionDetails(summary);
 
       if (summary.stop === 'user-cancelled') {
-        vscode.window.showWarningMessage(
-          'Copy cancelled. Clipboard unchanged.'
-        );
+        vscode.window
+          .showWarningMessage(
+            'Copy cancelled. Clipboard unchanged. Collected files were not copied.',
+            'Ver detalles'
+          )
+          .then(choice => {
+            if (choice === 'Ver detalles') {
+              details.show(true);
+            }
+          });
 
         return;
       }
@@ -99,25 +147,18 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      if (summary.stop === 'total-bytes' && summary.included.length === 0) {
-        vscode.window.showWarningMessage(
-          'Prompt exceeds the total byte limit.'
-        );
-        showOmissionDetails(summary);
-
-        return;
-      }
-
-      if (summary.included.length > 0) {
-        await vscode.env.clipboard.writeText(summary.xml);
-      }
-
-      showOmissionDetails(summary);
-      vscode.window.showInformationMessage(
+      const message =
         summary.stop === 'completed'
           ? `Copied ${summary.included.length} files. Omitted ${summary.omittedFiles.length} files and ${summary.omittedFolders.length} folders.`
-          : `Partial copy (${summary.stop}).`
-      );
+          : `Partial copy (${summary.stop}). Pending ${summary.pending}. Bytes ${summary.byteLength}.`;
+
+      vscode.window
+        .showInformationMessage(message, 'Ver detalles')
+        .then(choice => {
+          if (choice === 'Ver detalles') {
+            details.show(true);
+          }
+        });
     };
 
     const treeView = vscode.window.createTreeView('files2PromptView', {
@@ -184,51 +225,64 @@ export function activate(context: vscode.ExtensionContext) {
             : _commandUri
               ? [_commandUri]
               : [];
-          const files = uris.flatMap(uri => {
-            const filePath = uri.fsPath;
+          const files = dedupeResolved(
+            uris.flatMap(uri => {
+              const filePath = uri.fsPath;
 
-            if (!fs.existsSync(filePath)) {
-              return [];
-            }
+              if (!fs.existsSync(filePath)) {
+                return [];
+              }
 
-            if (fs.lstatSync(filePath).isDirectory()) {
-              return filesSelectedByFolder(
-                workspaceRoot,
-                filePath,
-                fileTreeProvider.resolvePath.bind(fileTreeProvider)
-              );
-            }
+              if (fs.lstatSync(filePath).isDirectory()) {
+                return filesSelectedByFolder(
+                  workspaceRoot,
+                  filePath,
+                  fileTreeProvider.resolvePath.bind(fileTreeProvider)
+                );
+              }
 
-            return [filePath];
-          });
+              return [filePath];
+            })
+          );
 
           await copyCollected(files);
         }
       ),
+      vscode.commands.registerCommand('files2prompt.showDetails', () => {
+        details.show(true);
+      }),
       vscode.commands.registerCommand(
         'files2prompt.previewPrompt',
         async () => {
-          const built = await collectPrompt(fileTreeProvider.getCheckedFiles());
-
-          if (built.stop === 'user-cancelled' || built.xml === '') {
-            vscode.window.showWarningMessage('Nothing to preview.');
-
-            return;
-          }
+          const preview = await runPreview({
+            clipboard: {
+              read: () => 'preview-must-not-write',
+              write: () => undefined
+            },
+            build: () => collectPrompt(fileTreeProvider.getCheckedFiles()),
+            summarize: selectionSummary
+          });
 
           const document = await vscode.workspace.openTextDocument({
-            content: built.xml,
+            content: preview.summary.xml,
             language: 'xml'
           });
 
           await vscode.window.showTextDocument(document, { preview: true });
-          showOmissionDetails(selectionSummary(built));
+          showOmissionDetails(preview.summary);
+          vscode.window
+            .showInformationMessage('Prompt preview opened.', 'Ver detalles')
+            .then(choice => {
+              if (choice === 'Ver detalles') {
+                details.show(true);
+              }
+            });
         }
       ),
       vscode.commands.registerCommand('files2prompt.pasteXml', async () => {
         const clipboardContent = await vscode.env.clipboard.readText();
 
-        await processXmlContent(clipboardContent);
+        await processXmlContent(clipboardContent, details);
       }),
       vscode.commands.registerCommand(
         'files2prompt.copyOpenFiles',
@@ -236,37 +290,17 @@ export function activate(context: vscode.ExtensionContext) {
           const tabGroups: ReadonlyArray<vscode.TabGroup> =
             vscode.window.tabGroups.all;
 
-          const files = new Map<string, string>();
+          const files = new Set<string>();
 
           for (const group of tabGroups) {
             for (const tab of group.tabs) {
               if (tab.input instanceof vscode.TabInputText) {
-                const filePath = tab.input.uri.fsPath;
-
-                if (fs.existsSync(filePath) && !files.has(filePath)) {
-                  files.set(filePath, readContextText(filePath, openTextFor));
-                }
+                files.add(tab.input.uri.fsPath);
               }
             }
           }
 
-          if (files.size === 0) {
-            vscode.window.showWarningMessage('No open files to copy.');
-
-            return;
-          }
-
-          const finalOutput = serializePrompt({
-            files: [...files.entries()].map(([filePath, content]) => ({
-              name: path.relative(workspaceRoot, filePath),
-              content
-            }))
-          });
-
-          await vscode.env.clipboard.writeText(finalOutput);
-          vscode.window.showInformationMessage(
-            'Open file contents copied to clipboard.'
-          );
+          await copyCollected([...files], false);
         }
       )
     );
@@ -317,60 +351,52 @@ function arraysEqual(a: string[], b: string[]): boolean {
   return true;
 }
 
-async function processXmlContent(xmlContent: string) {
-  const parsed = parsePrompt(xmlContent);
-
-  if (!parsed || parsed.files.length === 0) {
-    vscode.window.showErrorMessage(
-      'No file content found. See documentation for usage.'
-    );
-
-    return;
-  }
-
+async function processXmlContent(
+  xmlContent: string,
+  details: vscode.OutputChannel
+) {
   const workspaceRoot = vscode.workspace.workspaceFolders![0].uri.fsPath;
-  const planned = planPaste(workspaceRoot, parsed.files, absolutePath =>
-    vscode.workspace.textDocuments.some(
-      document =>
-        !document.isUntitled &&
-        document.isDirty &&
-        document.uri.fsPath === absolutePath
-    )
-  );
+  const applied = await applyPastedXml({
+    xml: xmlContent,
+    workspaceRoot,
+    isDirty: absolutePath =>
+      vscode.workspace.textDocuments.some(
+        document =>
+          !document.isUntitled &&
+          document.isDirty &&
+          document.uri.fsPath === absolutePath
+      ),
+    exists: fs.existsSync,
+    mkdir: async directory => {
+      await fs.promises.mkdir(directory, { recursive: true });
+    },
+    write: (filePath, content) =>
+      fs.promises.writeFile(filePath, content, 'utf8'),
+    read: filePath => fs.promises.readFile(filePath, 'utf8')
+  });
 
-  if (!planned.ok) {
+  if (applied.reason !== 'ok' || !applied.written) {
     vscode.window.showErrorMessage(
-      `Paste stopped (${planned.reason}): ${planned.paths.join(', ')}`
+      applied.reason === 'empty'
+        ? 'No file content found. See documentation for usage.'
+        : `Paste stopped (${applied.reason}).`
     );
 
     return;
   }
 
-  const changedFiles: { path: string; uri: vscode.Uri }[] = [];
-  const newFiles: { path: string; uri: vscode.Uri }[] = [];
-
-  for (const write of planned.writes) {
-    const fileUri = vscode.Uri.file(write.absolutePath);
-
-    await fs.promises.mkdir(path.dirname(write.absolutePath), {
-      recursive: true
-    });
-
-    if (write.existed) {
-      const existingContent = await fs.promises.readFile(
-        write.absolutePath,
-        'utf8'
-      );
-
-      if (existingContent !== write.content) {
-        await fs.promises.writeFile(write.absolutePath, write.content, 'utf8');
-        changedFiles.push({ path: write.relativePath, uri: fileUri });
-      }
-    } else {
-      await fs.promises.writeFile(write.absolutePath, write.content, 'utf8');
-      newFiles.push({ path: write.relativePath, uri: fileUri });
-    }
-  }
+  const changedFiles = applied.written
+    .filter(file => file.existed)
+    .map(file => ({
+      path: file.relativePath,
+      uri: vscode.Uri.file(file.absolutePath)
+    }));
+  const newFiles = applied.written
+    .filter(file => !file.existed)
+    .map(file => ({
+      path: file.relativePath,
+      uri: vscode.Uri.file(file.absolutePath)
+    }));
 
   if (changedFiles.length > 0 || newFiles.length > 0) {
     // Create quick pick items for all changed/new files
@@ -397,28 +423,24 @@ async function processXmlContent(xmlContent: string) {
       .then(async selection => {
         if (selection === 'Show Details') {
           // Create and show output channel with details and clickable links
-          const channel = vscode.window.createOutputChannel(
-            'Files2Prompt Changes'
-          );
-
-          channel.clear();
+          details.clear();
 
           if (changedFiles.length > 0) {
-            channel.appendLine('Modified files:');
+            details.appendLine('Modified files:');
             changedFiles.forEach(file => {
-              channel.appendLine(`${file.path}`);
+              details.appendLine(`${file.path}`);
             });
-            channel.appendLine('');
+            details.appendLine('');
           }
 
           if (newFiles.length > 0) {
-            channel.appendLine('New files:');
+            details.appendLine('New files:');
             newFiles.forEach(file => {
-              channel.appendLine(`${file.path}`);
+              details.appendLine(`${file.path}`);
             });
           }
 
-          channel.show();
+          details.show(true);
         } else if (selection === 'Open Changed Files') {
           // Show quick pick with all changed files
           const selected = await vscode.window.showQuickPick(quickPickItems, {

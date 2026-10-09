@@ -47,6 +47,10 @@ export const filesSelectedByFolder = (
   return selected.sort();
 };
 
+export const dedupeResolved = (paths: string[]) => [
+  ...new Set(paths.map(filePath => path.resolve(filePath)))
+];
+
 export const omittedFoldersForSelection = (
   workspaceRoot: string,
   checkedDirectories: string[],
