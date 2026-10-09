@@ -1,7 +1,7 @@
+import type { IgnoreDecision } from './ignoreReason';
+
 import fs from 'fs';
 import path from 'path';
-
-import type { IgnoreDecision } from './ignoreReason';
 
 export const filesSelectedByFolder = (
   workspaceRoot: string,

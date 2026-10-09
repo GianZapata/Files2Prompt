@@ -1,8 +1,8 @@
-import assert from 'node:assert/strict';
 import fs from 'fs';
+import assert from 'node:assert/strict';
+import test from 'node:test';
 import os from 'os';
 import path from 'path';
-import test from 'node:test';
 
 import { planPaste } from '../src/pastePlan';
 import { resolveInsideWorkspace } from '../src/workspacePath';
@@ -35,6 +35,7 @@ test('resolves a normal path and a path with spaces', () => {
 test('rejects a symlink whose target leaves the workspace', () => {
   const root = makeRoot();
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'f2p-out-'));
+
   fs.symlinkSync(outside, path.join(root, 'linked'));
 
   assert.equal(resolveInsideWorkspace(root, 'linked/file.ts'), undefined);

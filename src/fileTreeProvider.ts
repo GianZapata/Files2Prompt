@@ -142,7 +142,7 @@ export class FileTreeProvider
           const stats = await fs.promises.stat(fullPath);
 
           isDirectory = stats.isDirectory();
-        } catch (err) {
+        } catch {
           // The symlink is broken
           isBrokenLink = true;
         }
@@ -310,7 +310,7 @@ export class FileTreeProvider
           const stats = await fs.promises.stat(fullPath);
 
           isDirectory = stats.isDirectory();
-        } catch (err) {
+        } catch {
           // The symlink is broken
           isBrokenLink = true;
         }
@@ -320,6 +320,10 @@ export class FileTreeProvider
         await this.updateDirectoryCheckState(fullPath, state, isGitIgnored);
       }
     }
+  }
+
+  resolvePath(relativePath: string, kind: 'file' | 'directory') {
+    return this.resolver.resolve(relativePath, kind);
   }
 
   getCheckedFiles(): string[] {
@@ -343,9 +347,17 @@ export class FileTreeProvider
 
     // For each file in filePaths, set its checkboxState to Checked
     for (const filePath of filePaths) {
-      if (fs.existsSync(filePath)) {
-        this.checkedItems.set(filePath, vscode.TreeItemCheckboxState.Checked);
+      if (!fs.existsSync(filePath) || !fs.lstatSync(filePath).isFile()) {
+        continue;
       }
+
+      const relativePath = path.relative(this.workspaceRoot, filePath);
+
+      if (!this.resolver.resolve(relativePath, 'file').included) {
+        continue;
+      }
+
+      this.checkedItems.set(filePath, vscode.TreeItemCheckboxState.Checked);
     }
 
     // Update parent directories' checkbox states

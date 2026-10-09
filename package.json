@@ -100,6 +100,10 @@
       {
         "command": "files2prompt.copyExplorerSelection",
         "title": "Copy as Prompt"
+      },
+      {
+        "command": "files2prompt.previewPrompt",
+        "title": "Preview Prompt"
       }
     ],
     "menus": {
@@ -119,6 +123,11 @@
           "command": "files2prompt.copyFiles",
           "when": "view == files2PromptView",
           "group": "navigation@1"
+        },
+        {
+          "command": "files2prompt.previewPrompt",
+          "when": "view == files2PromptView",
+          "group": "navigation@6"
         },
         {
           "command": "files2prompt.refresh",
@@ -189,7 +198,9 @@
         },
         "files2prompt.exclude": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [],
           "description": "Extra gitignore-style patterns excluded from copied context."
         },
@@ -219,7 +230,7 @@
     "lint:fix": "eslint src test --fix",
     "format": "prettier --write src test eslint.config.mjs",
     "format:check": "prettier --check src test eslint.config.mjs",
-    "test": "rm -rf out-test && tsc -p tsconfig.test.json && node --test out-test/test/*.test.js"
+    "test": "node -e \"require('fs').rmSync('out-test',{recursive:true,force:true})\" && tsc -p tsconfig.test.json && node --test out-test/test/*.test.js"
   },
   "devDependencies": {
     "@types/node": "^24.19.1",
@@ -232,7 +243,7 @@
     "eslint-plugin-import-x": "^4.17.1",
     "eslint-plugin-prettier": "^5.5.6",
     "eslint-plugin-unused-imports": "^4.4.1",
-    "prettier": "^3.9.6",
+    "prettier": "3.9.6",
     "typescript": "^5.9.3"
   },
   "dependencies": {

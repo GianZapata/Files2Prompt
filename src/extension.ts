@@ -3,8 +3,9 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { takeUntilStop } from './copyStops';
+import { buildPrompt } from './buildPrompt';
 import { FileTreeProvider } from './fileTreeProvider';
+import { filesSelectedByFolder } from './ignore/selectFiles';
 import { planPaste } from './pastePlan';
 import { parsePrompt, serializePrompt } from './promptXml';
 import { readContextText } from './readContextFile';
@@ -15,6 +16,75 @@ export function activate(context: vscode.ExtensionContext) {
   if (workspaceFolders) {
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
     const fileTreeProvider = new FileTreeProvider(workspaceRoot);
+
+    const collectPrompt = (filePaths: string[], cancelled = () => false) => {
+      const config = vscode.workspace.getConfiguration('files2prompt');
+
+      return buildPrompt({
+        workspaceRoot,
+        filePaths,
+        systemMessage: config.get<string>('systemMessage'),
+        resolve: (relativePath, kind) =>
+          fileTreeProvider.resolvePath(relativePath, kind),
+        openText: openTextFor,
+        isCancelled: cancelled,
+        maxFileBytes: config.get<number>('maxFileBytes', 1048576),
+        maxTotalBytes: config.get<number>('maxTotalBytes', 8388608),
+        maxFiles: 5000
+      });
+    };
+
+    const showOmissionDetails = (
+      built: Awaited<ReturnType<typeof collectPrompt>>
+    ) => {
+      const channel = vscode.window.createOutputChannel('Files2Prompt');
+
+      channel.appendLine(`Included files: ${built.included.length}`);
+      channel.appendLine(`Omitted files: ${built.omittedFiles.length}`);
+      channel.appendLine(`Omitted folders: ${built.omittedFolders.length}`);
+
+      for (const file of built.omittedFiles) {
+        channel.appendLine(
+          `${file.path} — ${file.reason}${file.pattern ? ` (${file.pattern})` : ''}`
+        );
+      }
+    };
+
+    const copyCollected = async (filePaths: string[]) => {
+      if (filePaths.length === 0) {
+        vscode.window.showWarningMessage('No files selected.');
+
+        return;
+      }
+
+      const built = await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: 'Copying prompt',
+          cancellable: true
+        },
+        (_progress, token) =>
+          collectPrompt(filePaths, () => token.isCancellationRequested)
+      );
+
+      if (built.stop === 'user-cancelled' || built.xml === '') {
+        vscode.window.showWarningMessage(
+          built.stop === 'total-bytes'
+            ? 'Prompt exceeds the total byte limit.'
+            : 'Copy cancelled. Clipboard unchanged.'
+        );
+
+        return;
+      }
+
+      await vscode.env.clipboard.writeText(built.xml);
+      showOmissionDetails(built);
+      vscode.window.showInformationMessage(
+        built.stop === 'completed'
+          ? `Copied ${built.included.length} files. Omitted ${built.omittedFiles.length} files.`
+          : `Partial copy (${built.stop}).`
+      );
+    };
 
     const treeView = vscode.window.createTreeView('files2PromptView', {
       treeDataProvider: fileTreeProvider,
@@ -49,41 +119,7 @@ export function activate(context: vscode.ExtensionContext) {
           historyPosition++;
         }
 
-        const config = vscode.workspace.getConfiguration('files2prompt');
-        const systemMessage = config.get<string>('systemMessage');
-        const finalOutput = serializePrompt({
-          systemMessage,
-          files: checkedFiles.map(filePath => ({
-            name: path.relative(workspaceRoot, filePath),
-            content: readContextText(filePath, openTextFor)
-          }))
-        });
-
-        const limited = await vscode.window.withProgress(
-          {
-            location: vscode.ProgressLocation.Notification,
-            title: 'Copying prompt',
-            cancellable: true
-          },
-          (_progress, token) =>
-            takeUntilStop(checkedFiles, {
-              isCancelled: () => token.isCancellationRequested,
-              maxFiles: 5000,
-              maxTotalBytes: config.get<number>('maxTotalBytes', 8388608),
-              byteLength: () => Buffer.byteLength(finalOutput)
-            })
-        );
-
-        if (limited.stop === 'user-cancelled') {
-          return;
-        }
-
-        await vscode.env.clipboard.writeText(finalOutput);
-        vscode.window.showInformationMessage(
-          limited.stop === 'completed'
-            ? `Copied ${checkedFiles.length} files.`
-            : `Partial copy (${limited.stop}).`
-        );
+        await copyCollected(checkedFiles);
       }),
       vscode.commands.registerCommand('files2prompt.clearChecks', () => {
         fileTreeProvider.clearChecks();
@@ -121,28 +157,45 @@ export function activate(context: vscode.ExtensionContext) {
             : _commandUri
               ? [_commandUri]
               : [];
-          const files = uris
-            .map(uri => uri.fsPath)
-            .filter(
-              filePath =>
-                fs.existsSync(filePath) && fs.lstatSync(filePath).isFile()
-            );
+          const files = uris.flatMap(uri => {
+            const filePath = uri.fsPath;
 
-          if (files.length === 0) {
-            vscode.window.showWarningMessage('No files selected.');
+            if (!fs.existsSync(filePath)) {
+              return [];
+            }
+
+            if (fs.lstatSync(filePath).isDirectory()) {
+              return filesSelectedByFolder(
+                workspaceRoot,
+                filePath,
+                fileTreeProvider.resolvePath.bind(fileTreeProvider)
+              );
+            }
+
+            return [filePath];
+          });
+
+          await copyCollected(files);
+        }
+      ),
+      vscode.commands.registerCommand(
+        'files2prompt.previewPrompt',
+        async () => {
+          const built = await collectPrompt(fileTreeProvider.getCheckedFiles());
+
+          if (built.stop === 'user-cancelled' || built.xml === '') {
+            vscode.window.showWarningMessage('Nothing to preview.');
 
             return;
           }
 
-          const output = serializePrompt({
-            files: files.map(filePath => ({
-              name: path.relative(workspaceRoot, filePath),
-              content: readContextText(filePath, openTextFor)
-            }))
+          const document = await vscode.workspace.openTextDocument({
+            content: built.xml,
+            language: 'xml'
           });
 
-          await vscode.env.clipboard.writeText(output);
-          vscode.window.showInformationMessage(`Copied ${files.length} files.`);
+          await vscode.window.showTextDocument(document, { preview: true });
+          showOmissionDetails(built);
         }
       ),
       vscode.commands.registerCommand('files2prompt.pasteXml', async () => {
@@ -294,7 +347,7 @@ async function processXmlContent(xmlContent: string) {
 
   if (changedFiles.length > 0 || newFiles.length > 0) {
     // Create quick pick items for all changed/new files
-    const quickPickItems: vscode.QuickPickItem[] = [
+    const quickPickItems: Array<vscode.QuickPickItem & { uri: vscode.Uri }> = [
       ...changedFiles.map(f => ({
         label: `📝 ${f.path}`,
         description: 'Modified',
@@ -349,7 +402,7 @@ async function processXmlContent(xmlContent: string) {
           if (selected) {
             // Open each selected file
             for (const item of selected) {
-              const uri = (item as any).uri;
+              const uri = item.uri;
 
               if (uri) {
                 const doc = await vscode.workspace.openTextDocument(uri);
