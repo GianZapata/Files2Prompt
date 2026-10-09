@@ -5,6 +5,7 @@ import { XMLParser } from 'fast-xml-parser';
 import * as vscode from 'vscode';
 
 import { FileTreeProvider } from './fileTreeProvider';
+import { planPaste } from './pastePlan';
 
 export function activate(context: vscode.ExtensionContext) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -240,45 +241,61 @@ async function processXmlContent(xmlContent: string) {
   const files = Array.isArray(jsonObj.files.file)
     ? jsonObj.files.file
     : [jsonObj.files.file];
+  const workspaceRoot = vscode.workspace.workspaceFolders![0].uri.fsPath;
+  const planned = planPaste(
+    workspaceRoot,
+    files
+      .filter((fileObj: { '@_name'?: string }) => fileObj['@_name'])
+      .map(
+        (fileObj: {
+          '@_name': string;
+          __cdata?: string;
+          '#text'?: string;
+        }) => ({
+          name: fileObj['@_name'],
+          content: fileObj['__cdata'] ?? fileObj['#text'] ?? ''
+        })
+      ),
+    absolutePath =>
+      vscode.workspace.textDocuments.some(
+        document =>
+          !document.isUntitled &&
+          document.isDirty &&
+          document.uri.fsPath === absolutePath
+      )
+  );
+
+  if (!planned.ok) {
+    vscode.window.showErrorMessage(
+      `Paste stopped (${planned.reason}): ${planned.paths.join(', ')}`
+    );
+
+    return;
+  }
 
   const changedFiles: { path: string; uri: vscode.Uri }[] = [];
   const newFiles: { path: string; uri: vscode.Uri }[] = [];
 
-  for (const fileObj of files) {
-    const fileName = fileObj['@_name'];
-    let fileContent = '';
+  for (const write of planned.writes) {
+    const fileUri = vscode.Uri.file(write.absolutePath);
 
-    if (fileObj['__cdata']) {
-      fileContent = fileObj['__cdata'];
-    } else {
-      fileContent = fileObj['#text'] || '';
-    }
+    await fs.promises.mkdir(path.dirname(write.absolutePath), {
+      recursive: true
+    });
 
-    if (fileName) {
-      const filePath = path.join(
-        vscode.workspace.workspaceFolders![0].uri.fsPath,
-        fileName
+    if (write.existed) {
+      const existingContent = await fs.promises.readFile(
+        write.absolutePath,
+        'utf8'
       );
 
-      // Check if file exists before writing
-      const fileExists = fs.existsSync(filePath);
-      const fileUri = vscode.Uri.file(filePath);
-
-      // Create directory if needed
-      await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-
-      // If file exists, check if content is different
-      if (fileExists) {
-        const existingContent = await fs.promises.readFile(filePath, 'utf8');
-
-        if (existingContent !== fileContent) {
-          await fs.promises.writeFile(filePath, fileContent, 'utf8');
-          changedFiles.push({ path: fileName, uri: fileUri });
-        }
-      } else {
-        await fs.promises.writeFile(filePath, fileContent, 'utf8');
-        newFiles.push({ path: fileName, uri: fileUri });
+      if (existingContent !== write.content) {
+        await fs.promises.writeFile(write.absolutePath, write.content, 'utf8');
+        changedFiles.push({ path: write.relativePath, uri: fileUri });
       }
+    } else {
+      await fs.promises.writeFile(write.absolutePath, write.content, 'utf8');
+      newFiles.push({ path: write.relativePath, uri: fileUri });
     }
   }
 
