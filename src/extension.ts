@@ -41,7 +41,9 @@ export function activate(context: vscode.ExtensionContext) {
 
       channel.appendLine(`Included files: ${built.included.length}`);
       channel.appendLine(`Omitted files: ${built.omittedFiles.length}`);
-      channel.appendLine(`Omitted folders: ${built.omittedFolders.length}`);
+      channel.appendLine(
+        `Omitted folders: ${built.omittedFolders.length}. A pruned folder is one folder, not a guessed file count.`
+      );
 
       for (const file of built.omittedFiles) {
         channel.appendLine(
@@ -81,7 +83,7 @@ export function activate(context: vscode.ExtensionContext) {
       showOmissionDetails(built);
       vscode.window.showInformationMessage(
         built.stop === 'completed'
-          ? `Copied ${built.included.length} files. Omitted ${built.omittedFiles.length} files.`
+          ? `Copied ${built.included.length} files. Omitted ${built.omittedFiles.length} files and ${fileTreeProvider.omittedFolders().length} folders.`
           : `Partial copy (${built.stop}).`
       );
     };

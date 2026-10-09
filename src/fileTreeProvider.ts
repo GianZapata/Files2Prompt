@@ -19,6 +19,7 @@ export class FileTreeProvider
   private workspaceRoot: string;
   private checkedItems: Map<string, vscode.TreeItemCheckboxState> = new Map();
   private resolver = createIgnoreResolver({ workspaceRoot: '' });
+  private lastOmittedFolders: string[] = [];
   private ignoredExtensions: Set<string> = new Set();
   private watcher: vscode.FileSystemWatcher;
 
@@ -203,11 +204,15 @@ export class FileTreeProvider
     this.checkedItems.set(key, state);
 
     if (item.isDirectory) {
+      const omittedFolders: string[] = [];
       const selected = filesSelectedByFolder(
         this.workspaceRoot,
         key,
-        this.resolver.resolve
+        this.resolver.resolve,
+        omittedFolders
       );
+
+      this.lastOmittedFolders = omittedFolders;
 
       for (const filePath of selected) {
         this.checkedItems.set(
@@ -320,6 +325,10 @@ export class FileTreeProvider
         await this.updateDirectoryCheckState(fullPath, state, isGitIgnored);
       }
     }
+  }
+
+  omittedFolders(): string[] {
+    return this.lastOmittedFolders;
   }
 
   resolvePath(relativePath: string, kind: 'file' | 'directory') {

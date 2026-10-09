@@ -6,7 +6,8 @@ import path from 'path';
 export const filesSelectedByFolder = (
   workspaceRoot: string,
   folderPath: string,
-  resolve: (relativePath: string, kind: 'file' | 'directory') => IgnoreDecision
+  resolve: (relativePath: string, kind: 'file' | 'directory') => IgnoreDecision,
+  omittedFolders: string[] = []
 ) => {
   const selected: string[] = [];
   const visit = (directory: string) => {
@@ -16,6 +17,8 @@ export const filesSelectedByFolder = (
       relativeDirectory !== '' &&
       !resolve(relativeDirectory, 'directory').included
     ) {
+      omittedFolders.push(relativeDirectory.split(path.sep).join('/'));
+
       return;
     }
 
