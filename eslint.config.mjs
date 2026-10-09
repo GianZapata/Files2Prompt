@@ -1,110 +1,101 @@
-import importPlugin from "eslint-plugin-import";
-import prettier from "eslint-plugin-prettier";
-import unusedImports from "eslint-plugin-unused-imports";
-import typescriptEslint from "@typescript-eslint/eslint-plugin";
-import tsParser from "@typescript-eslint/parser";
+import eslintConfigPrettier from 'eslint-config-prettier';
+import importX from 'eslint-plugin-import-x';
+import prettier from 'eslint-plugin-prettier';
+import unusedImports from 'eslint-plugin-unused-imports';
+import typescriptEslint from '@typescript-eslint/eslint-plugin';
+import tsParser from '@typescript-eslint/parser';
 
 export default [
   {
     ignores: [
-      "**/dist",
-      "**/out",
-      "**/out-test",
-      "**/node_modules",
-      "**/coverage",
-      "**/.vscode-test",
-      "**/*.config.js",
-      "**/.DS_Store",
-    ],
+      '**/dist',
+      '**/out',
+      '**/out-test',
+      '**/node_modules',
+      '**/coverage',
+      '**/.vscode-test',
+      '**/.DS_Store'
+    ]
   },
   {
-    files: ["**/*.ts"],
+    files: ['**/*.ts'],
     plugins: {
-      import: importPlugin,
+      'import-x': importX,
       prettier,
-      "unused-imports": unusedImports,
-      "@typescript-eslint": typescriptEslint,
+      'unused-imports': unusedImports,
+      '@typescript-eslint': typescriptEslint
     },
     languageOptions: {
       parser: tsParser,
-      ecmaVersion: "latest",
-      sourceType: "module",
+      ecmaVersion: 'latest',
+      sourceType: 'module'
     },
     rules: {
-      curly: "warn",
-      eqeqeq: "warn",
-      "no-throw-literal": "warn",
-      "no-console": "warn",
-      "no-unused-vars": "off",
-      "unused-imports/no-unused-vars": "off",
-      "unused-imports/no-unused-imports": "warn",
-      "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/no-unused-vars": [
-        "warn",
+      curly: 'warn',
+      eqeqeq: 'warn',
+      'no-throw-literal': 'warn',
+      'no-console': 'warn',
+      'no-unused-vars': 'off',
+      'unused-imports/no-unused-vars': 'off',
+      'unused-imports/no-unused-imports': 'warn',
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
         {
-          argsIgnorePattern: "^_",
-          varsIgnorePattern: "^_",
-          caughtErrorsIgnorePattern: "^_",
-        },
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_'
+        }
       ],
-      "@typescript-eslint/naming-convention": [
-        "warn",
+      '@typescript-eslint/naming-convention': [
+        'warn',
         {
-          selector: "import",
-          format: ["camelCase", "PascalCase"],
-        },
+          selector: 'import',
+          format: ['camelCase', 'PascalCase']
+        }
       ],
-      "import/order": [
-        "warn",
+      'import-x/order': [
+        'warn',
         {
           groups: [
-            "type",
-            "builtin",
-            "external",
-            "internal",
-            "parent",
-            "sibling",
-            "index",
-            "object",
-            "unknown",
+            'type',
+            'builtin',
+            'external',
+            'internal',
+            'parent',
+            'sibling',
+            'index',
+            'object',
+            'unknown'
           ],
-          "newlines-between": "always",
-          pathGroupsExcludedImportTypes: ["type"],
+          'newlines-between': 'always',
+          pathGroupsExcludedImportTypes: ['type'],
           alphabetize: {
-            order: "asc",
-            caseInsensitive: true,
-          },
-        },
+            order: 'asc',
+            caseInsensitive: true
+          }
+        }
       ],
-      "padding-line-between-statements": [
-        "warn",
+      'padding-line-between-statements': [
+        'warn',
         {
-          blankLine: "always",
-          prev: "*",
-          next: "return",
+          blankLine: 'always',
+          prev: '*',
+          next: 'return'
         },
         {
-          blankLine: "always",
-          prev: ["const", "let", "var"],
-          next: "*",
+          blankLine: 'always',
+          prev: ['const', 'let', 'var'],
+          next: '*'
         },
         {
-          blankLine: "any",
-          prev: ["const", "let", "var"],
-          next: ["const", "let", "var"],
-        },
+          blankLine: 'any',
+          prev: ['const', 'let', 'var'],
+          next: ['const', 'let', 'var']
+        }
       ],
-      "prettier/prettier": [
-        "warn",
-        {
-          singleQuote: true,
-          arrowParens: "avoid",
-          trailingComma: "none",
-          bracketSpacing: true,
-          endOfLine: "auto",
-        },
-        { usePrettierrc: false },
-      ],
-    },
+      'prettier/prettier': 'warn'
+    }
   },
+  eslintConfigPrettier
 ];
