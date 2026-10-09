@@ -7,6 +7,11 @@ import { buildPrompt } from './buildPrompt';
 import { createCopyGate } from './copyGate';
 import { FileTreeProvider } from './fileTreeProvider';
 import { dedupeResolved, filesSelectedByFolder } from './ignore/selectFiles';
+import {
+  createDetailBook,
+  formatOperationReport,
+  isEmptySelection
+} from './operationReport';
 import { runCopy, runPreview } from './promptRun';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -17,6 +22,7 @@ export function activate(context: vscode.ExtensionContext) {
     const fileTreeProvider = new FileTreeProvider(workspaceRoot);
     const copyGate = createCopyGate();
     const details = vscode.window.createOutputChannel('Files2Prompt');
+    const detailBook = createDetailBook();
 
     context.subscriptions.push(details);
 
@@ -55,39 +61,37 @@ export function activate(context: vscode.ExtensionContext) {
       ].sort()
     });
 
-    const showOmissionDetails = (
-      built: Awaited<ReturnType<typeof collectPrompt>>
+    const rememberReport = (
+      kind: 'copy' | 'preview' | 'cancelled',
+      built: Awaited<ReturnType<typeof collectPrompt>>,
+      wrote: boolean
     ) => {
-      details.appendLine(`--- ${built.stop} ---`);
-      details.appendLine(`Bytes: ${built.byteLength}`);
-      details.appendLine(`Pending: ${built.pending}`);
-      details.appendLine(`Included files: ${built.included.length}`);
-      details.appendLine(`Omitted files: ${built.omittedFiles.length}`);
-      details.appendLine(
-        `Omitted folders: ${built.omittedFolders.length}. A pruned folder is one folder, not a guessed file count.`
-      );
+      const report = formatOperationReport({ kind, summary: built, wrote });
 
-      if (built.pending > 0) {
-        details.appendLine(
-          `Pending: ${built.pending} not processed because ${built.stop}.`
-        );
-      }
+      details.appendLine(report);
+      details.appendLine('');
 
-      for (const folder of built.omittedFolders) {
-        details.appendLine(`${folder} — pruned-folder`);
-      }
+      return detailBook.save(report);
+    };
 
-      for (const file of built.omittedFiles) {
-        details.appendLine(
-          `${file.path} — ${file.reason}${file.pattern ? ` (${file.pattern})` : ''}`
-        );
-      }
+    const openReport = async (report: string) => {
+      const document = await vscode.workspace.openTextDocument({
+        content: report
+      });
+
+      await vscode.window.showTextDocument(document, { preview: true });
     };
 
     const copyCollected = async (
       filePaths: string[],
       includeSystemMessage = true
     ) => {
+      if (isEmptySelection(filePaths, fileTreeProvider.omittedFolders())) {
+        vscode.window.showWarningMessage('No files selected.');
+
+        return;
+      }
+
       const result = await runCopy({
         gate: copyGate,
         clipboard: {
@@ -120,17 +124,22 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      showOmissionDetails(summary);
+      const reportId = rememberReport(
+        summary.stop === 'user-cancelled' ? 'cancelled' : 'copy',
+        summary,
+        result.wrote
+      );
+      const report = detailBook.open(reportId) ?? '';
 
       if (summary.stop === 'user-cancelled') {
         vscode.window
           .showWarningMessage(
-            'Copy cancelled. Clipboard unchanged. Collected files were not copied.',
+            `Cancelled. Collected ${summary.included.length}. Copied 0. Clipboard not written.`,
             'Ver detalles'
           )
           .then(choice => {
             if (choice === 'Ver detalles') {
-              details.show(true);
+              void openReport(report);
             }
           });
 
@@ -156,7 +165,7 @@ export function activate(context: vscode.ExtensionContext) {
         .showInformationMessage(message, 'Ver detalles')
         .then(choice => {
           if (choice === 'Ver detalles') {
-            details.show(true);
+            void openReport(report);
           }
         });
     };
@@ -248,8 +257,16 @@ export function activate(context: vscode.ExtensionContext) {
           await copyCollected(files);
         }
       ),
-      vscode.commands.registerCommand('files2prompt.showDetails', () => {
-        details.show(true);
+      vscode.commands.registerCommand('files2prompt.showDetails', async () => {
+        const latest = detailBook.latest();
+
+        if (!latest) {
+          details.show(true);
+
+          return;
+        }
+
+        await openReport(latest);
       }),
       vscode.commands.registerCommand(
         'files2prompt.previewPrompt',
@@ -269,12 +286,14 @@ export function activate(context: vscode.ExtensionContext) {
           });
 
           await vscode.window.showTextDocument(document, { preview: true });
-          showOmissionDetails(preview.summary);
+          const reportId = rememberReport('preview', preview.summary, false);
+          const report = detailBook.open(reportId) ?? '';
+
           vscode.window
             .showInformationMessage('Prompt preview opened.', 'Ver detalles')
             .then(choice => {
               if (choice === 'Ver detalles') {
-                details.show(true);
+                void openReport(report);
               }
             });
         }
