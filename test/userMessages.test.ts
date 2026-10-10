@@ -4,7 +4,11 @@ import test from 'node:test';
 import path from 'path';
 
 import { createPreviewSource } from '../src/promptPreview';
-import { copyStatusMessage, pasteStatusMessage } from '../src/userMessages';
+import {
+  copyStatusMessage,
+  pasteStatusMessage,
+  previewStatusMessage
+} from '../src/userMessages';
 
 test('copy and paste notices do not show internal stop codes', () => {
   const copy = copyStatusMessage({
@@ -20,6 +24,19 @@ test('copy and paste notices do not show internal stop codes', () => {
   assert.equal(paste.message.includes('unsaved-conflict'), false);
   assert.match(copy.message, /file limit/);
   assert.match(paste.message, /unsaved changes/);
+});
+
+test('a partial preview says how many files were left out', () => {
+  const notice = previewStatusMessage({
+    stop: 'total-bytes',
+    included: 1354,
+    pending: 562
+  });
+
+  assert.equal(notice.message.includes('total-bytes'), false);
+  assert.match(notice.message, /\{0\}/);
+  assert.match(notice.message, /too large/);
+  assert.deepEqual(notice.args, [1354, 562]);
 });
 
 test('view shortcuts use the focused view, not a custom active flag', () => {

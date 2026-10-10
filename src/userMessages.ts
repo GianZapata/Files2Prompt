@@ -46,6 +46,37 @@ export const copyStatusMessage = (input: {
   };
 };
 
+export const previewStatusMessage = (input: {
+  stop: string;
+  included: number;
+  pending: number;
+}): LocalizedText => {
+  if (input.stop === 'completed') {
+    return { message: 'Prompt preview opened.', args: [] };
+  }
+
+  if (input.stop === 'total-bytes') {
+    return {
+      message:
+        'Preview includes {0} files. {1} were left out because the prompt is too large. Change files2prompt.maxTotalBytes.',
+      args: [input.included, input.pending]
+    };
+  }
+
+  if (input.stop === 'file-budget') {
+    return {
+      message:
+        'Preview includes {0} files. {1} were left out because the file limit was reached. Change files2prompt.maxFiles.',
+      args: [input.included, input.pending]
+    };
+  }
+
+  return {
+    message: 'Preview includes {0} files. {1} were left out.',
+    args: [input.included, input.pending]
+  };
+};
+
 export const pasteStatusMessage = (reason: string): LocalizedText => {
   if (reason === 'empty') {
     return {

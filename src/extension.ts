@@ -44,7 +44,11 @@ import {
   createSelectionHistory,
   type SelectionSnapshot
 } from './selectionHistory';
-import { copyStatusMessage, pasteStatusMessage } from './userMessages';
+import {
+  copyStatusMessage,
+  pasteStatusMessage,
+  previewStatusMessage
+} from './userMessages';
 
 export function activate(context: vscode.ExtensionContext) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -478,10 +482,20 @@ export function activate(context: vscode.ExtensionContext) {
           const reportId = rememberReport('preview', preview.summary, false);
           const report = detailBook.open(reportId) ?? '';
 
+          const previewNotice = previewStatusMessage({
+            stop: preview.summary.stop,
+            included: preview.summary.included.length,
+            pending: preview.summary.pending
+          });
+          const detailsLabel = vscode.l10n.t('Show details');
+
           vscode.window
-            .showInformationMessage('Prompt preview opened.', 'Ver detalles')
+            .showInformationMessage(
+              vscode.l10n.t(previewNotice.message, ...previewNotice.args),
+              detailsLabel
+            )
             .then(choice => {
-              if (choice === 'Ver detalles') {
+              if (choice === detailsLabel) {
                 void openReport(report);
               }
             });
