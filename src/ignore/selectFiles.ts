@@ -131,6 +131,35 @@ export const dedupeResolved = (paths: string[]) => [
   ...new Set(paths.map(filePath => path.resolve(filePath)))
 ];
 
+export const selectionRoots = (workspaceRoot: string, filePaths: string[]) => {
+  if (filePaths.length === 0) {
+    return [];
+  }
+
+  const parents = filePaths.map(filePath =>
+    path.dirname(path.resolve(filePath))
+  );
+  let common = parents[0];
+
+  for (const parent of parents.slice(1)) {
+    while (parent !== common && !parent.startsWith(`${common}${path.sep}`)) {
+      const next = path.dirname(common);
+
+      if (next === common) {
+        break;
+      }
+
+      common = next;
+    }
+  }
+
+  if (!common.startsWith(workspaceRoot)) {
+    return [workspaceRoot];
+  }
+
+  return [common];
+};
+
 export const omittedFoldersForSelection = (
   workspaceRoot: string,
   checkedDirectories: string[],

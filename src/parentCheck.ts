@@ -13,9 +13,15 @@ export const checkboxForFolder = (input: {
 };
 
 export const parentCheckbox = (
-  children: Array<{ excluded: boolean; checked: boolean }>
+  children: Array<{
+    excluded: boolean;
+    checked: boolean;
+    emptyFolder?: boolean;
+  }>
 ) => {
-  const visible = children.filter(child => !child.excluded);
+  const visible = children.filter(
+    child => !child.excluded && !child.emptyFolder
+  );
 
   if (visible.length === 0 || visible.some(child => !child.checked)) {
     return 'unchecked' as const;

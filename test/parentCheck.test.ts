@@ -44,6 +44,16 @@ test('test-results in gitignore keeps a checkbox', () => {
   );
 });
 
+test('a folder with no includable files does not uncheck its parent', () => {
+  assert.equal(
+    parentCheckbox([
+      { excluded: false, checked: true },
+      { excluded: false, checked: false, emptyFolder: true }
+    ]),
+    'checked'
+  );
+});
+
 test('watcher ignores events inside an excluded directory', () => {
   const excluded = (directory: string) => directory === 'node_modules';
 

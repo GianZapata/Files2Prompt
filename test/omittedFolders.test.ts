@@ -5,7 +5,10 @@ import os from 'os';
 import path from 'path';
 
 import { createIgnoreResolver } from '../src/ignore/ignoreResolver';
-import { omittedFoldersForSelection } from '../src/ignore/selectFiles';
+import {
+  omittedFoldersForSelection,
+  selectionRoots
+} from '../src/ignore/selectFiles';
 
 const makeRoot = () => fs.mkdtempSync(path.join(os.tmpdir(), 'f2p-omit-'));
 
@@ -17,6 +20,29 @@ const write = (root: string, relativePath: string) => {
 
   return fullPath;
 };
+
+test('omitted folders follow the selected files when parent folders are unchecked', () => {
+  const root = makeRoot();
+
+  write(root, 'node_modules/pkg/index.js');
+  write(root, 'src/a.ts');
+  write(root, 'lib/b.ts');
+  const resolver = createIgnoreResolver({ workspaceRoot: root });
+  const files = [path.join(root, 'src/a.ts'), path.join(root, 'lib/b.ts')];
+  const fromFiles = omittedFoldersForSelection(
+    root,
+    selectionRoots(root, files),
+    resolver.resolve
+  );
+  const fromCheckedRoot = omittedFoldersForSelection(
+    root,
+    [root],
+    resolver.resolve
+  );
+
+  assert.deepEqual(fromFiles, fromCheckedRoot);
+  assert.equal(fromFiles.includes('node_modules'), true);
+});
 
 test('two excluded folders stay in the summary regardless of click order', () => {
   const root = makeRoot();
