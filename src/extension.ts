@@ -12,8 +12,10 @@ import {
   formatOperationReport,
   isEmptySelection
 } from './operationReport';
+import { createPreviewSource, PREVIEW_SCHEME } from './promptPreview';
 import { runCopy, runPreview } from './promptRun';
 import { createSelectionHistory } from './selectionHistory';
+import { copyStatusMessage, pasteStatusMessage } from './userMessages';
 
 export function activate(context: vscode.ExtensionContext) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -157,10 +159,14 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      const message =
-        summary.stop === 'completed'
-          ? `Copied ${summary.included.length} files. Omitted ${summary.omittedFiles.length} files and ${summary.omittedFolders.length} folders.`
-          : `Partial copy (${summary.stop}). Pending ${summary.pending}. Bytes ${summary.byteLength}.`;
+      const status = copyStatusMessage({
+        stop: summary.stop,
+        included: summary.included.length,
+        omittedFiles: summary.omittedFiles.length,
+        omittedFolders: summary.omittedFolders.length,
+        pending: summary.pending
+      });
+      const message = vscode.l10n.t(status.message, ...status.args);
 
       vscode.window
         .showInformationMessage(message, 'Ver detalles')
@@ -176,7 +182,19 @@ export function activate(context: vscode.ExtensionContext) {
       manageCheckboxStateManually: true
     });
 
-    context.subscriptions.push(fileTreeProvider);
+    const previewSource = createPreviewSource();
+    const previewEmitter = new vscode.EventEmitter<vscode.Uri>();
+    const previewUri = vscode.Uri.parse(previewSource.uri);
+
+    context.subscriptions.push(
+      fileTreeProvider,
+      treeView,
+      previewEmitter,
+      vscode.workspace.registerTextDocumentContentProvider(PREVIEW_SCHEME, {
+        onDidChange: previewEmitter.event,
+        provideTextDocumentContent: () => previewSource.get()
+      })
+    );
 
     const stored = context.workspaceState.get<{
       entries: string[][];
@@ -290,11 +308,11 @@ export function activate(context: vscode.ExtensionContext) {
             summarize: selectionSummary
           });
 
-          const document = await vscode.workspace.openTextDocument({
-            content: preview.summary.xml,
-            language: 'xml'
-          });
+          previewSource.set(preview.summary.xml);
+          previewEmitter.fire(previewUri);
+          const document = await vscode.workspace.openTextDocument(previewUri);
 
+          await vscode.languages.setTextDocumentLanguage(document, 'xml');
           await vscode.window.showTextDocument(document, { preview: true });
           const reportId = rememberReport('preview', preview.summary, false);
           const report = detailBook.open(reportId) ?? '';
@@ -334,16 +352,10 @@ export function activate(context: vscode.ExtensionContext) {
       )
     );
 
-    treeView.onDidChangeCheckboxState(async e => {
-      for (const [item, state] of e.items) {
-        await fileTreeProvider.updateCheckState(item, state);
-      }
-    });
-
     context.subscriptions.push(
-      vscode.workspace.onDidChangeConfiguration(event => {
-        if (event.affectsConfiguration('files2prompt.systemMessage')) {
-          // Handle any dynamic updates if necessary
+      treeView.onDidChangeCheckboxState(async event => {
+        for (const [item, state] of event.items) {
+          await fileTreeProvider.updateCheckState(item, state);
         }
       })
     );
@@ -363,22 +375,6 @@ const openTextFor = (filePath: string) => {
 
   return document ? document.getText() : undefined;
 };
-
-function arraysEqual(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
-  const sortedA = [...a].sort();
-  const sortedB = [...b].sort();
-
-  for (let i = 0; i < sortedA.length; i++) {
-    if (sortedA[i] !== sortedB[i]) {
-      return false;
-    }
-  }
-
-  return true;
-}
 
 async function processXmlContent(
   xmlContent: string,
@@ -436,10 +432,10 @@ async function processXmlContent(
   });
 
   if (applied.reason !== 'ok' || !applied.written) {
+    const pasteStatus = pasteStatusMessage(applied.reason);
+
     vscode.window.showErrorMessage(
-      applied.reason === 'empty'
-        ? 'No file content found. See documentation for usage.'
-        : `Paste stopped (${applied.reason}${applied.paths?.length ? `: ${applied.paths.join(', ')}` : ''}).`
+      vscode.l10n.t(pasteStatus.message, ...pasteStatus.args)
     );
 
     return;

@@ -4,11 +4,11 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { createIgnoreResolver } from './ignore/ignoreResolver';
-import { parentCheckbox, watcherShouldRefresh } from './parentCheck';
 import {
   filesSelectedByFolder,
   omittedFoldersForSelection
 } from './ignore/selectFiles';
+import { parentCheckbox, watcherShouldRefresh } from './parentCheck';
 
 export class FileTreeProvider
   implements vscode.TreeDataProvider<FileItem>, vscode.Disposable
@@ -99,6 +99,7 @@ export class FileTreeProvider
 
   getTreeItem(element: FileItem): vscode.TreeItem {
     const key = element.resourceUri.fsPath;
+
     if (element.isDirectory && element.isGitIgnored) {
       element.checkboxState = undefined;
 

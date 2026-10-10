@@ -1,0 +1,14 @@
+{
+  "Copied {0} files. Omitted {1} files and {2} folders.": "Se copiaron {0} archivos. Se omitieron {1} archivos y {2} carpetas.",
+  "Copy stopped because the file limit was reached. {0} files are still pending.": "La copia se detuvo porque se alcanzó el límite de archivos. Quedan {0} archivos pendientes.",
+  "Copy stopped because the prompt is too large. {0} files are still pending.": "La copia se detuvo porque el prompt es demasiado grande. Quedan {0} archivos pendientes.",
+  "Copy cancelled. Collected files were not copied.": "Copia cancelada. Los archivos reunidos no se copiaron.",
+  "Copy stopped. {0} files are still pending.": "La copia se detuvo. Quedan {0} archivos pendientes.",
+  "No file content found. See documentation for usage.": "No se encontró contenido de archivos. Consulta la documentación.",
+  "Paste stopped because a destination file has unsaved changes.": "El pegado se detuvo porque un archivo de destino tiene cambios sin guardar.",
+  "Paste stopped because file content is not CDATA.": "El pegado se detuvo porque el contenido del archivo no es CDATA.",
+  "Paste stopped because a path is invalid.": "El pegado se detuvo porque una ruta no es válida.",
+  "Paste stopped because a path is duplicated.": "El pegado se detuvo porque una ruta está duplicada.",
+  "Paste cancelled.": "Pegado cancelado.",
+  "Paste stopped.": "El pegado se detuvo."
+}

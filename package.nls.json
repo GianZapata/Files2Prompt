@@ -1,0 +1,20 @@
+{
+  "files2prompt.container.title": "Files2Prompt Fork",
+  "files2prompt.view.name": "Files",
+  "files2prompt.refresh.title": "Refresh Files2Prompt View",
+  "files2prompt.copyFiles.title": "Copy Files",
+  "files2prompt.clearChecks.title": "Clear All Checks",
+  "files2prompt.goBack.title": "Go Back",
+  "files2prompt.goForward.title": "Go Forward",
+  "files2prompt.pasteXml.title": "Paste XML",
+  "files2prompt.copyOpenFiles.title": "Copy Open Files",
+  "files2prompt.copyExplorerSelection.title": "Copy as Prompt",
+  "files2prompt.previewPrompt.title": "Preview Prompt",
+  "files2prompt.showDetails.title": "Show details",
+  "files2prompt.config.title": "Files2Prompt Settings",
+  "files2prompt.systemMessage.description": "Optional system message to include in the output.",
+  "files2prompt.exclude.description": "Extra gitignore-style patterns excluded from copied context.",
+  "files2prompt.maxFileBytes.description": "Skip a file larger than this many bytes.",
+  "files2prompt.maxTotalBytes.description": "Stop copying when the serialized prompt would exceed this many UTF-8 bytes.",
+  "files2prompt.ignoredExtensions.description": "Comma-separated list of file extensions to ignore during recursive selection. Example: 'png,jpg,jpeg,gif,svg'"
+}

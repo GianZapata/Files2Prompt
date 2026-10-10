@@ -1,0 +1,20 @@
+{
+  "files2prompt.container.title": "Files2Prompt Fork",
+  "files2prompt.view.name": "Archivos",
+  "files2prompt.refresh.title": "Actualizar vista de Files2Prompt",
+  "files2prompt.copyFiles.title": "Copiar archivos",
+  "files2prompt.clearChecks.title": "Quitar todas las marcas",
+  "files2prompt.goBack.title": "Volver",
+  "files2prompt.goForward.title": "Avanzar",
+  "files2prompt.pasteXml.title": "Pegar XML",
+  "files2prompt.copyOpenFiles.title": "Copiar archivos abiertos",
+  "files2prompt.copyExplorerSelection.title": "Copiar como prompt",
+  "files2prompt.previewPrompt.title": "Previsualizar prompt",
+  "files2prompt.showDetails.title": "Ver detalles",
+  "files2prompt.config.title": "Ajustes de Files2Prompt",
+  "files2prompt.systemMessage.description": "Mensaje de sistema opcional para incluir en la salida.",
+  "files2prompt.exclude.description": "Patrones extra estilo gitignore excluidos del contexto copiado.",
+  "files2prompt.maxFileBytes.description": "Omitir un archivo mayor que esta cantidad de bytes.",
+  "files2prompt.maxTotalBytes.description": "Detener la copia cuando el prompt serializado supere esta cantidad de bytes UTF-8.",
+  "files2prompt.ignoredExtensions.description": "Lista separada por comas de extensiones a ignorar en la selección recursiva. Ejemplo: 'png,jpg,jpeg,gif,svg'"
+}

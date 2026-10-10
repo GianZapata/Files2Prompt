@@ -26,12 +26,13 @@
     "onView.files2PromptView"
   ],
   "main": "./out/extension.js",
+  "l10n": "./l10n",
   "contributes": {
     "viewsContainers": {
       "activitybar": [
         {
           "id": "files2prompt",
-          "title": "Files2Prompt Fork",
+          "title": "%files2prompt.container.title%",
           "icon": "resources/files2prompt-icon.svg"
         }
       ]
@@ -40,14 +41,14 @@
       "files2prompt": [
         {
           "id": "files2PromptView",
-          "name": "Files"
+          "name": "%files2prompt.view.name%"
         }
       ]
     },
     "commands": [
       {
         "command": "files2prompt.refresh",
-        "title": "Refresh Files2Prompt View",
+        "title": "%files2prompt.refresh.title%",
         "icon": {
           "light": "resources/light/refresh.svg",
           "dark": "resources/dark/refresh.svg"
@@ -55,7 +56,7 @@
       },
       {
         "command": "files2prompt.copyFiles",
-        "title": "Copy Files",
+        "title": "%files2prompt.copyFiles.title%",
         "icon": {
           "light": "resources/light/copy.svg",
           "dark": "resources/dark/copy.svg"
@@ -63,7 +64,7 @@
       },
       {
         "command": "files2prompt.clearChecks",
-        "title": "Clear All Checks",
+        "title": "%files2prompt.clearChecks.title%",
         "icon": {
           "light": "resources/light/clear.svg",
           "dark": "resources/dark/clear.svg"
@@ -71,7 +72,7 @@
       },
       {
         "command": "files2prompt.goBack",
-        "title": "Go Back",
+        "title": "%files2prompt.goBack.title%",
         "icon": {
           "light": "resources/light/back.svg",
           "dark": "resources/dark/back.svg"
@@ -79,7 +80,7 @@
       },
       {
         "command": "files2prompt.goForward",
-        "title": "Go Forward",
+        "title": "%files2prompt.goForward.title%",
         "icon": {
           "light": "resources/light/forward.svg",
           "dark": "resources/dark/forward.svg"
@@ -87,7 +88,7 @@
       },
       {
         "command": "files2prompt.pasteXml",
-        "title": "Paste XML",
+        "title": "%files2prompt.pasteXml.title%",
         "icon": {
           "light": "resources/light/play.svg",
           "dark": "resources/dark/play.svg"
@@ -95,19 +96,19 @@
       },
       {
         "command": "files2prompt.copyOpenFiles",
-        "title": "Copy Open Files"
+        "title": "%files2prompt.copyOpenFiles.title%"
       },
       {
         "command": "files2prompt.copyExplorerSelection",
-        "title": "Copy as Prompt"
+        "title": "%files2prompt.copyExplorerSelection.title%"
       },
       {
         "command": "files2prompt.previewPrompt",
-        "title": "Preview Prompt"
+        "title": "%files2prompt.previewPrompt.title%"
       },
       {
         "command": "files2prompt.showDetails",
-        "title": "Ver detalles"
+        "title": "%files2prompt.showDetails.title%"
       }
     ],
     "menus": {
@@ -165,44 +166,44 @@
         "command": "files2prompt.refresh",
         "key": "ctrl+r",
         "mac": "cmd+r",
-        "when": "files2PromptView.active && files2PromptView.visible && focusedView == 'files2PromptView'",
-        "title": "Files2Prompt: Refresh"
+        "when": "focusedView == 'files2PromptView'",
+        "title": "%files2prompt.refresh.title%"
       },
       {
         "command": "files2prompt.copyFiles",
         "key": "ctrl+c",
         "mac": "cmd+c",
-        "when": "files2PromptView.active && files2PromptView.visible && focusedView == 'files2PromptView'",
-        "title": "Files2Prompt: Copy Files"
+        "when": "focusedView == 'files2PromptView'",
+        "title": "%files2prompt.copyFiles.title%"
       },
       {
         "command": "files2prompt.clearChecks",
         "key": "ctrl+shift+x",
         "mac": "cmd+shift+x",
-        "when": "files2PromptView.active && files2PromptView.visible && focusedView == 'files2PromptView'",
-        "title": "Files2Prompt: Clear All Checks"
+        "when": "focusedView == 'files2PromptView'",
+        "title": "%files2prompt.clearChecks.title%"
       },
       {
         "command": "files2prompt.pasteXml",
         "key": "ctrl+v",
         "mac": "cmd+v",
-        "when": "files2PromptView.active && files2PromptView.visible && focusedView == 'files2PromptView'",
-        "title": "Files2Prompt: Paste XML"
+        "when": "focusedView == 'files2PromptView'",
+        "title": "%files2prompt.pasteXml.title%"
       },
       {
         "command": "files2prompt.copyOpenFiles",
         "key": "ctrl+shift+c",
         "mac": "cmd+shift+c",
-        "title": "Files2Prompt: Copy Open Files"
+        "title": "%files2prompt.copyOpenFiles.title%"
       }
     ],
     "configuration": {
       "type": "object",
-      "title": "Files2Prompt Settings",
+      "title": "%files2prompt.config.title%",
       "properties": {
         "files2prompt.systemMessage": {
           "type": "string",
-          "description": "Optional system message to include in the output.",
+          "description": "%files2prompt.systemMessage.description%",
           "default": ""
         },
         "files2prompt.exclude": {
@@ -211,21 +212,21 @@
             "type": "string"
           },
           "default": [],
-          "description": "Extra gitignore-style patterns excluded from copied context."
+          "description": "%files2prompt.exclude.description%"
         },
         "files2prompt.maxFileBytes": {
           "type": "number",
           "default": 1048576,
-          "description": "Skip a file larger than this many bytes."
+          "description": "%files2prompt.maxFileBytes.description%"
         },
         "files2prompt.maxTotalBytes": {
           "type": "number",
           "default": 8388608,
-          "description": "Stop copying when the serialized prompt would exceed this many UTF-8 bytes."
+          "description": "%files2prompt.maxTotalBytes.description%"
         },
         "files2prompt.ignoredExtensions": {
           "type": "string",
-          "description": "Comma-separated list of file extensions to ignore during recursive selection. Example: 'png,jpg,jpeg,gif,svg'",
+          "description": "%files2prompt.ignoredExtensions.description%",
           "default": "png,jpg,jpeg,gif,svg"
         }
       }
