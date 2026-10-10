@@ -3,7 +3,7 @@ import type { IgnoreDecision } from './ignore/ignoreReason';
 import fs from 'fs';
 import path from 'path';
 
-import { serializePrompt, type PromptFile } from './promptXml';
+import { serializePrompt, serializedFile, type PromptFile } from './promptXml';
 
 export type CopyStop =
   'completed' | 'user-cancelled' | 'file-budget' | 'total-bytes';
@@ -53,6 +53,7 @@ export const buildPrompt = async (
     systemMessage: input.systemMessage,
     files: []
   });
+  let runningBytes = Buffer.byteLength(empty) - Buffer.byteLength('</files>');
 
   if (Buffer.byteLength(empty) > input.maxTotalBytes) {
     return finish(
@@ -140,13 +141,12 @@ export const buildPrompt = async (
 
     const content =
       input.openText(normalized) ?? fs.readFileSync(normalized, 'utf8');
-    const next = [...included, { name, content }];
-    const xml = serializePrompt({
-      systemMessage: input.systemMessage,
-      files: next
-    });
+    const addition = Buffer.byteLength(serializedFile({ name, content }));
 
-    if (Buffer.byteLength(xml) > input.maxTotalBytes) {
+    if (
+      runningBytes + addition + Buffer.byteLength('</files>') >
+      input.maxTotalBytes
+    ) {
       return finish(
         'total-bytes',
         input,
@@ -157,6 +157,7 @@ export const buildPrompt = async (
       );
     }
 
+    runningBytes += addition;
     included.push({ name, content });
   }
 

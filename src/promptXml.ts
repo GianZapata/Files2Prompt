@@ -36,6 +36,9 @@ const escapeCdata = (value: string) =>
 
 const cdata = (value: string) => `<![CDATA[${escapeCdata(value)}]]>`;
 
+export const serializedFile = (file: PromptFile) =>
+  `<file name="${escapeAttribute(file.name)}">${cdata(file.content)}</file>`;
+
 export const serializePrompt = (input: PromptPayload) => {
   const parts: string[] = [];
 
@@ -43,12 +46,7 @@ export const serializePrompt = (input: PromptPayload) => {
     parts.push(`<systemMessage>${cdata(input.systemMessage)}</systemMessage>`);
   }
 
-  const files = input.files
-    .map(
-      file =>
-        `<file name="${escapeAttribute(file.name)}">${cdata(file.content)}</file>`
-    )
-    .join('');
+  const files = input.files.map(serializedFile).join('');
 
   return `<files>${parts.join('')}${files}</files>`;
 };

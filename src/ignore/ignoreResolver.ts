@@ -39,6 +39,29 @@ export const createIgnoreResolver = (options: IgnoreResolverOptions) => {
     binaryExtensions.map(extension => `*.${extension}`).join('\n')
   );
 
+  const cache = new Map<string, string>();
+  const readCached = (filePath: string) => {
+    const hit = cache.get(filePath);
+
+    if (hit !== undefined) {
+      return hit;
+    }
+
+    const content = readIfExists(filePath);
+
+    cache.set(filePath, content);
+
+    return content;
+  };
+  const invalidate = (filePath?: string) => {
+    if (!filePath) {
+      cache.clear();
+
+      return;
+    }
+
+    cache.delete(filePath);
+  };
   const resolve = (
     relativePath: string,
     kind: 'file' | 'directory'
@@ -53,11 +76,23 @@ export const createIgnoreResolver = (options: IgnoreResolverOptions) => {
     const directories = parentDirectories(probe);
 
     for (const directory of directories) {
-      addIgnoreFile(matcher, options.workspaceRoot, directory, '.gitignore');
+      addIgnoreFile(
+        matcher,
+        options.workspaceRoot,
+        directory,
+        '.gitignore',
+        readCached
+      );
     }
 
     for (const directory of directories) {
-      addIgnoreFile(matcher, options.workspaceRoot, directory, '.promptignore');
+      addIgnoreFile(
+        matcher,
+        options.workspaceRoot,
+        directory,
+        '.promptignore',
+        readCached
+      );
     }
 
     matcher.add((options.excludePatterns ?? []).join('\n'));
@@ -77,7 +112,7 @@ export const createIgnoreResolver = (options: IgnoreResolverOptions) => {
     return { included: true };
   };
 
-  return { resolve };
+  return { resolve, invalidate };
 };
 
 const parentDirectories = (probe: string) => {
@@ -95,9 +130,10 @@ const addIgnoreFile = (
   matcher: ReturnType<typeof ignore>,
   workspaceRoot: string,
   directory: string,
-  fileName: string
+  fileName: string,
+  readCached: (filePath: string) => string
 ) => {
-  const content = readIfExists(path.join(workspaceRoot, directory, fileName));
+  const content = readCached(path.join(workspaceRoot, directory, fileName));
 
   if (!content) {
     return;

@@ -18,6 +18,29 @@ const write = (root: string, relativePath: string, content = 'ok') => {
   return fullPath;
 };
 
+test('node_modules and dist directories are excluded', () => {
+  const root = makeRoot();
+  const resolver = createIgnoreResolver({ workspaceRoot: root });
+
+  assert.equal(resolver.resolve('node_modules', 'directory').included, false);
+  assert.equal(resolver.resolve('dist', 'directory').included, false);
+  assert.equal(resolver.resolve('src/app.ts', 'file').included, true);
+});
+
+test('gitignore content stays cached until invalidate', () => {
+  const root = makeRoot();
+
+  write(root, '.gitignore', 'secret.txt\n');
+  write(root, 'secret.txt');
+  const resolver = createIgnoreResolver({ workspaceRoot: root });
+
+  assert.equal(resolver.resolve('secret.txt', 'file').included, false);
+  fs.writeFileSync(path.join(root, '.gitignore'), '');
+  assert.equal(resolver.resolve('secret.txt', 'file').included, false);
+  resolver.invalidate(path.join(root, '.gitignore'));
+  assert.equal(resolver.resolve('secret.txt', 'file').included, true);
+});
+
 test('folder selection includes allowed files and skips pycache', () => {
   const root = makeRoot();
 
