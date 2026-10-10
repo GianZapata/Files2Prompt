@@ -24,19 +24,12 @@ Copy file contents in XML format for LLM prompts effortlessly.
 
 ## Installation
 
-### Install from Marketplace:
+Install this fork from a local VSIX only. Do not install `thomas-mckanna.files2prompt` from the Marketplace. An editor update can replace this fork with upstream if the Marketplace copy is installed.
 
-1. Open VS Code.
-2. Go to the Extensions view by clicking on the Extensions icon in the Activity Bar or pressing `Ctrl+Shift+X` (`Cmd+Shift+X` on macOS).
-3. Search for "Files2Prompt".
-4. Click Install.
-
-### Install from VSIX:
-
-1. Download the .vsix file from the releases page.
+1. Build or download the local `.vsix`.
 2. In VS Code, press `Ctrl+Shift+P` (`Cmd+Shift+P` on macOS) to open the Command Palette.
 3. Type `Extensions: Install from VSIX...` and select the command.
-4. Browse to the downloaded .vsix file and install.
+4. Browse to the `.vsix` file and install.
 
 ## Usage
 
@@ -65,7 +58,7 @@ Copy file contents in XML format for LLM prompts effortlessly.
 
 - To clear all file selections, click the Clear Selection button or use the keyboard shortcut:
   - Windows/Linux: `Ctrl+Shift+X`
-  - macOS: `Cmd+Shift+C`
+  - macOS: `Cmd+Shift+X`
 
 ### Paste XML Response:
 
@@ -110,12 +103,12 @@ You can customize the keyboard shortcuts for refreshing and copying files:
 ## Example Output
 
 ```xml
-<systemMessage>
-<![CDATA[
-This is a custom system message for LLM prompts.
-]]>
-</systemMessage>
 <files>
+  <systemMessage>
+  <![CDATA[
+  This is a custom system message for LLM prompts.
+  ]]>
+  </systemMessage>
   <file name="src/extension.ts">
     <![CDATA[
     // File content here

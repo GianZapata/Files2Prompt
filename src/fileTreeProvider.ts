@@ -319,54 +319,6 @@ export class FileTreeProvider
     );
   }
 
-  private async updateDirectoryCheckState(
-    dirPath: string,
-    state: vscode.TreeItemCheckboxState,
-    parentIsGitIgnored: boolean
-  ): Promise<void> {
-    const dirEntries = await fs.promises.readdir(dirPath, {
-      withFileTypes: true
-    });
-
-    for (const entry of dirEntries) {
-      const fullPath = path.join(dirPath, entry.name);
-      const relativePath = path.relative(this.workspaceRoot, fullPath);
-      const isGitIgnored = this.isExcluded(
-        relativePath,
-        entry.isDirectory() ? 'directory' : 'file'
-      );
-
-      const extension = path.extname(entry.name).toLowerCase().replace('.', '');
-      const isIgnoredExtension = this.ignoredExtensions.has(extension);
-
-      if (!parentIsGitIgnored && (isGitIgnored || isIgnoredExtension)) {
-        // Skip gitignored items and ignored extensions when parent is not gitignored
-        continue;
-      }
-
-      this.checkedItems.set(fullPath, state);
-
-      let isDirectory = entry.isDirectory();
-      let isSymbolicLink = entry.isSymbolicLink();
-      let isBrokenLink = false;
-
-      if (isSymbolicLink) {
-        try {
-          const stats = await fs.promises.stat(fullPath);
-
-          isDirectory = stats.isDirectory();
-        } catch {
-          // The symlink is broken
-          isBrokenLink = true;
-        }
-      }
-
-      if (isDirectory && !isBrokenLink) {
-        await this.updateDirectoryCheckState(fullPath, state, isGitIgnored);
-      }
-    }
-  }
-
   omittedFolders(): string[] {
     const directories = [...this.checkedItems.entries()]
       .filter(

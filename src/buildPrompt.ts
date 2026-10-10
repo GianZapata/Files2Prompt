@@ -190,9 +190,3 @@ const finish = (
     byteLength: Buffer.byteLength(xml)
   };
 };
-
-export const countPrunedFolder = (relativePath: string) => {
-  omittedFolderName(relativePath);
-};
-
-const omittedFolderName = (relativePath: string) => relativePath;
