@@ -32,5 +32,20 @@
   "git · {0}": "git · {0}",
   "submodule · {0}": "submódulo · {0}",
   "Git is not available in this window.": "Git no está disponible en esta ventana.",
-  "No Git repositories in this workspace.": "No hay repositorios Git en este espacio de trabajo."
+  "No Git repositories in this workspace.": "No hay repositorios Git en este espacio de trabajo.",
+  "Choose repositories": "Elige repositorios",
+  "Uncommitted changes": "Cambios sin confirmar",
+  "Staged changes": "Cambios en el índice",
+  "One commit": "Un commit",
+  "Current branch against a base": "Rama actual contra una base",
+  "Which changes should be selected?": "¿Qué cambios hay que seleccionar?",
+  "Choose a commit": "Elige un commit",
+  "Choose a base": "Elige una base",
+  "Type a base…": "Escribir una base…",
+  "Base branch or commit": "Rama o commit base",
+  "Include the submodule diff?": "¿Incluir el diff interno del submódulo?",
+  "Apply": "Aplicar",
+  "Apply pasted files?\n{0}": "¿Aplicar los archivos pegados?\n{0}",
+  "New: {0}": "Nuevo: {0}",
+  "Modified: {0}": "Modificado: {0}"
 }

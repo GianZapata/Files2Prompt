@@ -1,12 +1,12 @@
-import type { DiscoveredRepository } from './gitRepos';
-import { repositoryLabel } from './gitRepos';
 import type { ForcedRoot } from './ignore/ignoreReason';
+import type { PromptChange } from './selectChanges';
 
 import * as fs from 'fs';
 import * as path from 'path';
 
 import * as vscode from 'vscode';
 
+import { repositoryLabel, type DiscoveredRepository } from './gitRepos';
 import { createIgnoreResolver } from './ignore/ignoreResolver';
 import {
   filesSelectedByFolder,
@@ -30,6 +30,7 @@ export class FileTreeProvider
   private resolver = createIgnoreResolver({ workspaceRoot: '' });
   private forcedRoots: ForcedRoot[] = [];
   private repositories: DiscoveredRepository[] = [];
+  private promptChanges: PromptChange[] = [];
   private ignoredExtensions: Set<string> = new Set();
   private excludePatterns: string[] = [];
   private watcher: vscode.FileSystemWatcher;
@@ -105,6 +106,14 @@ export class FileTreeProvider
     this.reloadRules();
     this.checkedItems.clear();
     this.refresh();
+  }
+
+  setPromptChanges(changes: PromptChange[]): void {
+    this.promptChanges = changes;
+  }
+
+  promptChangeList(): PromptChange[] {
+    return this.promptChanges.map(change => ({ ...change }));
   }
 
   setRepositories(repositories: DiscoveredRepository[]): void {
@@ -244,6 +253,10 @@ export class FileTreeProvider
       }
     }
 
+    for (const change of this.promptChanges) {
+      bytes += Buffer.byteLength(change.diff ?? '');
+    }
+
     return { count: files.length, bytes };
   }
 
@@ -342,10 +355,13 @@ export class FileTreeProvider
 
       const extension = path.extname(entry.name).toLowerCase().replace('.', '');
       const isIgnoredExtension = this.ignoredExtensions.has(extension);
-      const isGitIgnored = this.isExcluded(
-        relativePath,
-        isDirectory ? 'directory' : 'file'
-      );
+      const kind = isDirectory ? 'directory' : 'file';
+      const decision = this.explain(relativePath, kind);
+      const isGitIgnored = !decision.included;
+      const hideCheckbox =
+        isDirectory &&
+        !decision.included &&
+        (decision.reason === 'built-in' || decision.reason === 'promptignore');
 
       const key = fullPath;
       const parentChecked =
@@ -354,7 +370,7 @@ export class FileTreeProvider
       const allowed = !isGitIgnored && !isIgnoredExtension;
       let checkboxState = this.checkedItems.get(key);
 
-      if (isDirectory && isGitIgnored) {
+      if (hideCheckbox) {
         checkboxState = undefined;
       } else if (parentChecked && allowed) {
         checkboxState = vscode.TreeItemCheckboxState.Checked;
@@ -363,10 +379,7 @@ export class FileTreeProvider
         checkboxState = vscode.TreeItemCheckboxState.Unchecked;
       }
 
-      const decision = this.resolver.resolve(
-        relativePath,
-        isDirectory ? 'directory' : 'file'
-      );
+      const resolved = this.resolver.resolve(relativePath, kind);
       const item = new FileItem(
         entry.name,
         uri,
@@ -379,7 +392,7 @@ export class FileTreeProvider
         isSymbolicLink
       );
 
-      if (decision.manual) {
+      if (resolved.manual) {
         item.description = vscode.l10n.t('ignored · included manually');
       }
 

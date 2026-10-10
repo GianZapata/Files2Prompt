@@ -30,6 +30,15 @@ import {
 } from './operationReport';
 import { createPreviewSource, PREVIEW_SCHEME } from './promptPreview';
 import { runCopy, runPreview } from './promptRun';
+import {
+  applyChangeSelection,
+  baseChoices,
+  changesForScope,
+  mapGitStatus,
+  type ChangeScope,
+  type PromptChange,
+  type RawGitChange
+} from './selectChanges';
 import { formatByteSize, overLimitNotice } from './selectionBudget';
 import {
   createSelectionHistory,
@@ -55,10 +64,11 @@ export function activate(context: vscode.ExtensionContext) {
       includeSystemMessage = true
     ) => {
       const config = vscode.workspace.getConfiguration('files2prompt');
+      const diffMode = config.get<string>('diffMode', 'diffAndFiles');
 
       return buildPrompt({
         workspaceRoot,
-        filePaths,
+        filePaths: diffMode === 'diffOnly' ? [] : filePaths,
         systemMessage: includeSystemMessage
           ? config.get<string>('systemMessage')
           : undefined,
@@ -68,7 +78,11 @@ export function activate(context: vscode.ExtensionContext) {
         isCancelled: cancelled,
         maxFileBytes: config.get<number>('maxFileBytes', 1048576),
         maxTotalBytes: config.get<number>('maxTotalBytes', 8388608),
-        maxFiles: config.get<number>('maxFiles', 5000)
+        maxFiles: config.get<number>('maxFiles', 5000),
+        changes:
+          config.get<string>('diffMode', 'diffAndFiles') === 'filesOnly'
+            ? []
+            : fileTreeProvider.promptChangeList()
       });
     };
 
@@ -102,12 +116,28 @@ export function activate(context: vscode.ExtensionContext) {
             : undefined;
         })
         .filter((item): item is NonNullable<typeof item> => item !== undefined);
-      const report = formatOperationReport({
-        kind,
-        summary: built,
-        wrote,
-        manualIncludes
-      });
+      const changeNotes = fileTreeProvider
+        .promptChangeList()
+        .map(change =>
+          [
+            `Change: ${change.repo}`,
+            change.scope ?? '',
+            change.base ?? '',
+            change.head ?? '',
+            change.path
+          ]
+            .filter(Boolean)
+            .join(' ')
+        );
+      const report = [
+        formatOperationReport({
+          kind,
+          summary: built,
+          wrote,
+          manualIncludes
+        }),
+        ...changeNotes
+      ].join('\n');
 
       details.appendLine(report);
       details.appendLine('');
@@ -294,6 +324,7 @@ export function activate(context: vscode.ExtensionContext) {
         });
       }, 200);
     };
+
     context.subscriptions.push(
       watchGitRepositories(workspaceRoot, fileTreeProvider)
     );
@@ -501,6 +532,39 @@ export function activate(context: vscode.ExtensionContext) {
         await saveHistory();
         scheduleDescription();
       }),
+      vscode.commands.registerCommand(
+        'files2prompt.selectChanges',
+        async (target?: { resourceUri?: vscode.Uri }) => {
+          const applied = await selectGitChanges(workspaceRoot, target);
+
+          if (!applied) {
+            return;
+          }
+
+          const current = fileTreeProvider
+            .getCheckedFiles()
+            .map(filePath =>
+              path.relative(workspaceRoot, filePath).split(path.sep).join('/')
+            );
+          const next = applyChangeSelection(
+            current,
+            applied.changes,
+            applied.mode
+          );
+
+          if (applied.mode === 'replace') {
+            fileTreeProvider.clearChecks();
+          }
+
+          await fileTreeProvider.setCheckedFiles(
+            next.map(filePath => path.join(workspaceRoot, filePath))
+          );
+          fileTreeProvider.setPromptChanges(applied.changes);
+          history.record(currentSnapshot());
+          await saveHistory();
+          scheduleDescription();
+        }
+      ),
       vscode.commands.registerCommand(
         'files2prompt.selectByExtension',
         async (target?: vscode.Uri | { resourceUri?: vscode.Uri }) => {
@@ -756,6 +820,339 @@ const folderFromTarget = (
   return workspaceRoot;
 };
 
+const selectGitChanges = async (
+  workspaceRoot: string,
+  target?: { resourceUri?: vscode.Uri }
+): Promise<
+  { changes: PromptChange[]; mode: 'add' | 'replace' } | undefined
+> => {
+  const gitExtension = vscode.extensions.getExtension('vscode.git');
+
+  if (!gitExtension) {
+    await vscode.window.showInformationMessage(
+      vscode.l10n.t(gitUnavailableMessage())
+    );
+
+    return undefined;
+  }
+
+  const api = (
+    (gitExtension.isActive
+      ? gitExtension.exports
+      : await gitExtension.activate()) as {
+      getAPI: (version: 1) => GitApiLike & {
+        repositories: Array<
+          GitApiLike['repositories'][number] & {
+            diffWithHEAD?: (path?: string) => Promise<string | unknown[]>;
+            diffBetween?: (
+              ref1: string,
+              ref2: string,
+              path?: string
+            ) => Promise<string | unknown[]>;
+            getMergeBase?: (
+              ref1: string,
+              ref2: string
+            ) => Promise<string | undefined>;
+            log?: (options?: {
+              maxEntries?: number;
+            }) => Promise<Array<{ hash: string; message: string }>>;
+            state: GitApiLike['repositories'][number]['state'] & {
+              indexChanges?: GitStatusChange[];
+              workingTreeChanges?: GitStatusChange[];
+              refs?: Array<{ name?: string; type?: number }>;
+              remotes?: Array<{ name: string }>;
+            };
+          }
+        >;
+      };
+    }
+  ).getAPI(1);
+  const wanted = target?.resourceUri
+    ? path
+        .relative(workspaceRoot, target.resourceUri.fsPath)
+        .split(path.sep)
+        .join('/')
+    : undefined;
+  const repos = api.repositories.filter(repository => {
+    const relative = path
+      .relative(workspaceRoot, repository.rootUri.fsPath)
+      .split(path.sep)
+      .join('/');
+
+    return !wanted || relative === wanted || wanted.startsWith(`${relative}/`);
+  });
+
+  if (repos.length === 0) {
+    await vscode.window.showInformationMessage(
+      vscode.l10n.t(noRepositoriesMessage())
+    );
+
+    return undefined;
+  }
+
+  const pickedRepos =
+    repos.length === 1
+      ? repos
+      : await vscode.window.showQuickPick(
+          repos.map(repository => {
+            const relative = path
+              .relative(workspaceRoot, repository.rootUri.fsPath)
+              .split(path.sep)
+              .join('/');
+            const state = repository.state as {
+              indexChanges?: unknown[];
+              workingTreeChanges?: unknown[];
+            };
+            const dirty =
+              (state.indexChanges?.length ?? 0) +
+                (state.workingTreeChanges?.length ?? 0) >
+              0;
+
+            return {
+              label: relative || path.basename(workspaceRoot),
+              description: repository.state.HEAD?.name,
+              picked: dirty,
+              repository
+            };
+          }),
+          {
+            canPickMany: true,
+            placeHolder: vscode.l10n.t('Choose repositories')
+          }
+        );
+
+  if (!pickedRepos || pickedRepos.length === 0) {
+    return undefined;
+  }
+
+  const scopePick = await vscode.window.showQuickPick(
+    [
+      {
+        label: vscode.l10n.t('Uncommitted changes'),
+        scope: 'uncommitted' as const
+      },
+      { label: vscode.l10n.t('Staged changes'), scope: 'staged' as const },
+      { label: vscode.l10n.t('One commit'), scope: 'commit' as const },
+      {
+        label: vscode.l10n.t('Current branch against a base'),
+        scope: 'branch' as const
+      }
+    ],
+    { placeHolder: vscode.l10n.t('Which changes should be selected?') }
+  );
+
+  if (!scopePick) {
+    return undefined;
+  }
+
+  const modePick = await vscode.window.showQuickPick(
+    [
+      { label: vscode.l10n.t('Add to selection'), id: 'add' as const },
+      { label: vscode.l10n.t('Replace selection'), id: 'replace' as const }
+    ],
+    { placeHolder: vscode.l10n.t('How should this selection apply?') }
+  );
+
+  if (!modePick) {
+    return undefined;
+  }
+
+  const changes: PromptChange[] = [];
+
+  for (const item of pickedRepos) {
+    const repository = 'repository' in item ? item.repository : item;
+    const relative = path
+      .relative(workspaceRoot, repository.rootUri.fsPath)
+      .split(path.sep)
+      .join('/');
+    const collected = await changesFromRepository(
+      repository,
+      relative,
+      scopePick.scope
+    );
+
+    changes.push(...collected);
+  }
+
+  if (changes.some(change => change.status === 'submodule')) {
+    const includeInner = vscode.l10n.t('Include');
+    const choice = await vscode.window.showWarningMessage(
+      vscode.l10n.t('Include the submodule diff?'),
+      { modal: true },
+      includeInner,
+      vscode.l10n.t('Cancel')
+    );
+
+    if (choice !== includeInner) {
+      for (const change of changes) {
+        if (change.status === 'submodule') {
+          change.diff = undefined;
+        }
+      }
+    }
+  }
+
+  return { changes, mode: modePick.id };
+};
+
+type GitStatusChange = {
+  uri: { fsPath: string };
+  originalUri: { fsPath: string };
+  renameUri?: { fsPath: string };
+  status: number;
+};
+
+const changesFromRepository = async (
+  repository: {
+    rootUri: { fsPath: string };
+    state: {
+      HEAD?: { name?: string; commit?: string };
+      indexChanges?: GitStatusChange[];
+      workingTreeChanges?: GitStatusChange[];
+      refs?: Array<{ name?: string }>;
+    };
+    diffWithHEAD?: (filePath?: string) => Promise<string | unknown[]>;
+    diffBetween?: (
+      ref1: string,
+      ref2: string,
+      filePath?: string
+    ) => Promise<string | unknown[]>;
+    getMergeBase?: (ref1: string, ref2: string) => Promise<string | undefined>;
+    log?: (options?: {
+      maxEntries?: number;
+    }) => Promise<Array<{ hash: string; message: string }>>;
+  },
+  repo: string,
+  scope: ChangeScope
+) => {
+  const toRaw = (change: GitStatusChange): RawGitChange | undefined => {
+    const status = mapGitStatus(change.status);
+
+    if (!status) {
+      return undefined;
+    }
+
+    const relative = path
+      .relative(repository.rootUri.fsPath, change.uri.fsPath)
+      .split(path.sep)
+      .join('/');
+    const original = path
+      .relative(repository.rootUri.fsPath, change.originalUri.fsPath)
+      .split(path.sep)
+      .join('/');
+
+    const submodulePaths = new Set(
+      (
+        repository.state as { submodules?: Array<{ path: string }> }
+      ).submodules?.map(item => item.path.replace(/\\/g, '/')) ?? []
+    );
+    const kind = submodulePaths.has(relative) ? 'submodule' : status;
+
+    return {
+      path: relative,
+      originalPath: original !== relative ? original : undefined,
+      status: kind,
+      from: kind === 'submodule' ? original : undefined,
+      to: kind === 'submodule' ? relative : undefined
+    };
+  };
+  const staged = (repository.state.indexChanges ?? [])
+    .map(toRaw)
+    .filter((item): item is RawGitChange => item !== undefined);
+  const working = (repository.state.workingTreeChanges ?? [])
+    .map(toRaw)
+    .filter((item): item is RawGitChange => item !== undefined);
+  const untracked = working.filter(change => change.status === 'untracked');
+  const trackedWorking = working.filter(
+    change => change.status !== 'untracked'
+  );
+  let commit: RawGitChange[] = [];
+  let branch: RawGitChange[] = [];
+  let base: string | undefined;
+  let head = repository.state.HEAD?.name;
+
+  if (scope === 'commit') {
+    const history = (await repository.log?.({ maxEntries: 20 })) ?? [];
+    const picked = await vscode.window.showQuickPick(
+      history.map(entry => ({
+        label: entry.hash.slice(0, 7),
+        description: entry.message,
+        hash: entry.hash
+      })),
+      { placeHolder: vscode.l10n.t('Choose a commit') }
+    );
+
+    if (picked && repository.diffBetween) {
+      const listed = await repository.diffBetween(
+        `${picked.hash}~1`,
+        picked.hash
+      );
+
+      commit = Array.isArray(listed)
+        ? listed
+            .map(item => toRaw(item as GitStatusChange))
+            .filter((item): item is RawGitChange => item !== undefined)
+        : [];
+      head = picked.hash.slice(0, 7);
+    }
+  }
+
+  if (scope === 'branch') {
+    const choices = baseChoices({
+      branches: (repository.state.refs ?? [])
+        .map(ref => ref.name ?? '')
+        .filter(Boolean)
+    });
+    const picked = await vscode.window.showQuickPick(
+      [
+        ...choices.map(choice => ({ label: choice.label })),
+        { label: vscode.l10n.t('Type a base…') }
+      ],
+      { placeHolder: vscode.l10n.t('Choose a base') }
+    );
+    const baseName =
+      picked?.label === vscode.l10n.t('Type a base…')
+        ? await vscode.window.showInputBox({
+            prompt: vscode.l10n.t('Base branch or commit')
+          })
+        : picked?.label;
+
+    if (baseName && repository.getMergeBase && repository.diffBetween) {
+      base = await repository.getMergeBase(baseName, 'HEAD');
+      const listed = await repository.diffBetween(base ?? baseName, 'HEAD');
+
+      branch = Array.isArray(listed)
+        ? listed
+            .map(item => toRaw(item as GitStatusChange))
+            .filter((item): item is RawGitChange => item !== undefined)
+        : [];
+    }
+  }
+
+  const changes = changesForScope(
+    {
+      repo,
+      staged,
+      working: trackedWorking,
+      untracked,
+      commit,
+      branch
+    },
+    scope
+  );
+
+  return changes.map(change => ({
+    ...change,
+    repo,
+    scope,
+    from: change.from,
+    to: change.to,
+    diff: change.diff,
+    base,
+    head
+  }));
+};
+
 const confirmExcluded = async (
   provider: {
     explain: (
@@ -883,21 +1280,37 @@ async function processXmlContent(
         });
       }
 
-      await vscode.workspace.applyEdit(edit);
+      const appliedEdit = await vscode.workspace.applyEdit(edit);
+
+      if (!appliedEdit) {
+        throw new Error('The editor rejected the paste.');
+      }
+
+      const savedDocument = await vscode.workspace.openTextDocument(uri);
+
+      if (savedDocument.isDirty) {
+        const saved = await savedDocument.save();
+
+        if (!saved) {
+          throw new Error('The pasted file could not be saved.');
+        }
+      }
     },
     read: filePath => fs.promises.readFile(filePath, 'utf8'),
     confirm: async changes => {
       const lines = [
-        ...changes.created.map(file => `New: ${file}`),
-        ...changes.modified.map(file => `Modified: ${file}`)
+        ...changes.created.map(file => vscode.l10n.t('New: {0}', file)),
+        ...changes.modified.map(file => vscode.l10n.t('Modified: {0}', file))
       ];
+      const apply = vscode.l10n.t('Apply');
       const choice = await vscode.window.showWarningMessage(
-        `Apply pasted files?\n${lines.join('\n')}`,
+        vscode.l10n.t('Apply pasted files?\n{0}', lines.join('\n')),
         { modal: true },
-        'Aplicar'
+        apply,
+        vscode.l10n.t('Cancel')
       );
 
-      return choice === 'Aplicar';
+      return choice === apply;
     }
   });
 

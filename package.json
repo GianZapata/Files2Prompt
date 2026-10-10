@@ -121,6 +121,10 @@
       {
         "command": "files2prompt.selectByExtension",
         "title": "%files2prompt.selectByExtension.title%"
+      },
+      {
+        "command": "files2prompt.selectChanges",
+        "title": "%files2prompt.selectChanges.title%"
       }
     ],
     "menus": {
@@ -139,6 +143,11 @@
         {
           "command": "files2prompt.selectByExtension",
           "when": "view == files2PromptView && viewItem == folder",
+          "group": "navigation"
+        },
+        {
+          "command": "files2prompt.selectChanges",
+          "when": "view == files2PromptView && viewItem == repository",
           "group": "navigation"
         }
       ],
@@ -192,6 +201,11 @@
           "command": "files2prompt.selectByExtension",
           "when": "view == files2PromptView",
           "group": "navigation@9"
+        },
+        {
+          "command": "files2prompt.selectChanges",
+          "when": "view == files2PromptView",
+          "group": "navigation@10"
         }
       ]
     },
@@ -262,6 +276,12 @@
           "type": "number",
           "default": 8388608,
           "description": "%files2prompt.maxTotalBytes.description%"
+        },
+        "files2prompt.diffMode": {
+          "type": "string",
+          "enum": ["diffAndFiles", "diffOnly", "filesOnly"],
+          "default": "diffAndFiles",
+          "description": "%files2prompt.diffMode.description%"
         },
         "files2prompt.extensionPresets": {
           "type": "object",

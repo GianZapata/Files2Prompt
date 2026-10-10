@@ -135,6 +135,36 @@ You can customize the keyboard shortcuts for refreshing and copying files:
 </files>
 ```
 
+## Git changes and multiple repositories
+
+A launcher folder can hold several repositories. Files2Prompt lists each repository root with its branch, and a submodule with its branch or short commit. A worktree inside an ignored folder, such as `elcaba-panel-admin/.worktrees/feature-structure-01`, is not listed.
+
+Select Git changes from the view title or from a repository root:
+
+- Uncommitted changes: staged, working tree, and untracked files.
+- Staged changes only.
+- One commit.
+- The current branch against a base. The picker proposes the upstream, `dev`, or `main` when those exist.
+
+With more than one repository, pick which ones to include. Then add to the selection or replace it. Deleted and renamed paths stay in the diff and are not checked in the tree.
+
+`files2prompt.diffMode` controls the prompt:
+
+- `diffAndFiles` puts a `<changes>` block before the full `<file>` entries. This is the default.
+- `diffOnly` copies the diff and not the full files.
+- `filesOnly` copies the files and not the diff.
+
+```xml
+<files>
+  <changes repo="elcaba-api" scope="branch" base="dev" head="feature/admin-dashboard">
+    <change path="elcaba-api/app/Foo.php" status="modified"><![CDATA[unified diff]]></change>
+  </changes>
+  <file name="elcaba-api/app/Foo.php"><![CDATA[full file]]></file>
+</files>
+```
+
+Paste XML ignores `<changes>` and writes only `<file>` entries. A submodule pointer change uses `status="submodule"` with `from` and `to`.
+
 ## Recommended Workflow
 
 The Files2Prompt extension allows for a rapid iterative workflow when working with an LLM. It is first recommended that you set the system message setting to that described [above](#include-system-message). This will ensure that the XML content is correctly formatted when pasted back into the editor.

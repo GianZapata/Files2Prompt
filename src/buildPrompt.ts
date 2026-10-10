@@ -3,7 +3,12 @@ import type { IgnoreDecision } from './ignore/ignoreReason';
 import fs from 'fs';
 import path from 'path';
 
-import { serializePrompt, serializedFile, type PromptFile } from './promptXml';
+import {
+  serializePrompt,
+  serializedFile,
+  type PromptChangeEntry,
+  type PromptFile
+} from './promptXml';
 
 export type CopyStop =
   'completed' | 'user-cancelled' | 'file-budget' | 'total-bytes';
@@ -34,6 +39,7 @@ export type BuildPromptInput = {
   maxFileBytes: number;
   maxTotalBytes: number;
   maxFiles: number;
+  changes?: PromptChangeEntry[];
 };
 
 const relativeName = (workspaceRoot: string, filePath: string) =>
@@ -51,7 +57,8 @@ export const buildPrompt = async (
 
   const empty = serializePrompt({
     systemMessage: input.systemMessage,
-    files: []
+    files: [],
+    changes: input.changes
   });
   let runningBytes = Buffer.byteLength(empty) - Buffer.byteLength('</files>');
 
@@ -177,7 +184,8 @@ const finish = (
       ? ''
       : serializePrompt({
           systemMessage: input.systemMessage,
-          files: included
+          files: included,
+          changes: input.changes
         });
 
   return {
