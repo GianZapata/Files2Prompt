@@ -104,27 +104,43 @@
       },
       {
         "command": "files2prompt.previewPrompt",
-        "title": "%files2prompt.previewPrompt.title%"
+        "title": "%files2prompt.previewPrompt.title%",
+        "icon": {
+          "light": "resources/light/preview.svg",
+          "dark": "resources/dark/preview.svg"
+        }
       },
       {
         "command": "files2prompt.showDetails",
-        "title": "%files2prompt.showDetails.title%"
+        "title": "%files2prompt.showDetails.title%",
+        "icon": {
+          "light": "resources/light/details.svg",
+          "dark": "resources/dark/details.svg"
+        }
       },
       {
         "command": "files2prompt.selectAll",
         "title": "%files2prompt.selectAll.title%",
         "icon": {
-          "light": "resources/light/copy.svg",
-          "dark": "resources/dark/copy.svg"
+          "light": "resources/light/select-all.svg",
+          "dark": "resources/dark/select-all.svg"
         }
       },
       {
         "command": "files2prompt.selectByExtension",
-        "title": "%files2prompt.selectByExtension.title%"
+        "title": "%files2prompt.selectByExtension.title%",
+        "icon": {
+          "light": "resources/light/extension.svg",
+          "dark": "resources/dark/extension.svg"
+        }
       },
       {
         "command": "files2prompt.selectChanges",
-        "title": "%files2prompt.selectChanges.title%"
+        "title": "%files2prompt.selectChanges.title%",
+        "icon": {
+          "light": "resources/light/changes.svg",
+          "dark": "resources/dark/changes.svg"
+        }
       }
     ],
     "menus": {
@@ -165,47 +181,47 @@
         {
           "command": "files2prompt.previewPrompt",
           "when": "view == files2PromptView",
-          "group": "navigation@6"
-        },
-        {
-          "command": "files2prompt.showDetails",
-          "when": "view == files2PromptView",
-          "group": "navigation@7"
-        },
-        {
-          "command": "files2prompt.refresh",
-          "when": "view == files2PromptView",
           "group": "navigation@2"
-        },
-        {
-          "command": "files2prompt.clearChecks",
-          "when": "view == files2PromptView",
-          "group": "navigation@3"
-        },
-        {
-          "command": "files2prompt.goBack",
-          "when": "view == files2PromptView",
-          "group": "navigation@4"
-        },
-        {
-          "command": "files2prompt.goForward",
-          "when": "view == files2PromptView",
-          "group": "navigation@5"
-        },
-        {
-          "command": "files2prompt.selectAll",
-          "when": "view == files2PromptView",
-          "group": "navigation@8"
-        },
-        {
-          "command": "files2prompt.selectByExtension",
-          "when": "view == files2PromptView",
-          "group": "navigation@9"
         },
         {
           "command": "files2prompt.selectChanges",
           "when": "view == files2PromptView",
-          "group": "navigation@10"
+          "group": "navigation@3"
+        },
+        {
+          "command": "files2prompt.clearChecks",
+          "when": "view == files2PromptView",
+          "group": "navigation@4"
+        },
+        {
+          "command": "files2prompt.showDetails",
+          "when": "view == files2PromptView",
+          "group": "1_select@1"
+        },
+        {
+          "command": "files2prompt.refresh",
+          "when": "view == files2PromptView",
+          "group": "1_select@2"
+        },
+        {
+          "command": "files2prompt.goBack",
+          "when": "view == files2PromptView",
+          "group": "1_select@3"
+        },
+        {
+          "command": "files2prompt.goForward",
+          "when": "view == files2PromptView",
+          "group": "1_select@4"
+        },
+        {
+          "command": "files2prompt.selectAll",
+          "when": "view == files2PromptView",
+          "group": "1_select@5"
+        },
+        {
+          "command": "files2prompt.selectByExtension",
+          "when": "view == files2PromptView",
+          "group": "1_select@6"
         }
       ]
     },
