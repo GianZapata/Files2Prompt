@@ -1051,9 +1051,7 @@ const changesFromRepository = async (
     return {
       path: relative,
       originalPath: original !== relative ? original : undefined,
-      status: kind,
-      from: kind === 'submodule' ? original : undefined,
-      to: kind === 'submodule' ? relative : undefined
+      status: kind
     };
   };
   const staged = (repository.state.indexChanges ?? [])
