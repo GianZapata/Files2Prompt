@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import path from 'path';
 
-import { createPreviewSource } from '../src/promptPreview';
+import { createDetailsSource, createPreviewSource } from '../src/promptPreview';
 import {
   copyStatusMessage,
   pasteStatusMessage,
@@ -57,6 +57,14 @@ test('view shortcuts use the focused view, not a custom active flag', () => {
     ),
     true
   );
+});
+
+test('details content is served from a virtual document', () => {
+  const details = createDetailsSource();
+
+  details.set('Stop: total-bytes');
+  assert.equal(details.uri.startsWith('files2prompt-details:'), true);
+  assert.equal(details.get(), 'Stop: total-bytes');
 });
 
 test('preview content is served from a virtual document', () => {

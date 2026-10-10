@@ -28,7 +28,12 @@ import {
   formatOperationReport,
   isEmptySelection
 } from './operationReport';
-import { createPreviewSource, PREVIEW_SCHEME } from './promptPreview';
+import {
+  createDetailsSource,
+  createPreviewSource,
+  DETAILS_SCHEME,
+  PREVIEW_SCHEME
+} from './promptPreview';
 import { runCopy, runPreview } from './promptRun';
 import {
   applyChangeSelection,
@@ -149,10 +154,13 @@ export function activate(context: vscode.ExtensionContext) {
       return detailBook.save(report);
     };
 
+    const detailsSource = createDetailsSource();
+    const detailsEmitter = new vscode.EventEmitter<vscode.Uri>();
+    const detailsUri = vscode.Uri.parse(detailsSource.uri);
     const openReport = async (report: string) => {
-      const document = await vscode.workspace.openTextDocument({
-        content: report
-      });
+      detailsSource.set(report);
+      detailsEmitter.fire(detailsUri);
+      const document = await vscode.workspace.openTextDocument(detailsUri);
 
       await vscode.window.showTextDocument(document, { preview: true });
     };
@@ -294,9 +302,14 @@ export function activate(context: vscode.ExtensionContext) {
       fileTreeProvider,
       treeView,
       previewEmitter,
+      detailsEmitter,
       vscode.workspace.registerTextDocumentContentProvider(PREVIEW_SCHEME, {
         onDidChange: previewEmitter.event,
         provideTextDocumentContent: () => previewSource.get()
+      }),
+      vscode.workspace.registerTextDocumentContentProvider(DETAILS_SCHEME, {
+        onDidChange: detailsEmitter.event,
+        provideTextDocumentContent: () => detailsSource.get()
       })
     );
 
