@@ -247,13 +247,15 @@ export function activate(context: vscode.ExtensionContext) {
       const report = detailBook.open(reportId) ?? '';
 
       if (summary.stop === 'user-cancelled') {
+        const detailsLabel = vscode.l10n.t('Show details');
+
         vscode.window
           .showWarningMessage(
             `Cancelled. Collected ${summary.included.length}. Copied 0. Clipboard not written.`,
-            'Ver detalles'
+            detailsLabel
           )
           .then(choice => {
-            if (choice === 'Ver detalles') {
+            if (choice === detailsLabel) {
               void openReport(report);
             }
           });
@@ -280,10 +282,12 @@ export function activate(context: vscode.ExtensionContext) {
       });
       const message = vscode.l10n.t(status.message, ...status.args);
 
+      const detailsLabel = vscode.l10n.t('Show details');
+
       vscode.window
-        .showInformationMessage(message, 'Ver detalles')
+        .showInformationMessage(message, detailsLabel)
         .then(choice => {
-          if (choice === 'Ver detalles') {
+          if (choice === detailsLabel) {
             void openReport(report);
           }
         });
