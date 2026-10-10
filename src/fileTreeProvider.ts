@@ -1,3 +1,5 @@
+import type { DiscoveredRepository } from './gitRepos';
+import { repositoryLabel } from './gitRepos';
 import type { ForcedRoot } from './ignore/ignoreReason';
 
 import * as fs from 'fs';
@@ -27,6 +29,7 @@ export class FileTreeProvider
   private checkedItems: Map<string, vscode.TreeItemCheckboxState> = new Map();
   private resolver = createIgnoreResolver({ workspaceRoot: '' });
   private forcedRoots: ForcedRoot[] = [];
+  private repositories: DiscoveredRepository[] = [];
   private ignoredExtensions: Set<string> = new Set();
   private excludePatterns: string[] = [];
   private watcher: vscode.FileSystemWatcher;
@@ -102,6 +105,17 @@ export class FileTreeProvider
     this.reloadRules();
     this.checkedItems.clear();
     this.refresh();
+  }
+
+  setRepositories(repositories: DiscoveredRepository[]): void {
+    this.repositories = repositories;
+    this.refresh();
+  }
+
+  repositoryAt(relativePath: string): DiscoveredRepository | undefined {
+    const normalized = relativePath.replace(/\\/g, '/').replace(/\/$/, '');
+
+    return this.repositories.find(repo => repo.relativePath === normalized);
   }
 
   explain(relativePath: string, kind: 'file' | 'directory') {
@@ -259,15 +273,18 @@ export class FileTreeProvider
 
     if (!element) {
       return [
-        new FileItem(
-          path.basename(this.workspaceRoot),
-          vscode.Uri.file(this.workspaceRoot),
-          vscode.TreeItemCollapsibleState.Expanded,
-          true,
-          this.checkedItems.get(this.workspaceRoot) ??
-            vscode.TreeItemCheckboxState.Unchecked,
-          false,
-          false
+        this.withRepositoryLabel(
+          '',
+          new FileItem(
+            path.basename(this.workspaceRoot),
+            vscode.Uri.file(this.workspaceRoot),
+            vscode.TreeItemCollapsibleState.Expanded,
+            true,
+            this.checkedItems.get(this.workspaceRoot) ??
+              vscode.TreeItemCheckboxState.Unchecked,
+            false,
+            false
+          )
         )
       ];
     }
@@ -366,7 +383,7 @@ export class FileTreeProvider
         item.description = vscode.l10n.t('ignored · included manually');
       }
 
-      items.push(item);
+      items.push(this.withRepositoryLabel(relativePath, item));
     }
 
     return items;
@@ -529,6 +546,21 @@ export class FileTreeProvider
     }
 
     this.refresh();
+  }
+
+  private withRepositoryLabel(relativePath: string, item: FileItem): FileItem {
+    const repo = this.repositoryAt(relativePath);
+
+    if (!repo) {
+      return item;
+    }
+
+    const label = repositoryLabel(repo);
+
+    item.description = vscode.l10n.t(label.message, ...label.args);
+    item.contextValue = 'repository';
+
+    return item;
   }
 
   private isExcluded(
