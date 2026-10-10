@@ -13,7 +13,11 @@ import {
   filesSelectedByFolderAsync,
   omittedFoldersForSelection
 } from './ignore/selectFiles';
-import { parentCheckbox, watcherShouldRefresh } from './parentCheck';
+import {
+  checkboxForFolder,
+  parentCheckbox,
+  watcherShouldRefresh
+} from './parentCheck';
 
 export class FileTreeProvider
   implements vscode.TreeDataProvider<FileItem>, vscode.Disposable
@@ -263,7 +267,7 @@ export class FileTreeProvider
   getTreeItem(element: FileItem): vscode.TreeItem {
     const key = element.resourceUri.fsPath;
 
-    if (element.isDirectory && element.isGitIgnored) {
+    if (element.hideCheckbox) {
       element.checkboxState = undefined;
 
       return element;
@@ -360,8 +364,10 @@ export class FileTreeProvider
       const isGitIgnored = !decision.included;
       const hideCheckbox =
         isDirectory &&
-        !decision.included &&
-        (decision.reason === 'built-in' || decision.reason === 'promptignore');
+        checkboxForFolder({
+          included: decision.included,
+          reason: decision.reason
+        }) === 'hidden';
 
       const key = fullPath;
       const parentChecked =
@@ -387,9 +393,10 @@ export class FileTreeProvider
           ? vscode.TreeItemCollapsibleState.Collapsed
           : vscode.TreeItemCollapsibleState.None,
         isDirectory,
-        isDirectory && isGitIgnored ? undefined : checkboxState,
+        checkboxState,
         isGitIgnored || isIgnoredExtension,
-        isSymbolicLink
+        isSymbolicLink,
+        hideCheckbox
       );
 
       if (resolved.manual) {
@@ -619,7 +626,8 @@ export class FileItem extends vscode.TreeItem {
     public isDirectory: boolean,
     public checkboxState: vscode.TreeItemCheckboxState | undefined,
     public isGitIgnored: boolean,
-    public isSymbolicLink: boolean = false
+    public isSymbolicLink: boolean = false,
+    public hideCheckbox: boolean = false
   ) {
     super(label, collapsibleState);
 

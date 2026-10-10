@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { parentCheckbox, watcherShouldRefresh } from '../src/parentCheck';
+import {
+  checkboxForFolder,
+  parentCheckbox,
+  watcherShouldRefresh
+} from '../src/parentCheck';
 
 test('parent is checked when every visible child is checked', () => {
   assert.equal(
@@ -18,6 +22,25 @@ test('parent is checked when every visible child is checked', () => {
       { excluded: false, checked: false }
     ]),
     'unchecked'
+  );
+});
+
+test('test-results in gitignore keeps a checkbox', () => {
+  assert.equal(
+    checkboxForFolder({ included: false, reason: 'gitignore' }),
+    'unchecked'
+  );
+  assert.equal(
+    checkboxForFolder({ included: false, reason: 'workspace-exclude' }),
+    'unchecked'
+  );
+  assert.equal(
+    checkboxForFolder({ included: false, reason: 'built-in' }),
+    'hidden'
+  );
+  assert.equal(
+    checkboxForFolder({ included: false, reason: 'promptignore' }),
+    'hidden'
   );
 });
 

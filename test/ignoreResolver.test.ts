@@ -5,6 +5,7 @@ import os from 'os';
 import path from 'path';
 
 import { createIgnoreResolver } from '../src/ignore/ignoreResolver';
+import { checkboxForFolder } from '../src/parentCheck';
 import { filesSelectedByFolder } from '../src/ignore/selectFiles';
 
 const makeRoot = () => fs.mkdtempSync(path.join(os.tmpdir(), 'f2p-ignore-'));
@@ -167,6 +168,25 @@ test('nested gitignore rules match below their folder and keep a reinclude', () 
   assert.equal(
     resolver.resolve('elcaba-panel-admin/.env.example', 'file').included,
     true
+  );
+});
+
+test('test-results ignored only by gitignore still gets a checkbox', () => {
+  const root = makeRoot();
+
+  write(root, '.gitignore', 'test-results/\n');
+  write(root, 'test-results/out.txt', 'x');
+  const resolver = createIgnoreResolver({ workspaceRoot: root });
+  const decision = resolver.resolve('test-results', 'directory');
+
+  assert.equal(decision.included, false);
+  assert.equal(decision.reason, 'gitignore');
+  assert.equal(
+    checkboxForFolder({
+      included: decision.included,
+      reason: decision.reason
+    }),
+    'unchecked'
   );
 });
 

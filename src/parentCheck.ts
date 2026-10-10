@@ -1,3 +1,17 @@
+export const checkboxForFolder = (input: {
+  included: boolean;
+  reason?: string;
+}) => {
+  if (
+    !input.included &&
+    (input.reason === 'built-in' || input.reason === 'promptignore')
+  ) {
+    return 'hidden' as const;
+  }
+
+  return 'unchecked' as const;
+};
+
 export const parentCheckbox = (
   children: Array<{ excluded: boolean; checked: boolean }>
 ) => {
