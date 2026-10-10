@@ -13,6 +13,7 @@ import {
   isEmptySelection
 } from './operationReport';
 import { runCopy, runPreview } from './promptRun';
+import { createSelectionHistory } from './selectionHistory';
 
 export function activate(context: vscode.ExtensionContext) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -177,8 +178,19 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(fileTreeProvider);
 
-    let history: string[][] = [];
-    let historyPosition: number = -1;
+    const stored = context.workspaceState.get<{
+      entries: string[][];
+      position: number;
+    }>('files2prompt.selectionHistory');
+    const history = createSelectionHistory(
+      stored?.entries ?? [],
+      stored?.position ?? -1
+    );
+    const saveHistory = () =>
+      context.workspaceState.update('files2prompt.selectionHistory', {
+        entries: history.entries().slice(-20),
+        position: history.position()
+      });
 
     context.subscriptions.push(
       vscode.commands.registerCommand('files2prompt.refresh', () =>
@@ -186,27 +198,23 @@ export function activate(context: vscode.ExtensionContext) {
       ),
       vscode.commands.registerCommand('files2prompt.copyFiles', async () => {
         const checkedFiles = fileTreeProvider.getCheckedFiles();
-        const lastSelection = history[historyPosition] || [];
 
-        if (!arraysEqual(checkedFiles, lastSelection)) {
-          if (historyPosition < history.length - 1) {
-            history = history.slice(0, historyPosition + 1);
-          }
-          history.push([...checkedFiles]);
-          historyPosition++;
-        }
-
+        history.record(checkedFiles);
+        await saveHistory();
         await copyCollected(checkedFiles);
       }),
-      vscode.commands.registerCommand('files2prompt.clearChecks', () => {
+      vscode.commands.registerCommand('files2prompt.clearChecks', async () => {
+        history.record(fileTreeProvider.getCheckedFiles());
         fileTreeProvider.clearChecks();
+        history.record([]);
+        await saveHistory();
         vscode.window.showInformationMessage('All checks have been cleared.');
       }),
       vscode.commands.registerCommand('files2prompt.goBack', async () => {
-        if (historyPosition > 0) {
-          historyPosition--;
-          const previousSelection = history[historyPosition];
+        const previousSelection = history.back();
 
+        if (previousSelection) {
+          await saveHistory();
           await fileTreeProvider.setCheckedFiles(previousSelection);
         } else {
           vscode.window.showWarningMessage(
@@ -215,10 +223,10 @@ export function activate(context: vscode.ExtensionContext) {
         }
       }),
       vscode.commands.registerCommand('files2prompt.goForward', async () => {
-        if (historyPosition < history.length - 1) {
-          historyPosition++;
-          const nextSelection = history[historyPosition];
+        const nextSelection = history.forward();
 
+        if (nextSelection) {
+          await saveHistory();
           await fileTreeProvider.setCheckedFiles(nextSelection);
         } else {
           vscode.window.showWarningMessage(
@@ -271,6 +279,8 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.commands.registerCommand(
         'files2prompt.previewPrompt',
         async () => {
+          history.record(fileTreeProvider.getCheckedFiles());
+          await saveHistory();
           const preview = await runPreview({
             clipboard: {
               read: () => 'preview-must-not-write',
