@@ -107,6 +107,76 @@ test('checking the workspace root does not force a gitignored folder', () => {
   assert.equal(selected.includes('src/app.ts'), true);
 });
 
+test('nested gitignore rules match below their folder and keep a reinclude', () => {
+  const root = makeRoot();
+
+  write(
+    root,
+    'elcaba-api/.gitignore',
+    '*.log\n.env.*\n/vendor\n!.env.example\n'
+  );
+  write(root, 'elcaba-api/storage/x.log', 'log');
+  write(root, 'elcaba-api/.env.local', 'secret');
+  write(root, 'elcaba-api/.env.example', 'example');
+  write(root, 'elcaba-api/vendor/pkg/index.php', '<?php');
+  write(root, 'elcaba-api/packages/vendor/keep.php', '<?php');
+  write(
+    root,
+    'elcaba-panel-admin/.gitignore',
+    'node_modules\n.worktrees/\n.env.*\n!.env.example\n'
+  );
+  write(root, 'elcaba-panel-admin/src/node_modules/pkg/index.js', 'x');
+  write(
+    root,
+    'elcaba-panel-admin/.worktrees/feature/.git',
+    'gitdir: /tmp/panel.git'
+  );
+  write(root, 'elcaba-panel-admin/.env.example', 'example');
+  const resolver = createIgnoreResolver({ workspaceRoot: root });
+
+  assert.equal(
+    resolver.resolve('elcaba-api/storage/x.log', 'file').included,
+    false
+  );
+  assert.equal(
+    resolver.resolve('elcaba-api/.env.local', 'file').included,
+    false
+  );
+  assert.equal(
+    resolver.resolve('elcaba-api/.env.example', 'file').included,
+    true
+  );
+  assert.equal(
+    resolver.resolve('elcaba-api/vendor/pkg/index.php', 'file').included,
+    false
+  );
+  assert.equal(
+    resolver.resolve('elcaba-api/packages/vendor/keep.php', 'file').included,
+    true
+  );
+  assert.equal(
+    resolver.resolve('elcaba-panel-admin/src/node_modules/pkg/index.js', 'file')
+      .included,
+    false
+  );
+  assert.equal(
+    resolver.resolve('elcaba-panel-admin/.worktrees/feature/.git', 'file')
+      .included,
+    false
+  );
+  assert.equal(
+    resolver.resolve('elcaba-panel-admin/.env.example', 'file').included,
+    true
+  );
+});
+
+test('a .git file is excluded even when it is not a directory', () => {
+  const root = makeRoot();
+  const resolver = createIgnoreResolver({ workspaceRoot: root });
+
+  assert.equal(resolver.resolve('repo/.git', 'file').included, false);
+});
+
 test('folder selection includes allowed files and skips pycache', () => {
   const root = makeRoot();
 

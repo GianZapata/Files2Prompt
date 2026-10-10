@@ -18,6 +18,7 @@ export const builtInPatterns = [
   'build/',
   'coverage/',
   '.git/',
+  '.git',
   '.svn/',
   '.hg/',
   '.DS_Store',

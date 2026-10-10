@@ -277,13 +277,7 @@ const prefixPatterns = (content: string, directory: string) =>
         return line;
       }
 
-      const negated = trimmed.startsWith('!');
-      const body = negated ? trimmed.slice(1) : trimmed;
-      const prefixed = body.startsWith('/')
-        ? `${directory}${body}`
-        : `${directory}/${body}`;
-
-      return `${negated ? '!' : ''}${prefixed}`;
+      return prefixLine(trimmed, directory);
     })
     .join('\n');
 
@@ -368,9 +362,15 @@ const addMarkedFile = (
 const prefixLine = (line: string, directory: string) => {
   const negated = line.startsWith('!');
   const body = negated ? line.slice(1) : line;
-  const prefixed = body.startsWith('/')
-    ? `${directory}${body}`
-    : `${directory}/${body}`;
+  const slash = body.indexOf('/');
+  const onlyTrailingSlash = slash === body.length - 1;
+  let prefixed = `${directory}/${body}`;
+
+  if (slash === 0) {
+    prefixed = `${directory}${body}`;
+  } else if (slash === -1 || onlyTrailingSlash) {
+    prefixed = `${directory}/**/${body}`;
+  }
 
   return `${negated ? '!' : ''}${prefixed}`;
 };
