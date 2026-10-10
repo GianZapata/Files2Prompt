@@ -1,12 +1,21 @@
 import * as fs from 'fs';
+import * as path from 'path';
 
 import * as vscode from 'vscode';
 
 import { applyPastedXml } from './applyPastedXml';
 import { buildPrompt } from './buildPrompt';
 import { createCopyGate } from './copyGate';
+import {
+  extensionCounts,
+  filterByExtensions,
+  parseExtensionList
+} from './extensionFilter';
 import { FileTreeProvider } from './fileTreeProvider';
-import { dedupeResolved, filesSelectedByFolder } from './ignore/selectFiles';
+import {
+  dedupeResolved,
+  filesSelectedByFolderAsync
+} from './ignore/selectFiles';
 import {
   createDetailBook,
   formatOperationReport,
@@ -14,7 +23,11 @@ import {
 } from './operationReport';
 import { createPreviewSource, PREVIEW_SCHEME } from './promptPreview';
 import { runCopy, runPreview } from './promptRun';
-import { createSelectionHistory } from './selectionHistory';
+import { formatByteSize, overLimitNotice } from './selectionBudget';
+import {
+  createSelectionHistory,
+  type SelectionSnapshot
+} from './selectionHistory';
 import { copyStatusMessage, pasteStatusMessage } from './userMessages';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -48,7 +61,7 @@ export function activate(context: vscode.ExtensionContext) {
         isCancelled: cancelled,
         maxFileBytes: config.get<number>('maxFileBytes', 1048576),
         maxTotalBytes: config.get<number>('maxTotalBytes', 8388608),
-        maxFiles: 5000
+        maxFiles: config.get<number>('maxFiles', 5000)
       });
     };
 
@@ -69,7 +82,25 @@ export function activate(context: vscode.ExtensionContext) {
       built: Awaited<ReturnType<typeof collectPrompt>>,
       wrote: boolean
     ) => {
-      const report = formatOperationReport({ kind, summary: built, wrote });
+      const manualIncludes = (built.included ?? [])
+        .map(file => {
+          const root = fileTreeProvider.forcedRootFor(file.name);
+
+          return root
+            ? {
+                path: file.name,
+                pattern: root.pattern,
+                sourceFile: root.sourceFile
+              }
+            : undefined;
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== undefined);
+      const report = formatOperationReport({
+        kind,
+        summary: built,
+        wrote,
+        manualIncludes
+      });
 
       details.appendLine(report);
       details.appendLine('');
@@ -93,6 +124,38 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showWarningMessage('No files selected.');
 
         return;
+      }
+
+      const limits = vscode.workspace.getConfiguration('files2prompt');
+      let byteCount = 0;
+
+      for (const filePath of filePaths) {
+        try {
+          byteCount += (await fs.promises.stat(filePath)).size;
+        } catch {
+          continue;
+        }
+      }
+
+      const notice = overLimitNotice({
+        fileCount: filePaths.length,
+        byteCount,
+        maxFiles: limits.get<number>('maxFiles', 5000),
+        maxTotalBytes: limits.get<number>('maxTotalBytes', 8388608)
+      });
+
+      if (notice.over) {
+        const copyFits = vscode.l10n.t('Copy what fits');
+        const choice = await vscode.window.showWarningMessage(
+          vscode.l10n.t(notice.message, ...notice.args),
+          { modal: true },
+          copyFits,
+          vscode.l10n.t('Cancel')
+        );
+
+        if (choice !== copyFits) {
+          return;
+        }
       }
 
       const result = await runCopy({
@@ -197,13 +260,33 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     const stored = context.workspaceState.get<{
-      entries: string[][];
+      entries: Array<string[] | SelectionSnapshot>;
       position: number;
     }>('files2prompt.selectionHistory');
     const history = createSelectionHistory(
       stored?.entries ?? [],
       stored?.position ?? -1
     );
+    const currentSnapshot = (): SelectionSnapshot => ({
+      files: fileTreeProvider.getCheckedFiles(),
+      forcedRoots: fileTreeProvider.forcedRootList()
+    });
+    let descriptionTimer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleDescription = () => {
+      if (descriptionTimer) {
+        clearTimeout(descriptionTimer);
+      }
+
+      descriptionTimer = setTimeout(() => {
+        void fileTreeProvider.selectionStats().then(stats => {
+          treeView.description = vscode.l10n.t(
+            '{0} files · {1}',
+            stats.count,
+            formatByteSize(stats.bytes)
+          );
+        });
+      }, 200);
+    };
     const saveHistory = () =>
       context.workspaceState.update('files2prompt.selectionHistory', {
         entries: history.entries().slice(-20),
@@ -217,14 +300,14 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.commands.registerCommand('files2prompt.copyFiles', async () => {
         const checkedFiles = fileTreeProvider.getCheckedFiles();
 
-        history.record(checkedFiles);
+        history.record(currentSnapshot());
         await saveHistory();
         await copyCollected(checkedFiles);
       }),
       vscode.commands.registerCommand('files2prompt.clearChecks', async () => {
-        history.record(fileTreeProvider.getCheckedFiles());
+        history.record(currentSnapshot());
         fileTreeProvider.clearChecks();
-        history.record([]);
+        history.record(currentSnapshot());
         await saveHistory();
         vscode.window.showInformationMessage('All checks have been cleared.');
       }),
@@ -233,7 +316,8 @@ export function activate(context: vscode.ExtensionContext) {
 
         if (previousSelection) {
           await saveHistory();
-          await fileTreeProvider.setCheckedFiles(previousSelection);
+          fileTreeProvider.setForcedRoots(previousSelection.forcedRoots);
+          await fileTreeProvider.setCheckedFiles(previousSelection.files);
         } else {
           vscode.window.showWarningMessage(
             'No previous selection to go back to.'
@@ -245,7 +329,8 @@ export function activate(context: vscode.ExtensionContext) {
 
         if (nextSelection) {
           await saveHistory();
-          await fileTreeProvider.setCheckedFiles(nextSelection);
+          fileTreeProvider.setForcedRoots(nextSelection.forcedRoots);
+          await fileTreeProvider.setCheckedFiles(nextSelection.files);
         } else {
           vscode.window.showWarningMessage(
             'No next selection to go forward to.'
@@ -260,27 +345,62 @@ export function activate(context: vscode.ExtensionContext) {
             : _commandUri
               ? [_commandUri]
               : [];
-          const files = dedupeResolved(
-            uris.flatMap(uri => {
-              const filePath = uri.fsPath;
+          const collected: string[] = [];
 
-              if (!fs.existsSync(filePath)) {
-                return [];
-              }
+          for (const uri of uris) {
+            const filePath = uri.fsPath;
 
-              if (fs.lstatSync(filePath).isDirectory()) {
-                return filesSelectedByFolder(
-                  workspaceRoot,
+            if (!fs.existsSync(filePath)) {
+              continue;
+            }
+
+            if (!fs.lstatSync(filePath).isDirectory()) {
+              const relative = path.relative(workspaceRoot, filePath);
+              const decision = fileTreeProvider.explain(relative, 'file');
+
+              if (!decision.included) {
+                const forced = await confirmExcluded(
+                  fileTreeProvider,
                   filePath,
-                  fileTreeProvider.resolvePath.bind(fileTreeProvider)
+                  relative,
+                  decision
                 );
+
+                if (!forced) {
+                  continue;
+                }
               }
 
-              return [filePath];
-            })
-          );
+              collected.push(filePath);
+              continue;
+            }
 
-          await copyCollected(files);
+            const relative = path.relative(workspaceRoot, filePath);
+            const decision = fileTreeProvider.explain(relative, 'directory');
+
+            if (!decision.included) {
+              const forced = await confirmExcluded(
+                fileTreeProvider,
+                filePath,
+                relative,
+                decision
+              );
+
+              if (!forced) {
+                continue;
+              }
+            }
+
+            const result = await filesSelectedByFolderAsync(
+              workspaceRoot,
+              filePath,
+              fileTreeProvider.resolvePath.bind(fileTreeProvider)
+            );
+
+            collected.push(...result.files);
+          }
+
+          await copyCollected(dedupeResolved(collected));
         }
       ),
       vscode.commands.registerCommand('files2prompt.showDetails', async () => {
@@ -297,7 +417,7 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.commands.registerCommand(
         'files2prompt.previewPrompt',
         async () => {
-          history.record(fileTreeProvider.getCheckedFiles());
+          history.record(currentSnapshot());
           await saveHistory();
           const preview = await runPreview({
             clipboard: {
@@ -349,14 +469,185 @@ export function activate(context: vscode.ExtensionContext) {
 
           await copyCollected([...files], false);
         }
+      ),
+      vscode.commands.registerCommand('files2prompt.selectAll', async () => {
+        const outcome = await vscode.window.withProgress(
+          {
+            location: vscode.ProgressLocation.Notification,
+            title: vscode.l10n.t('Selecting files'),
+            cancellable: true
+          },
+          async (_progress, token) =>
+            fileTreeProvider.selectFolder(workspaceRoot, {
+              isCancelled: () => token.isCancellationRequested
+            })
+        );
+
+        if (outcome === 'cancelled') {
+          return;
+        }
+
+        history.record(currentSnapshot());
+        await saveHistory();
+        scheduleDescription();
+      }),
+      vscode.commands.registerCommand(
+        'files2prompt.selectByExtension',
+        async (target?: vscode.Uri | { resourceUri?: vscode.Uri }) => {
+          const folderPath = folderFromTarget(target, workspaceRoot);
+          const listed = await filesSelectedByFolderAsync(
+            workspaceRoot,
+            folderPath,
+            fileTreeProvider.resolvePath.bind(fileTreeProvider)
+          );
+          const relative = listed.files.map(filePath =>
+            path.relative(workspaceRoot, filePath).split(path.sep).join('/')
+          );
+          const presets = vscode.workspace
+            .getConfiguration('files2prompt')
+            .get<Record<string, string[]>>('extensionPresets', {});
+          const picked = await vscode.window.showQuickPick(
+            [
+              ...Object.entries(presets).map(([name, suffixes]) => ({
+                label: name,
+                description: suffixes.join(', '),
+                suffixes
+              })),
+              ...extensionCounts(relative).map(([suffix, count]) => ({
+                label: `${suffix} (${count})`,
+                description: String(count),
+                suffixes: [suffix === '(no extension)' ? '' : suffix]
+              })),
+              {
+                label: vscode.l10n.t('Type a list…'),
+                description: 'md, ts, php',
+                suffixes: [] as string[]
+              }
+            ],
+            {
+              canPickMany: true,
+              placeHolder: vscode.l10n.t('Choose extensions')
+            }
+          );
+
+          if (!picked || picked.length === 0) {
+            return;
+          }
+
+          let suffixes = picked.flatMap(item => item.suffixes);
+
+          if (picked.some(item => item.suffixes.length === 0)) {
+            const typed = await vscode.window.showInputBox({
+              prompt: vscode.l10n.t('Type extensions, for example md, ts, php')
+            });
+
+            if (typed) {
+              suffixes = [...suffixes, ...parseExtensionList(typed)];
+            }
+          }
+
+          if (suffixes.length === 0) {
+            return;
+          }
+
+          const mode = await vscode.window.showQuickPick(
+            [
+              {
+                label: vscode.l10n.t('Add to selection'),
+                id: 'add'
+              },
+              {
+                label: vscode.l10n.t('Replace selection'),
+                id: 'replace'
+              }
+            ],
+            { placeHolder: vscode.l10n.t('How should this selection apply?') }
+          );
+
+          if (!mode) {
+            return;
+          }
+
+          const matched = filterByExtensions(relative, suffixes).map(file =>
+            path.join(workspaceRoot, file)
+          );
+
+          if (mode.id === 'replace') {
+            fileTreeProvider.clearChecks();
+          }
+
+          await fileTreeProvider.setCheckedFiles([
+            ...(mode.id === 'add' ? fileTreeProvider.getCheckedFiles() : []),
+            ...matched
+          ]);
+          history.record(currentSnapshot());
+          await saveHistory();
+          scheduleDescription();
+        }
       )
     );
 
     context.subscriptions.push(
       treeView.onDidChangeCheckboxState(async event => {
         for (const [item, state] of event.items) {
-          await fileTreeProvider.updateCheckState(item, state);
+          const relative = path
+            .relative(workspaceRoot, item.resourceUri.fsPath)
+            .split(path.sep)
+            .join('/');
+          const kind = item.isDirectory ? 'directory' : 'file';
+
+          if (state === vscode.TreeItemCheckboxState.Unchecked) {
+            fileTreeProvider.removeForcedRoot(relative);
+            await fileTreeProvider.updateCheckState(item, state);
+            continue;
+          }
+
+          const decision = fileTreeProvider.explain(relative, kind);
+
+          if (!decision.included) {
+            const forced = await confirmExcluded(
+              fileTreeProvider,
+              item.resourceUri.fsPath,
+              relative,
+              decision
+            );
+
+            if (!forced) {
+              await fileTreeProvider.updateCheckState(
+                item,
+                vscode.TreeItemCheckboxState.Unchecked
+              );
+              continue;
+            }
+          }
+
+          if (item.isDirectory) {
+            const outcome = await vscode.window.withProgress(
+              {
+                location: vscode.ProgressLocation.Notification,
+                title: vscode.l10n.t('Selecting files'),
+                cancellable: true
+              },
+              async (_progress, token) =>
+                fileTreeProvider.selectFolder(item.resourceUri.fsPath, {
+                  isCancelled: () => token.isCancellationRequested
+                })
+            );
+
+            if (outcome === 'cancelled') {
+              await fileTreeProvider.updateCheckState(
+                item,
+                vscode.TreeItemCheckboxState.Unchecked
+              );
+            }
+          } else {
+            await fileTreeProvider.updateCheckState(item, state);
+          }
         }
+
+        history.record(currentSnapshot());
+        await saveHistory();
+        scheduleDescription();
       })
     );
   } else {
@@ -367,6 +658,106 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {}
+
+const folderFromTarget = (
+  target: vscode.Uri | { resourceUri?: vscode.Uri } | undefined,
+  workspaceRoot: string
+) => {
+  if (target instanceof vscode.Uri) {
+    return fs.existsSync(target.fsPath) &&
+      fs.lstatSync(target.fsPath).isDirectory()
+      ? target.fsPath
+      : path.dirname(target.fsPath);
+  }
+
+  if (target?.resourceUri) {
+    return target.resourceUri.fsPath;
+  }
+
+  return workspaceRoot;
+};
+
+const confirmExcluded = async (
+  provider: {
+    explain: (
+      relativePath: string,
+      kind: 'file' | 'directory'
+    ) => { reason?: string; pattern?: string; sourceFile?: string };
+    countIfForced: (
+      folderPath: string,
+      root: { relativePath: string; pattern: string; sourceFile: string }
+    ) => Promise<number>;
+    addForcedRoot: (root: {
+      relativePath: string;
+      pattern: string;
+      sourceFile: string;
+    }) => void;
+  },
+  folderPath: string,
+  relativePath: string,
+  decision: { reason?: string; pattern?: string; sourceFile?: string }
+) => {
+  if (
+    decision.reason === 'promptignore' ||
+    decision.reason === 'built-in' ||
+    decision.reason === 'binary'
+  ) {
+    const message =
+      decision.reason === 'promptignore'
+        ? vscode.l10n.t(
+            '{0} is excluded by .promptignore, so it stays out of the prompt.',
+            relativePath
+          )
+        : vscode.l10n.t(
+            '{0} stays out of the prompt because it is generated or binary.',
+            relativePath
+          );
+
+    await vscode.window.showWarningMessage(message);
+
+    return false;
+  }
+
+  if (
+    decision.reason !== 'gitignore' &&
+    decision.reason !== 'workspace-exclude'
+  ) {
+    await vscode.window.showWarningMessage(
+      vscode.l10n.t('{0} stays out of the prompt.', relativePath)
+    );
+
+    return false;
+  }
+
+  const root = {
+    relativePath: relativePath.replace(/\\/g, '/').replace(/\/$/, ''),
+    pattern: decision.pattern ?? relativePath,
+    sourceFile: decision.sourceFile ?? '.gitignore'
+  };
+  const count = fs.lstatSync(folderPath).isDirectory()
+    ? await provider.countIfForced(folderPath, root)
+    : 1;
+  const include = vscode.l10n.t('Include');
+  const choice = await vscode.window.showWarningMessage(
+    vscode.l10n.t(
+      '{0} is listed in {1}. Include its {2} files anyway?',
+      relativePath,
+      root.sourceFile,
+      count
+    ),
+    { modal: true },
+    include,
+    vscode.l10n.t('Cancel')
+  );
+
+  if (choice !== include) {
+    return false;
+  }
+
+  provider.addForcedRoot(root);
+
+  return true;
+};
 
 const openTextFor = (filePath: string) => {
   const document = vscode.workspace.textDocuments.find(

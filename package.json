@@ -109,12 +109,36 @@
       {
         "command": "files2prompt.showDetails",
         "title": "%files2prompt.showDetails.title%"
+      },
+      {
+        "command": "files2prompt.selectAll",
+        "title": "%files2prompt.selectAll.title%",
+        "icon": {
+          "light": "resources/light/copy.svg",
+          "dark": "resources/dark/copy.svg"
+        }
+      },
+      {
+        "command": "files2prompt.selectByExtension",
+        "title": "%files2prompt.selectByExtension.title%"
       }
     ],
     "menus": {
       "explorer/context": [
         {
           "command": "files2prompt.copyExplorerSelection",
+          "group": "navigation"
+        },
+        {
+          "command": "files2prompt.selectByExtension",
+          "when": "explorerResourceIsFolder",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "files2prompt.selectByExtension",
+          "when": "view == files2PromptView && viewItem == folder",
           "group": "navigation"
         }
       ],
@@ -158,6 +182,16 @@
           "command": "files2prompt.goForward",
           "when": "view == files2PromptView",
           "group": "navigation@5"
+        },
+        {
+          "command": "files2prompt.selectAll",
+          "when": "view == files2PromptView",
+          "group": "navigation@8"
+        },
+        {
+          "command": "files2prompt.selectByExtension",
+          "when": "view == files2PromptView",
+          "group": "navigation@9"
         }
       ]
     },
@@ -219,10 +253,20 @@
           "default": 1048576,
           "description": "%files2prompt.maxFileBytes.description%"
         },
+        "files2prompt.maxFiles": {
+          "type": "number",
+          "default": 5000,
+          "description": "%files2prompt.maxFiles.description%"
+        },
         "files2prompt.maxTotalBytes": {
           "type": "number",
           "default": 8388608,
           "description": "%files2prompt.maxTotalBytes.description%"
+        },
+        "files2prompt.extensionPresets": {
+          "type": "object",
+          "default": {},
+          "description": "%files2prompt.extensionPresets.description%"
         },
         "files2prompt.ignoredExtensions": {
           "type": "string",

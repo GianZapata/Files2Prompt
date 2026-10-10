@@ -1,19 +1,34 @@
-const sameSnapshot = (left: string[], right: string[]) => {
-  if (left.length !== right.length) {
-    return false;
-  }
+export type StoredForcedRoot = {
+  relativePath: string;
+  pattern: string;
+  sourceFile: string;
+};
 
-  const sortedLeft = [...left].sort();
-  const sortedRight = [...right].sort();
+export type SelectionSnapshot = {
+  files: string[];
+  forcedRoots: StoredForcedRoot[];
+};
 
-  return sortedLeft.every((value, index) => value === sortedRight[index]);
+const asSnapshot = (value: string[] | SelectionSnapshot): SelectionSnapshot =>
+  Array.isArray(value)
+    ? { files: [...value], forcedRoots: [] }
+    : { files: [...value.files], forcedRoots: [...value.forcedRoots] };
+
+const sameSnapshot = (left: SelectionSnapshot, right: SelectionSnapshot) => {
+  const files =
+    [...left.files].sort().join('\0') === [...right.files].sort().join('\0');
+  const roots =
+    [...left.forcedRoots.map(root => root.relativePath)].sort().join('\0') ===
+    [...right.forcedRoots.map(root => root.relativePath)].sort().join('\0');
+
+  return files && roots;
 };
 
 export const createSelectionHistory = (
-  initial: string[][] = [],
+  initial: Array<string[] | SelectionSnapshot> = [],
   start = initial.length - 1
 ) => {
-  let entries = initial.slice(-20).map(item => [...item]);
+  let entries = initial.slice(-20).map(asSnapshot);
   let index = entries.length === 0 ? -1 : Math.min(start, entries.length - 1);
 
   const trim = () => {
@@ -26,15 +41,16 @@ export const createSelectionHistory = (
   };
 
   return {
-    record: (snapshot: string[]) => {
+    record: (snapshot: string[] | SelectionSnapshot) => {
+      const next = asSnapshot(snapshot);
       const current = entries[index];
 
-      if (current && sameSnapshot(current, snapshot)) {
+      if (current && sameSnapshot(current, next)) {
         return;
       }
 
       entries = entries.slice(0, index + 1);
-      entries.push([...snapshot]);
+      entries.push(next);
       index = entries.length - 1;
       trim();
     },
@@ -45,7 +61,7 @@ export const createSelectionHistory = (
 
       index -= 1;
 
-      return [...entries[index]];
+      return asSnapshot(entries[index]);
     },
     forward: () => {
       if (index < 0 || index >= entries.length - 1) {
@@ -54,11 +70,11 @@ export const createSelectionHistory = (
 
       index += 1;
 
-      return [...entries[index]];
+      return asSnapshot(entries[index]);
     },
     canBack: () => index > 0,
     canForward: () => index >= 0 && index < entries.length - 1,
-    entries: () => entries.map(item => [...item]),
+    entries: () => entries.map(asSnapshot),
     position: () => index
   };
 };

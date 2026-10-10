@@ -1,3 +1,5 @@
+import type { ForcedRoot } from './ignore/ignoreReason';
+
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -6,6 +8,7 @@ import * as vscode from 'vscode';
 import { createIgnoreResolver } from './ignore/ignoreResolver';
 import {
   filesSelectedByFolder,
+  filesSelectedByFolderAsync,
   omittedFoldersForSelection
 } from './ignore/selectFiles';
 import { parentCheckbox, watcherShouldRefresh } from './parentCheck';
@@ -23,7 +26,9 @@ export class FileTreeProvider
   private workspaceRoot: string;
   private checkedItems: Map<string, vscode.TreeItemCheckboxState> = new Map();
   private resolver = createIgnoreResolver({ workspaceRoot: '' });
+  private forcedRoots: ForcedRoot[] = [];
   private ignoredExtensions: Set<string> = new Set();
+  private excludePatterns: string[] = [];
   private watcher: vscode.FileSystemWatcher;
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
   private disposables: vscode.Disposable[] = [];
@@ -93,8 +98,139 @@ export class FileTreeProvider
   }
 
   clearChecks(): void {
+    this.forcedRoots = [];
+    this.reloadRules();
     this.checkedItems.clear();
     this.refresh();
+  }
+
+  explain(relativePath: string, kind: 'file' | 'directory') {
+    return this.resolver.explain(relativePath, kind);
+  }
+
+  forcedRootList(): ForcedRoot[] {
+    return this.forcedRoots.map(root => ({ ...root }));
+  }
+
+  addForcedRoot(root: ForcedRoot): void {
+    const relativePath = root.relativePath
+      .replace(/\\/g, '/')
+      .replace(/\/$/, '');
+
+    this.forcedRoots = [
+      ...this.forcedRoots.filter(item => item.relativePath !== relativePath),
+      { ...root, relativePath }
+    ];
+    this.reloadRules();
+  }
+
+  removeForcedRoot(relativePath: string): void {
+    const normalized = relativePath.replace(/\\/g, '/').replace(/\/$/, '');
+
+    this.forcedRoots = this.forcedRoots.filter(
+      root => root.relativePath !== normalized
+    );
+    this.reloadRules();
+  }
+
+  setForcedRoots(roots: ForcedRoot[]): void {
+    this.forcedRoots = roots.map(root => ({
+      ...root,
+      relativePath: root.relativePath.replace(/\\/g, '/').replace(/\/$/, '')
+    }));
+    this.reloadRules();
+  }
+
+  forcedRootFor(relativePath: string): ForcedRoot | undefined {
+    const normalized = relativePath.replace(/\\/g, '/');
+
+    return this.forcedRoots
+      .filter(
+        root =>
+          normalized === root.relativePath ||
+          normalized.startsWith(`${root.relativePath}/`)
+      )
+      .sort(
+        (left, right) => right.relativePath.length - left.relativePath.length
+      )[0];
+  }
+
+  async countIfForced(folderPath: string, root: ForcedRoot): Promise<number> {
+    const preview = createIgnoreResolver({
+      workspaceRoot: this.workspaceRoot,
+      excludePatterns: [...this.excludePatterns],
+      ignoredExtensions: [...this.ignoredExtensions],
+      forcedRoots: [...this.forcedRoots, root]
+    });
+    const result = await filesSelectedByFolderAsync(
+      this.workspaceRoot,
+      folderPath,
+      preview.resolve
+    );
+
+    return result.files.length;
+  }
+
+  async selectFolder(
+    folderPath: string,
+    options: { isCancelled?: () => boolean } = {}
+  ): Promise<'applied' | 'cancelled'> {
+    const snapshot = new Map(this.checkedItems);
+    const result = await filesSelectedByFolderAsync(
+      this.workspaceRoot,
+      folderPath,
+      this.resolver.resolve,
+      options
+    );
+
+    if (result.cancelled) {
+      this.checkedItems = snapshot;
+      this.refresh();
+
+      return 'cancelled';
+    }
+
+    this.checkedItems.set(folderPath, vscode.TreeItemCheckboxState.Checked);
+
+    for (const filePath of result.files) {
+      this.checkedItems.set(filePath, vscode.TreeItemCheckboxState.Checked);
+      let parent = path.dirname(filePath);
+
+      while (parent.startsWith(folderPath)) {
+        this.checkedItems.set(parent, vscode.TreeItemCheckboxState.Checked);
+
+        if (parent === folderPath) {
+          break;
+        }
+
+        parent = path.dirname(parent);
+      }
+    }
+
+    let dirPath = path.dirname(folderPath);
+
+    while (dirPath.startsWith(this.workspaceRoot)) {
+      await this.updateParentState(dirPath);
+      dirPath = path.dirname(dirPath);
+    }
+    this.refresh();
+
+    return 'applied';
+  }
+
+  async selectionStats(): Promise<{ count: number; bytes: number }> {
+    const files = this.getCheckedFiles();
+    let bytes = 0;
+
+    for (const filePath of files) {
+      try {
+        bytes += (await fs.promises.stat(filePath)).size;
+      } catch {
+        continue;
+      }
+    }
+
+    return { count: files.length, bytes };
   }
 
   getTreeItem(element: FileItem): vscode.TreeItem {
@@ -210,6 +346,10 @@ export class FileTreeProvider
         checkboxState = vscode.TreeItemCheckboxState.Unchecked;
       }
 
+      const decision = this.resolver.resolve(
+        relativePath,
+        isDirectory ? 'directory' : 'file'
+      );
       const item = new FileItem(
         entry.name,
         uri,
@@ -221,6 +361,10 @@ export class FileTreeProvider
         isGitIgnored || isIgnoredExtension,
         isSymbolicLink
       );
+
+      if (decision.manual) {
+        item.description = vscode.l10n.t('ignored · included manually');
+      }
 
       items.push(item);
     }
@@ -412,10 +556,12 @@ export class FileTreeProvider
     this.ignoredExtensions = new Set(
       extensionsString.split(',').map(ext => ext.trim().toLowerCase())
     );
+    this.excludePatterns = config.get<string[]>('exclude', []);
     this.resolver = createIgnoreResolver({
       workspaceRoot: this.workspaceRoot,
-      excludePatterns: config.get<string[]>('exclude', []),
-      ignoredExtensions: [...this.ignoredExtensions]
+      excludePatterns: this.excludePatterns,
+      ignoredExtensions: [...this.ignoredExtensions],
+      forcedRoots: this.forcedRoots
     });
   }
 }
@@ -435,6 +581,7 @@ export class FileItem extends vscode.TreeItem {
     this.tooltip = this.resourceUri.fsPath;
     this.iconPath = new vscode.ThemeIcon(this.isDirectory ? 'folder' : 'file');
     this.checkboxState = checkboxState;
+    this.contextValue = isDirectory ? 'folder' : 'file';
     if (isDirectory && isGitIgnored) {
       this.description = 'excluida';
     }

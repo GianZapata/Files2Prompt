@@ -9,8 +9,16 @@ export enum IgnoreReason {
   Symlink = 'symlink'
 }
 
+export type ForcedRoot = {
+  relativePath: string;
+  pattern: string;
+  sourceFile: string;
+};
+
 export type IgnoreDecision = {
   included: boolean;
   reason?: IgnoreReason;
   pattern?: string;
+  sourceFile?: string;
+  manual?: boolean;
 };

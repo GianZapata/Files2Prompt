@@ -41,6 +41,72 @@ test('gitignore content stays cached until invalidate', () => {
   assert.equal(resolver.resolve('secret.txt', 'file').included, true);
 });
 
+test('a forced gitignore folder includes its files but not nested node_modules', () => {
+  const root = makeRoot();
+
+  write(root, '.gitignore', 'odd/\n');
+  write(root, 'odd/keep.ts', 'export const keep = 1;\n');
+  write(root, 'odd/node_modules/pkg/index.js', 'module.exports = 1;\n');
+  write(root, 'odd/.gitignore', 'secret.ts\n');
+  write(root, 'odd/secret.ts', 'export const secret = 1;\n');
+  write(root, 'odd/photo.png', 'not-really\n');
+  const resolver = createIgnoreResolver({
+    workspaceRoot: root,
+    forcedRoots: [
+      {
+        relativePath: 'odd',
+        pattern: 'odd/',
+        sourceFile: '.gitignore'
+      }
+    ]
+  });
+
+  assert.equal(resolver.resolve('odd/keep.ts', 'file').included, true);
+  assert.equal(resolver.resolve('odd/keep.ts', 'file').manual, true);
+  assert.equal(
+    resolver.resolve('odd/node_modules', 'directory').included,
+    false
+  );
+  assert.equal(resolver.resolve('odd/secret.ts', 'file').included, false);
+  assert.equal(resolver.resolve('odd/photo.png', 'file').included, false);
+  assert.equal(resolver.resolve('odd', 'directory').included, true);
+});
+
+test('a promptignore folder cannot be forced', () => {
+  const root = makeRoot();
+
+  write(root, '.promptignore', 'secrets/\n');
+  write(root, 'secrets/keep.txt', 'no\n');
+  const resolver = createIgnoreResolver({
+    workspaceRoot: root,
+    forcedRoots: [
+      {
+        relativePath: 'secrets',
+        pattern: 'secrets/',
+        sourceFile: '.promptignore'
+      }
+    ]
+  });
+
+  assert.equal(resolver.resolve('secrets/keep.txt', 'file').included, false);
+  assert.equal(resolver.explain('secrets', 'directory').reason, 'promptignore');
+});
+
+test('checking the workspace root does not force a gitignored folder', () => {
+  const root = makeRoot();
+
+  write(root, '.gitignore', 'odd/\n');
+  write(root, 'odd/keep.ts', 'export const keep = 1;\n');
+  write(root, 'src/app.ts', 'export const app = 1;\n');
+  const resolver = createIgnoreResolver({ workspaceRoot: root });
+  const selected = filesSelectedByFolder(root, root, resolver.resolve).map(
+    file => path.relative(root, file)
+  );
+
+  assert.equal(selected.includes('odd/keep.ts'), false);
+  assert.equal(selected.includes('src/app.ts'), true);
+});
+
 test('folder selection includes allowed files and skips pycache', () => {
   const root = makeRoot();
 

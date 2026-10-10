@@ -7,6 +7,11 @@ export const formatOperationReport = (input: {
   kind: OperationKind;
   summary?: PromptBuild;
   wrote: boolean;
+  manualIncludes?: Array<{
+    path: string;
+    pattern: string;
+    sourceFile: string;
+  }>;
 }) => {
   if (input.kind === 'empty-selection') {
     return [
@@ -35,6 +40,10 @@ export const formatOperationReport = (input: {
     ...(summary?.included.map(file => `Collected file: ${file.name}`) ?? []),
     ...(summary?.omittedFolders.map(folder => `${folder} — pruned-folder`) ??
       []),
+    ...(input.manualIncludes?.map(
+      file =>
+        `${file.path} — included manually (rule: ${file.pattern}, ${file.sourceFile})`
+    ) ?? []),
     ...(summary?.omittedFiles.map(
       file =>
         `${file.path} — ${file.reason}${file.pattern ? ` (${file.pattern})` : ''}`

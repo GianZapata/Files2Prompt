@@ -37,6 +37,19 @@ Install this fork from a local VSIX only. Do not install `thomas-mckanna.files2p
 
 - Click on the Files2Prompt icon in the Activity Bar to open the Files2Prompt view.
 
+### Select the whole project:
+
+- Use **Select all** in the view title. Ignored folders stay out. A large selection asks before copying and can copy only what fits.
+
+### Select by extension:
+
+- Use **Select by extension** on the view, on a folder in the tree, or on a folder in Explorer.
+- Matching uses the file suffix, so `.blade.php` matches `foo.blade.php` and `php` also matches that file. `.env` is the suffix of the dotfile. A file with no dot matches only the no-extension choice.
+
+### Include an ignored folder:
+
+- Check a folder listed in `.gitignore`. Confirm once to include its files. `.promptignore`, generated folders, binaries, and size limits still win. Nested `node_modules/` stays out.
+
 ### Select Files:
 
 - Browse through your workspace's file tree.
