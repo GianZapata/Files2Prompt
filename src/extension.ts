@@ -386,19 +386,50 @@ async function processXmlContent(
           document.uri.fsPath === absolutePath
       ),
     exists: fs.existsSync,
-    mkdir: async directory => {
-      await fs.promises.mkdir(directory, { recursive: true });
+    mkdir: async () => undefined,
+    write: async (filePath, content) => {
+      const uri = vscode.Uri.file(filePath);
+      const edit = new vscode.WorkspaceEdit();
+
+      if (fs.existsSync(filePath)) {
+        const document = await vscode.workspace.openTextDocument(uri);
+        const end = document.positionAt(document.getText().length);
+
+        edit.replace(
+          uri,
+          new vscode.Range(new vscode.Position(0, 0), end),
+          content
+        );
+      } else {
+        edit.createFile(uri, {
+          overwrite: false,
+          contents: Buffer.from(content, 'utf8')
+        });
+      }
+
+      await vscode.workspace.applyEdit(edit);
     },
-    write: (filePath, content) =>
-      fs.promises.writeFile(filePath, content, 'utf8'),
-    read: filePath => fs.promises.readFile(filePath, 'utf8')
+    read: filePath => fs.promises.readFile(filePath, 'utf8'),
+    confirm: async changes => {
+      const lines = [
+        ...changes.created.map(file => `New: ${file}`),
+        ...changes.modified.map(file => `Modified: ${file}`)
+      ];
+      const choice = await vscode.window.showWarningMessage(
+        `Apply pasted files?\n${lines.join('\n')}`,
+        { modal: true },
+        'Aplicar'
+      );
+
+      return choice === 'Aplicar';
+    }
   });
 
   if (applied.reason !== 'ok' || !applied.written) {
     vscode.window.showErrorMessage(
       applied.reason === 'empty'
         ? 'No file content found. See documentation for usage.'
-        : `Paste stopped (${applied.reason}).`
+        : `Paste stopped (${applied.reason}${applied.paths?.length ? `: ${applied.paths.join(', ')}` : ''}).`
     );
 
     return;

@@ -37,6 +37,26 @@ test('a valid file and an escape path write nothing', async () => {
   assert.equal(writeCalls, 0);
 });
 
+test('cancel confirmation writes nothing', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'f2p-cancel-'));
+  let writeCalls = 0;
+  const result = await applyPastedXml({
+    xml: serializePrompt({ files: [{ name: 'new.ts', content: 'n' }] }),
+    workspaceRoot: root,
+    isDirty: () => false,
+    exists: () => false,
+    mkdir: async () => undefined,
+    write: async () => {
+      writeCalls += 1;
+    },
+    read: async () => '',
+    confirm: async () => false
+  });
+
+  assert.equal(result.reason, 'cancelled');
+  assert.equal(writeCalls, 0);
+});
+
 test('a dirty destination blocks the whole batch', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'f2p-dirty-batch-'));
   const target = path.join(root, 'keep.ts');

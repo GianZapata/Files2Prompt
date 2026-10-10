@@ -11,22 +11,50 @@ export const applyPastedXml = async (input: {
   mkdir: (directory: string) => Promise<void> | Promise<string | undefined>;
   write: (filePath: string, content: string) => Promise<void>;
   read: (filePath: string) => Promise<string>;
+  confirm?: (changes: {
+    created: string[];
+    modified: string[];
+  }) => Promise<boolean>;
 }) => {
   const parsed = parsePrompt(input.xml);
 
-  if (!parsed || parsed.files.length === 0) {
+  if (!parsed.ok) {
+    return {
+      mkdirCalls: 0,
+      writeCalls: 0,
+      reason: parsed.reason,
+      paths: parsed.paths
+    };
+  }
+
+  if (parsed.payload.files.length === 0) {
     return { mkdirCalls: 0, writeCalls: 0, reason: 'empty' };
   }
 
   const planned = planPaste(
     input.workspaceRoot,
-    parsed.files,
+    parsed.payload.files,
     input.isDirty,
     input.exists
   );
 
   if (!planned.ok) {
     return { mkdirCalls: 0, writeCalls: 0, reason: planned.reason };
+  }
+
+  if (input.confirm) {
+    const accepted = await input.confirm({
+      created: planned.writes
+        .filter(item => !item.existed)
+        .map(item => item.relativePath),
+      modified: planned.writes
+        .filter(item => item.existed)
+        .map(item => item.relativePath)
+    });
+
+    if (!accepted) {
+      return { mkdirCalls: 0, writeCalls: 0, reason: 'cancelled' };
+    }
   }
 
   let mkdirCalls = 0;

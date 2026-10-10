@@ -10,6 +10,14 @@ export type PromptPayload = {
   files: PromptFile[];
 };
 
+export type ParsePromptResult =
+  | { ok: true; payload: PromptPayload }
+  | {
+      ok: false;
+      reason: 'invalid' | 'empty' | 'missing-cdata';
+      paths: string[];
+    };
+
 const parser = new XMLParser({
   ignoreAttributes: false,
   cdataPropName: '__cdata',
@@ -69,42 +77,66 @@ const textOf = (node: unknown): string => {
   return '';
 };
 
-export const parsePrompt = (xml: string): PromptPayload | undefined => {
+const isEntirelyCdata = (file: Record<string, unknown>) => {
+  const keys = Object.keys(file).filter(key => key !== '@_name');
+
+  if (keys.length === 0 || keys.some(key => key !== '__cdata')) {
+    return false;
+  }
+
+  return file.__cdata !== undefined;
+};
+
+export const parsePrompt = (xml: string): ParsePromptResult => {
   let parsed: {
     files?: {
       file?: unknown;
-      systemMessage?: { __cdata?: string; '#text'?: string } | string;
+      systemMessage?: unknown;
     };
   };
 
   try {
     parsed = parser.parse(xml);
   } catch {
-    return undefined;
+    return { ok: false, reason: 'invalid', paths: [] };
   }
 
   if (!parsed?.files?.file) {
-    return undefined;
+    return { ok: false, reason: 'empty', paths: [] };
   }
 
   const rawFiles = Array.isArray(parsed.files.file)
     ? parsed.files.file
     : [parsed.files.file];
-  const files = rawFiles
-    .map(
-      file => file as { '@_name'?: string; __cdata?: string; '#text'?: string }
-    )
-    .filter(file => file['@_name'])
-    .map(file => ({
-      name: file['@_name'] as string,
-      content: textOf(file)
-    }));
+  const missing: string[] = [];
+  const files: PromptFile[] = [];
+
+  for (const raw of rawFiles) {
+    const file = (raw ?? {}) as Record<string, unknown>;
+    const name = typeof file['@_name'] === 'string' ? file['@_name'] : '';
+
+    if (!name || !isEntirelyCdata(file)) {
+      missing.push(name || '(unnamed)');
+
+      continue;
+    }
+
+    files.push({ name, content: textOf(file.__cdata) });
+  }
+
+  if (missing.length > 0) {
+    return { ok: false, reason: 'missing-cdata', paths: missing };
+  }
 
   const systemMessage = parsed.files.systemMessage
     ? textOf(parsed.files.systemMessage)
     : undefined;
 
-  return { systemMessage, files };
+  return { ok: true, payload: { systemMessage, files } };
 };
 
-export const parseFiles = (xml: string) => parsePrompt(xml)?.files;
+export const parseFiles = (xml: string) => {
+  const parsed = parsePrompt(xml);
+
+  return parsed.ok ? parsed.payload.files : undefined;
+};

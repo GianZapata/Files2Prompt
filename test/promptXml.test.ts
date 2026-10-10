@@ -19,11 +19,14 @@ test('copy then paste keeps names, cdata, and system message', () => {
   const xml = serializePrompt(source);
   const parsed = parsePrompt(xml);
 
-  assert.ok(parsed);
-  assert.equal(parsed?.systemMessage, source.systemMessage);
-  assert.deepEqual(parsed?.files, source.files);
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) {
+    return;
+  }
+  assert.equal(parsed.payload.systemMessage, source.systemMessage);
+  assert.deepEqual(parsed.payload.files, source.files);
 
-  const planned = planPaste(root, parsed?.files ?? [], () => false);
+  const planned = planPaste(root, parsed.payload.files, () => false);
 
   assert.equal(planned.ok, true);
   if (planned.ok) {
@@ -39,13 +42,34 @@ test('copy then paste keeps names, cdata, and system message', () => {
   );
 });
 
+test('rejects file content that is not entirely cdata', () => {
+  const tsx = parsePrompt(
+    '<files><file name="src/App.tsx"><div>hi</div></file></files>'
+  );
+  const empty = parsePrompt('<files><file name="x"/></files>');
+  const text = parsePrompt('<files><file name="src/a.ts">plain</file></files>');
+
+  assert.equal(tsx.ok, false);
+  assert.equal(empty.ok, false);
+  assert.equal(text.ok, false);
+  if (!tsx.ok) {
+    assert.equal(tsx.reason, 'missing-cdata');
+    assert.deepEqual(tsx.paths, ['src/App.tsx']);
+  }
+});
+
 test('dirty paste writes nothing', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'f2p-xml-dirty-'));
   const xml = serializePrompt({
     files: [{ name: 'dirty.ts', content: 'next' }]
   });
   const parsed = parsePrompt(xml);
-  const planned = planPaste(root, parsed?.files ?? [], () => true);
+
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) {
+    return;
+  }
+  const planned = planPaste(root, parsed.payload.files, () => true);
 
   assert.equal(planned.ok, false);
   assert.equal(fs.existsSync(path.join(root, 'dirty.ts')), false);
