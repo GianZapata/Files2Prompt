@@ -45,6 +45,41 @@ const reader = (): DiffReader & { calls: string[] } => {
   };
 };
 
+test('unquoted git paths are not split on spaces', () => {
+  const patch = [
+    'diff --git a/con espacio.txt b/con espacio.txt',
+    '--- /dev/null',
+    '+++ b/con espacio.txt',
+    'diff --git a/docs/mi archivo.md b/docs/mi archivo.md',
+    '--- /dev/null',
+    '+++ b/docs/mi archivo.md',
+    'diff --git a/a b/c.txt b/a b/c.txt',
+    '--- /dev/null',
+    '+++ b/a b/c.txt',
+    'diff --git a/notes b/draft.md b/notes b/draft.md',
+    '--- /dev/null',
+    '+++ b/notes b/draft.md',
+    'diff --git "a/espa\\303\\261ol.md" "b/espa\\303\\261ol.md"',
+    '--- /dev/null',
+    '+++ "b/espa\\303\\261ol.md"',
+    'diff --git a/old.ts b/renamed.ts',
+    '--- a/old.ts',
+    '+++ "b/renamed con espacio.ts"'
+  ].join('\n');
+
+  assert.deepEqual(
+    pathsFromPatch(patch).map(item => item.path),
+    [
+      'con espacio.txt',
+      'docs/mi archivo.md',
+      'a b/c.txt',
+      'notes b/draft.md',
+      'español.md',
+      'renamed con espacio.ts'
+    ]
+  );
+});
+
 test('quoted git paths keep spaces, utf-8, and c escapes', () => {
   const patch = [
     'diff --git "a/espa\\303\\261ol.md" "b/espa\\303\\261ol.md"',
