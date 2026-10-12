@@ -151,11 +151,13 @@ const renderPlain = (input: PromptDocument) => {
   }
 
   for (const change of input.changes ?? []) {
-    parts.push(`--- ${change.path} ---\n${change.diff ?? ''}`);
+    parts.push(
+      `=== DIFF ${change.path} (${changeStatusLabel(change.status)}) ===\n${change.diff ?? ''}`
+    );
   }
 
   for (const file of input.files) {
-    parts.push(`--- ${file.name} ---\n${file.content}`);
+    parts.push(`=== FILE ${file.name} ===\n${file.content}`);
   }
 
   return parts.join('\n\n');

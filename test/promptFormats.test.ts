@@ -44,6 +44,24 @@ test('markdown names each file and groups git changes', () => {
   assert.match(rendered, /### src\/app.ts\n```ts/);
 });
 
+test('plain text distinguishes a diff from a file with the same path', () => {
+  const rendered = renderPrompt('plain', {
+    files: [{ name: 'src/a.ts', content: 'export const a = 1;' }],
+    changes: [
+      {
+        repo: 'api',
+        path: 'src/a.ts',
+        status: 'modified',
+        diff: 'diff body'
+      }
+    ]
+  });
+
+  assert.match(rendered, /=== DIFF src\/a.ts \(Modified\) ===/);
+  assert.match(rendered, /=== FILE src\/a.ts ===/);
+  assert.equal(rendered.includes('--- src/a.ts ---'), false);
+});
+
 test('plain text separates files by path', () => {
   const rendered = renderPrompt('plain', {
     files: [{ name: 'src/a.ts', content: 'export const a = 1;' }],
@@ -52,6 +70,6 @@ test('plain text separates files by path', () => {
     ]
   });
 
-  assert.match(rendered, /--- src\/a.ts ---/);
+  assert.match(rendered, /=== FILE src\/a.ts ===/);
   assert.match(rendered, /export const a = 1;/);
 });
