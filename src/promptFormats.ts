@@ -1,3 +1,4 @@
+import { changeStatusLabel } from './selectChanges';
 import {
   serializePrompt,
   type PromptChangeEntry,
@@ -12,16 +13,63 @@ export type PromptDocument = {
   changes?: PromptChangeEntry[];
 };
 
+const languageAliases: Record<string, string> = {
+  yml: 'yaml',
+  yaml: 'yaml',
+  md: 'markdown',
+  py: 'python',
+  rb: 'ruby',
+  sh: 'sh',
+  bash: 'bash',
+  tsx: 'tsx',
+  jsx: 'jsx'
+};
+
 export const languageFor = (filePath: string) => {
   const base = filePath.split(/[/\\]/).pop() ?? filePath;
+  const lower = base.toLowerCase();
+
+  if (lower === 'dockerfile') {
+    return 'dockerfile';
+  }
+
+  if (lower.endsWith('.blade.php')) {
+    return 'blade';
+  }
+
   const dot = base.lastIndexOf('.');
 
   if (dot <= 0) {
     return '';
   }
 
-  return base.slice(dot + 1).toLowerCase();
+  const extension = base.slice(dot + 1).toLowerCase();
+
+  return languageAliases[extension] ?? extension;
 };
+
+const scopeLabel = (scope?: string) => {
+  if (scope === 'uncommitted') {
+    return 'sin commit';
+  }
+
+  if (scope === 'staged') {
+    return 'en stage';
+  }
+
+  if (scope === 'commit') {
+    return 'commit';
+  }
+
+  if (scope === 'branch') {
+    return 'rama';
+  }
+
+  return scope ?? 'cambios';
+};
+
+const changeGroupKey = (change: PromptChangeEntry) =>
+  `${change.repo}\0${change.scope ?? ''}\0${change.base ?? ''}\0${change.head ?? ''}`;
 
 export const fenceFor = (content: string) => {
   const runs = content.match(/`+/g) ?? [];
@@ -61,17 +109,35 @@ const renderMarkdown = (input: PromptDocument) => {
     parts.push(input.systemMessage);
   }
 
-  for (const change of input.changes ?? []) {
-    const fence = fenceFor(change.diff ?? '');
+  const groups = new Map<string, PromptChangeEntry[]>();
 
-    parts.push(`${fence}diff\n${change.diff ?? ''}\n${fence}`);
+  for (const change of input.changes ?? []) {
+    const key = changeGroupKey(change);
+    const group = groups.get(key) ?? [];
+
+    group.push(change);
+    groups.set(key, group);
+  }
+
+  for (const group of groups.values()) {
+    const sample = group[0];
+    const heading = `## Cambios de Git — ${sample.repo} (${scopeLabel(sample.scope)}, ${sample.base ?? '—'} → ${sample.head ?? 'HEAD'})`;
+    const blocks = group.map(change => {
+      const fence = fenceFor(change.diff ?? '');
+
+      return `### ${change.path} (${changeStatusLabel(change.status)})\n${fence}diff\n${change.diff ?? ''}\n${fence}`;
+    });
+
+    parts.push([heading, ...blocks].join('\n\n'));
   }
 
   for (const file of input.files) {
     const fence = fenceFor(file.content);
     const language = languageFor(file.name);
 
-    parts.push(`${fence}${language}\n${file.content}\n${fence}`);
+    parts.push(
+      `### ${file.name}\n${fence}${language}\n${file.content}\n${fence}`
+    );
   }
 
   return parts.join('\n\n');
