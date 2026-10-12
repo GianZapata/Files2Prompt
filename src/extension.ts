@@ -11,7 +11,11 @@ import {
   filterByExtensions
 } from './extensionFilter';
 import { FileTreeProvider } from './fileTreeProvider';
-import { branchRangeBase, fillChangeDiff } from './gitDiff';
+import {
+  branchRangeBase,
+  fillChangeDiff,
+  listCommitChanges
+} from './gitDiff';
 import {
   discoverRepositories,
   gitUnavailableMessage,
@@ -1181,6 +1185,8 @@ const changesFromRepository = async (
       filePath?: string
     ) => Promise<string | unknown[]>;
     getMergeBase?: (ref1: string, ref2: string) => Promise<string | undefined>;
+    diffBlobs?: (from: string, to: string) => Promise<string>;
+    show?: (ref: string, filePath: string) => Promise<string>;
     getCommit?: (ref: string) => Promise<{ hash: string } | undefined>;
     log?: (options?: {
       maxEntries?: number;
@@ -1245,17 +1251,46 @@ const changesFromRepository = async (
       { placeHolder: vscode.l10n.t('Choose a commit') }
     );
 
-    if (picked && repository.diffBetween) {
-      const listed = await repository.diffBetween(
-        `${picked.hash}~1`,
+    if (picked && repository.diffBetween && repository.diffBlobs) {
+      const listed = await listCommitChanges(
+        {
+          parentOf: async hash => {
+            try {
+              const parent = await repository.getCommit?.(`${hash}~1`);
+
+              return parent ? `${hash}~1` : undefined;
+            } catch {
+              return undefined;
+            }
+          },
+          diffBetween: async (from, to) => {
+            const changes = await repository.diffBetween?.(from, to);
+
+            return Array.isArray(changes)
+              ? changes
+                  .map(item => toRaw(item as GitStatusChange))
+                  .filter((item): item is RawGitChange => item !== undefined)
+                  .map(item => ({
+                    path: item.path,
+                    status:
+                      item.status === 'deleted'
+                        ? 'deleted'
+                        : item.status === 'added' || item.status === 'untracked'
+                          ? 'added'
+                          : 'modified'
+                  }))
+              : [];
+          },
+          diffBlobs: async (from, to) =>
+            (await repository.diffBlobs?.(from, to)) ?? ''
+        },
         picked.hash
       );
 
-      commit = Array.isArray(listed)
-        ? listed
-            .map(item => toRaw(item as GitStatusChange))
-            .filter((item): item is RawGitChange => item !== undefined)
-        : [];
+      commit = listed.map(item => ({
+        path: item.path,
+        status: item.status
+      }));
       commitRef = picked.hash;
       head = picked.hash.slice(0, 7);
     }
@@ -1319,6 +1354,8 @@ const changesFromRepository = async (
       asText(await repository.diffBetween?.(from, to, filePath)),
     getMergeBase: async (ref: string, tip: string) =>
       repository.getMergeBase?.(ref, tip),
+    show: async (ref: string, filePath: string) =>
+      (await repository.show?.(ref, filePath)) ?? '',
     parentOf: async (hash: string) => {
       try {
         const parent = await repository.getCommit?.(`${hash}~1`);

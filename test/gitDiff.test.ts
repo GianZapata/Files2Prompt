@@ -5,6 +5,7 @@ import {
   EMPTY_TREE,
   branchRangeBase,
   fillChangeDiff,
+  listCommitChanges,
   type DiffReader
 } from '../src/gitDiff';
 
@@ -97,6 +98,52 @@ test('branch diff does not collapse to HEAD...HEAD', async () => {
   );
 });
 
+test('a root commit uses a two-dot diff, not three-dot against the empty tree', async () => {
+  const calls: string[] = [];
+  const listed = await listCommitChanges(
+    {
+      parentOf: async () => undefined,
+      diffBetween: async (from, to) => {
+        calls.push(`between:${from}:${to}`);
+
+        return [{ path: 'missing.ts', status: 'modified' }];
+      },
+      diffBlobs: async (from, to) => {
+        calls.push(`blobs:${from}:${to}`);
+
+        return 'diff --git a/app.ts b/app.ts\nnew file mode 100644\n';
+      }
+    },
+    'root'
+  );
+  const api = reader();
+
+  api.show = async (ref, filePath) => {
+    api.calls.push(`show:${ref}:${filePath}`);
+
+    return 'hello\n';
+  };
+  const fileDiff = await fillChangeDiff(
+    api,
+    { path: 'app.ts', status: 'added' },
+    'commit',
+    { commit: 'root' }
+  );
+
+  assert.deepEqual(
+    listed.map(item => item.path),
+    ['app.ts']
+  );
+  assert.equal(calls.some(call => call.startsWith('between:')), false);
+  assert.equal(calls.includes(`blobs:${EMPTY_TREE}:root`), true);
+  assert.equal(
+    api.calls.some(call => call.startsWith(`between:${EMPTY_TREE}`)),
+    false
+  );
+  assert.match(fileDiff.diff ?? '', /new file mode/);
+  assert.equal(api.calls.includes('show:root:app.ts'), true);
+});
+
 test('four scopes produce a non-empty diff', async () => {
   const api = reader();
   const staged = await fillChangeDiff(
@@ -142,7 +189,11 @@ test('four scopes produce a non-empty diff', async () => {
   assert.match(working.diff ?? '', /diff HEAD b.ts/);
   assert.match(untracked.diff ?? '', /new file mode/);
   assert.match(commit.diff ?? '', /diff parent abc d.ts/);
-  assert.match(first.diff ?? '', new RegExp(EMPTY_TREE));
+  assert.match(first.diff ?? '', /new file mode/);
+  assert.equal(
+    api.calls.some(call => call.startsWith(`between:${EMPTY_TREE}`)),
+    false
+  );
   assert.match(branch.diff ?? '', /diff dev HEAD f.ts/);
   assert.equal(binary.diff, undefined);
   assert.equal(binary.binary, true);

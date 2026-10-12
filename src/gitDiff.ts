@@ -12,7 +12,39 @@ export type DiffReader = {
   diffBetween: (from: string, to: string, filePath: string) => Promise<string>;
   getMergeBase: (base: string, head: string) => Promise<string | undefined>;
   parentOf?: (hash: string) => Promise<string | undefined>;
+  show?: (ref: string, filePath: string) => Promise<string>;
   readFile?: (filePath: string) => Promise<string>;
+};
+
+export type ListedCommitChange = {
+  path: string;
+  status: 'added' | 'modified' | 'deleted';
+};
+
+export const pathsFromPatch = (patch: string): ListedCommitChange[] =>
+  [...patch.matchAll(/^diff --git a\/(.+?) b\/(.+)$/gm)].map(match => ({
+    path: match[2],
+    status: 'added' as const
+  }));
+
+export const listCommitChanges = async (
+  reader: {
+    parentOf: (hash: string) => Promise<string | undefined>;
+    diffBetween: (
+      from: string,
+      to: string
+    ) => Promise<ListedCommitChange[]>;
+    diffBlobs: (from: string, to: string) => Promise<string>;
+  },
+  hash: string
+) => {
+  const parent = await reader.parentOf(hash);
+
+  if (parent) {
+    return reader.diffBetween(parent, hash);
+  }
+
+  return pathsFromPatch(await reader.diffBlobs(EMPTY_TREE, hash));
 };
 
 export type DiffRequest = {
@@ -47,9 +79,15 @@ export const fillChangeDiff = async (
 
   if (scope === 'commit') {
     const hash = refs.commit ?? 'HEAD';
-    const parent = (await reader.parentOf?.(hash)) ?? EMPTY_TREE;
+    const parent = await reader.parentOf?.(hash);
 
-    return { diff: await reader.diffBetween(parent, hash, change.path) };
+    if (parent) {
+      return { diff: await reader.diffBetween(parent, hash, change.path) };
+    }
+
+    const content = (await reader.show?.(hash, change.path)) ?? '';
+
+    return { diff: newFileDiff(change.path, content) };
   }
 
   const from = refs.base && refs.base !== 'HEAD' ? refs.base : undefined;
