@@ -5,20 +5,20 @@ import { discoverRepositories, repositoryLabel } from '../src/gitRepos';
 
 test('discovery keeps repositories and submodules, and skips an excluded worktree', () => {
   const found = discoverRepositories(
-    '/ws/elcaba',
+    '/ws/launcher',
     [
       {
-        rootPath: '/ws/elcaba/elcaba-api',
-        branch: 'feature/admin-dashboard',
+        rootPath: '/ws/launcher/launcher/api',
+        branch: 'feature/example',
         submodules: [{ path: 'vendor/pkg', commit: 'abcdef1234567890' }]
       },
       {
-        rootPath: '/ws/elcaba/elcaba-panel-admin',
+        rootPath: '/ws/launcher/launcher/web',
         branch: 'main'
       },
       {
         rootPath:
-          '/ws/elcaba/elcaba-panel-admin/.worktrees/feature-structure-01',
+          '/ws/launcher/launcher/web/.worktrees/feature-structure-01',
         branch: 'feature-structure-01'
       }
     ],
@@ -27,10 +27,10 @@ test('discovery keeps repositories and submodules, and skips an excluded worktre
 
   assert.deepEqual(
     found.map(repo => repo.relativePath),
-    ['elcaba-api', 'elcaba-api/vendor/pkg', 'elcaba-panel-admin']
+    ['launcher/api', 'launcher/api/vendor/pkg', 'launcher/web']
   );
   assert.equal(repositoryLabel(found[0]).message, 'git · {0}');
-  assert.equal(repositoryLabel(found[0]).args[0], 'feature/admin-dashboard');
+  assert.equal(repositoryLabel(found[0]).args[0], 'feature/example');
   assert.equal(repositoryLabel(found[1]).message, 'submodule · {0}');
   assert.equal(repositoryLabel(found[1]).args[0], 'abcdef1');
 });

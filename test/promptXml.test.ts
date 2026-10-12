@@ -43,13 +43,13 @@ test('copy then paste keeps names, cdata, and system message', () => {
 });
 
 test('paste ignores a changes block and keeps file entries', () => {
-  const xml = `<files><changes repo="elcaba-api" scope="branch" base="dev" head="feature"><change path="elcaba-api/app/Old.php" status="deleted"><![CDATA[diff]]></change></changes><file name="elcaba-api/app/Foo.php"><![CDATA[full]]></file></files>`;
+  const xml = `<files><changes repo="launcher/api" scope="branch" base="dev" head="feature"><change path="launcher/api/app/Old.php" status="deleted"><![CDATA[diff]]></change></changes><file name="launcher/api/app/Foo.php"><![CDATA[full]]></file></files>`;
   const parsed = parsePrompt(xml);
 
   assert.equal(parsed.ok, true);
   if (parsed.ok) {
     assert.deepEqual(parsed.payload.files, [
-      { name: 'elcaba-api/app/Foo.php', content: 'full' }
+      { name: 'launcher/api/app/Foo.php', content: 'full' }
     ]);
   }
 });

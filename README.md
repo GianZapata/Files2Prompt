@@ -137,7 +137,7 @@ You can customize the keyboard shortcuts for refreshing and copying files:
 
 ## Git changes and multiple repositories
 
-A launcher folder can hold several repositories. Files2Prompt lists each repository root with its branch, and a submodule with its branch or short commit. A worktree inside an ignored folder, such as `elcaba-panel-admin/.worktrees/feature-structure-01`, is not listed.
+A launcher folder can hold several repositories. Files2Prompt lists each repository root with its branch, and a submodule with its branch or short commit. A worktree inside an ignored folder, such as `launcher/web/.worktrees/feature-structure-01`, is not listed.
 
 Select Git changes from the view title or from a repository root:
 
@@ -156,10 +156,10 @@ With more than one repository, pick which ones to include. Then add to the selec
 
 ```xml
 <files>
-  <changes repo="elcaba-api" scope="branch" base="dev" head="feature/admin-dashboard">
-    <change path="elcaba-api/app/Foo.php" status="modified"><![CDATA[unified diff]]></change>
+  <changes repo="launcher/api" scope="branch" base="dev" head="feature/example">
+    <change path="launcher/api/app/Foo.php" status="modified"><![CDATA[unified diff]]></change>
   </changes>
-  <file name="elcaba-api/app/Foo.php"><![CDATA[full file]]></file>
+  <file name="launcher/api/app/Foo.php"><![CDATA[full file]]></file>
 </files>
 ```
 

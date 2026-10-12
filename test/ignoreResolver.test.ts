@@ -113,60 +113,60 @@ test('nested gitignore rules match below their folder and keep a reinclude', () 
 
   write(
     root,
-    'elcaba-api/.gitignore',
+    'launcher/api/.gitignore',
     '*.log\n.env.*\n/vendor\n!.env.example\n'
   );
-  write(root, 'elcaba-api/storage/x.log', 'log');
-  write(root, 'elcaba-api/.env.local', 'secret');
-  write(root, 'elcaba-api/.env.example', 'example');
-  write(root, 'elcaba-api/vendor/pkg/index.php', '<?php');
-  write(root, 'elcaba-api/packages/vendor/keep.php', '<?php');
+  write(root, 'launcher/api/storage/x.log', 'log');
+  write(root, 'launcher/api/.env.local', 'secret');
+  write(root, 'launcher/api/.env.example', 'example');
+  write(root, 'launcher/api/vendor/pkg/index.php', '<?php');
+  write(root, 'launcher/api/packages/vendor/keep.php', '<?php');
   write(
     root,
-    'elcaba-panel-admin/.gitignore',
+    'launcher/web/.gitignore',
     'node_modules\n.worktrees/\n.env.*\n!.env.example\n'
   );
-  write(root, 'elcaba-panel-admin/src/node_modules/pkg/index.js', 'x');
+  write(root, 'launcher/web/src/node_modules/pkg/index.js', 'x');
   write(
     root,
-    'elcaba-panel-admin/.worktrees/feature/.git',
+    'launcher/web/.worktrees/feature/.git',
     'gitdir: /tmp/panel.git'
   );
-  write(root, 'elcaba-panel-admin/.env.example', 'example');
+  write(root, 'launcher/web/.env.example', 'example');
   const resolver = createIgnoreResolver({ workspaceRoot: root });
 
   assert.equal(
-    resolver.resolve('elcaba-api/storage/x.log', 'file').included,
+    resolver.resolve('launcher/api/storage/x.log', 'file').included,
     false
   );
   assert.equal(
-    resolver.resolve('elcaba-api/.env.local', 'file').included,
+    resolver.resolve('launcher/api/.env.local', 'file').included,
     false
   );
   assert.equal(
-    resolver.resolve('elcaba-api/.env.example', 'file').included,
+    resolver.resolve('launcher/api/.env.example', 'file').included,
     true
   );
   assert.equal(
-    resolver.resolve('elcaba-api/vendor/pkg/index.php', 'file').included,
+    resolver.resolve('launcher/api/vendor/pkg/index.php', 'file').included,
     false
   );
   assert.equal(
-    resolver.resolve('elcaba-api/packages/vendor/keep.php', 'file').included,
+    resolver.resolve('launcher/api/packages/vendor/keep.php', 'file').included,
     true
   );
   assert.equal(
-    resolver.resolve('elcaba-panel-admin/src/node_modules/pkg/index.js', 'file')
+    resolver.resolve('launcher/web/src/node_modules/pkg/index.js', 'file')
       .included,
     false
   );
   assert.equal(
-    resolver.resolve('elcaba-panel-admin/.worktrees/feature/.git', 'file')
+    resolver.resolve('launcher/web/.worktrees/feature/.git', 'file')
       .included,
     false
   );
   assert.equal(
-    resolver.resolve('elcaba-panel-admin/.env.example', 'file').included,
+    resolver.resolve('launcher/web/.env.example', 'file').included,
     true
   );
 });
