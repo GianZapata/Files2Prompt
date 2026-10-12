@@ -70,8 +70,9 @@ test('the view title keeps four codicon actions and a select submenu', () => {
     ]
   );
   assert.equal(
-    manifest.contributes.submenus?.find(item => item.id === 'files2prompt.select')
-      ?.icon,
+    manifest.contributes.submenus?.find(
+      item => item.id === 'files2prompt.select'
+    )?.icon,
     '$(checklist)'
   );
   assert.deepEqual(
