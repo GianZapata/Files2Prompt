@@ -1,3 +1,23 @@
+export const selectionStatus = (input: {
+  fileCount: number;
+  byteLabel: string;
+  changeCount: number;
+  repositoryCount: number;
+}) => {
+  const changes =
+    input.changeCount > 0 ? ` · $(git-compare) ${input.changeCount}` : '';
+  const tooltip =
+    input.changeCount > 0
+      ? `${input.fileCount} selected files, ${input.byteLabel}. ${input.changeCount} Git changes in ${input.repositoryCount} repositories.`
+      : `${input.fileCount} selected files, ${input.byteLabel}.`;
+
+  return {
+    text: `$(files) ${input.fileCount} · ${input.byteLabel}${changes}`,
+    tooltip,
+    accessibility: `${tooltip} Opens the prompt preview.`
+  };
+};
+
 export const formatByteSize = (bytes: number) => {
   if (bytes < 1024) {
     return `${bytes} B`;

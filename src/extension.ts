@@ -44,7 +44,11 @@ import {
   type PromptChange,
   type RawGitChange
 } from './selectChanges';
-import { formatByteSize, overLimitNotice } from './selectionBudget';
+import {
+  formatByteSize,
+  overLimitNotice,
+  selectionStatus
+} from './selectionBudget';
 import {
   createSelectionHistory,
   type SelectionSnapshot
@@ -329,6 +333,13 @@ export function activate(context: vscode.ExtensionContext) {
       files: fileTreeProvider.getCheckedFiles(),
       forcedRoots: fileTreeProvider.forcedRootList()
     });
+    const selectionItem = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Left,
+      50
+    );
+
+    selectionItem.command = 'files2prompt.previewPrompt';
+    selectionItem.name = 'Files2Prompt selection';
     let descriptionTimer: ReturnType<typeof setTimeout> | undefined;
     const scheduleDescription = () => {
       if (descriptionTimer) {
@@ -337,14 +348,33 @@ export function activate(context: vscode.ExtensionContext) {
 
       descriptionTimer = setTimeout(() => {
         void fileTreeProvider.selectionStats().then(stats => {
+          const byteLabel = formatByteSize(stats.bytes);
+          const changes = fileTreeProvider.promptChangeList();
+          const status = selectionStatus({
+            fileCount: stats.count,
+            byteLabel,
+            changeCount: changes.length,
+            repositoryCount: new Set(changes.map(change => change.repo)).size
+          });
+
           treeView.description = vscode.l10n.t(
             '{0} files · {1}',
             stats.count,
-            formatByteSize(stats.bytes)
+            byteLabel
           );
+          selectionItem.text = status.text;
+          selectionItem.tooltip = status.tooltip;
+          selectionItem.accessibilityInformation = {
+            label: status.accessibility,
+            role: 'button'
+          };
+          selectionItem.show();
         });
       }, 200);
     };
+
+    context.subscriptions.push(selectionItem);
+    scheduleDescription();
 
     context.subscriptions.push(
       watchGitRepositories(workspaceRoot, fileTreeProvider)
