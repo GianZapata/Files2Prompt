@@ -704,7 +704,7 @@ export class FileItem extends vscode.TreeItem {
     this.checkboxState = checkboxState;
     this.contextValue = isDirectory ? 'folder' : 'file';
     if (isDirectory && isGitIgnored) {
-      this.description = 'excluida';
+      this.description = vscode.l10n.t('excluded');
     }
 
     if (this.isSymbolicLink) {

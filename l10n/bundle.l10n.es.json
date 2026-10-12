@@ -29,6 +29,7 @@
   "{0} stays out of the prompt because it is generated or binary.": "{0} no entra en el prompt porque es generado o binario.",
   "{0} stays out of the prompt.": "{0} no entra en el prompt.",
   "ignored · included manually": "ignorada · incluida manualmente",
+  "excluded": "excluida",
   "git · {0}": "git · {0}",
   "submodule · {0}": "submódulo · {0}",
   "Git is not available in this window.": "Git no está disponible en esta ventana.",
