@@ -52,7 +52,8 @@ import {
 import {
   formatByteSize,
   overLimitNotice,
-  selectionStatus
+  selectionStatus,
+  shouldConfirmIgnored
 } from './selectionBudget';
 import {
   createSelectionHistory,
@@ -417,6 +418,17 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
       watchGitRepositories(workspaceRoot, fileTreeProvider)
     );
+    const ignoredPrompt = () => ({
+      confirm: shouldConfirmIgnored({
+        setting: vscode.workspace
+          .getConfiguration('files2prompt')
+          .get<boolean>('confirmIgnoredFolders', true),
+        remembered:
+          context.workspaceState.get('files2prompt.skipIgnoredConfirm') === true
+      }),
+      remember: () =>
+        context.workspaceState.update('files2prompt.skipIgnoredConfirm', true)
+    });
     const saveHistory = () =>
       context.workspaceState.update('files2prompt.selectionHistory', {
         entries: history.entries().slice(-20),
@@ -508,7 +520,8 @@ export function activate(context: vscode.ExtensionContext) {
                   fileTreeProvider,
                   filePath,
                   relative,
-                  decision
+                  decision,
+                  ignoredPrompt()
                 );
 
                 if (!forced) {
@@ -528,7 +541,8 @@ export function activate(context: vscode.ExtensionContext) {
                 fileTreeProvider,
                 filePath,
                 relative,
-                decision
+                decision,
+                ignoredPrompt()
               );
 
               if (!forced) {
@@ -810,7 +824,8 @@ export function activate(context: vscode.ExtensionContext) {
               fileTreeProvider,
               item.resourceUri.fsPath,
               relative,
-              decision
+              decision,
+              ignoredPrompt()
             );
 
             if (!forced) {
@@ -1345,7 +1360,11 @@ const confirmExcluded = async (
   },
   folderPath: string,
   relativePath: string,
-  decision: { reason?: string; pattern?: string; sourceFile?: string }
+  decision: { reason?: string; pattern?: string; sourceFile?: string },
+  prompt: {
+    confirm: boolean;
+    remember: () => Thenable<void>;
+  } = { confirm: true, remember: async () => undefined }
 ) => {
   if (
     decision.reason === 'promptignore' ||
@@ -1387,7 +1406,16 @@ const confirmExcluded = async (
   const count = fs.lstatSync(folderPath).isDirectory()
     ? await provider.countIfForced(folderPath, root)
     : 1;
+  if (!prompt.confirm) {
+    provider.addForcedRoot(root);
+
+    return true;
+  }
+
   const include = vscode.l10n.t('Include');
+  const remember = vscode.l10n.t(
+    'Include and do not ask again in this project'
+  );
   const choice = await vscode.window.showWarningMessage(
     vscode.l10n.t(
       '{0} is listed in {1}. Include its {2} files anyway?',
@@ -1397,8 +1425,16 @@ const confirmExcluded = async (
     ),
     { modal: true },
     include,
+    remember,
     vscode.l10n.t('Cancel')
   );
+
+  if (choice === remember) {
+    await prompt.remember();
+    provider.addForcedRoot(root);
+
+    return true;
+  }
 
   if (choice !== include) {
     return false;

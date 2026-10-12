@@ -18,6 +18,11 @@ export const selectionStatus = (input: {
   };
 };
 
+export const shouldConfirmIgnored = (input: {
+  setting: boolean;
+  remembered: boolean;
+}) => input.setting && !input.remembered;
+
 export const formatByteSize = (bytes: number) => {
   if (bytes < 1024) {
     return `${bytes} B`;

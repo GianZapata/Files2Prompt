@@ -61,5 +61,6 @@
   "Renamed": "Renombrado",
   "Submodule": "Submódulo",
   "Modified": "Modificado",
-  "{0} in the Git changes": "{0} en los cambios de Git"
+  "{0} in the Git changes": "{0} en los cambios de Git",
+  "Include and do not ask again in this project": "Incluir y no volver a preguntar en este proyecto"
 }

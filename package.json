@@ -316,6 +316,11 @@
           "default": 8388608,
           "description": "%files2prompt.maxTotalBytes.description%"
         },
+        "files2prompt.confirmIgnoredFolders": {
+          "type": "boolean",
+          "default": true,
+          "description": "%files2prompt.confirmIgnoredFolders.description%"
+        },
         "files2prompt.outputFormat": {
           "type": "string",
           "enum": ["xml", "markdown", "plain"],
