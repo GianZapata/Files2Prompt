@@ -4,6 +4,8 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { applyPastedXml } from './applyPastedXml';
+import { fillChangeDiff } from './gitDiff';
+import { binaryExtensions } from './ignore/builtInPatterns';
 import { buildPrompt } from './buildPrompt';
 import { createCopyGate } from './copyGate';
 import {
@@ -1106,12 +1108,14 @@ const changesFromRepository = async (
       refs?: Array<{ name?: string }>;
     };
     diffWithHEAD?: (filePath?: string) => Promise<string | unknown[]>;
+    diffIndexWithHEAD?: (filePath?: string) => Promise<string | unknown[]>;
     diffBetween?: (
       ref1: string,
       ref2: string,
       filePath?: string
     ) => Promise<string | unknown[]>;
     getMergeBase?: (ref1: string, ref2: string) => Promise<string | undefined>;
+    getCommit?: (ref: string) => Promise<{ hash: string } | undefined>;
     log?: (options?: {
       maxEntries?: number;
     }) => Promise<Array<{ hash: string; message: string }>>;
@@ -1162,6 +1166,7 @@ const changesFromRepository = async (
   let branch: RawGitChange[] = [];
   let base: string | undefined;
   let head = repository.state.HEAD?.name;
+  let commitRef = head;
 
   if (scope === 'commit') {
     const history = (await repository.log?.({ maxEntries: 20 })) ?? [];
@@ -1185,6 +1190,7 @@ const changesFromRepository = async (
             .map(item => toRaw(item as GitStatusChange))
             .filter((item): item is RawGitChange => item !== undefined)
         : [];
+      commitRef = picked.hash;
       head = picked.hash.slice(0, 7);
     }
   }
@@ -1232,17 +1238,62 @@ const changesFromRepository = async (
     },
     scope
   );
+  const asText = (value: string | unknown[] | undefined) =>
+    typeof value === 'string' ? value : '';
+  const reader = {
+    diffWithHEAD: async (filePath: string) =>
+      asText(await repository.diffWithHEAD?.(filePath)),
+    diffIndexWithHEAD: async (filePath: string) =>
+      asText(await repository.diffIndexWithHEAD?.(filePath)),
+    diffBetween: async (from: string, to: string, filePath: string) =>
+      asText(await repository.diffBetween?.(from, to, filePath)),
+    getMergeBase: async (ref: string, tip: string) =>
+      repository.getMergeBase?.(ref, tip),
+    parentOf: async (hash: string) => {
+      try {
+        const parent = await repository.getCommit?.(`${hash}~1`);
 
-  return changes.map(change => ({
-    ...change,
-    repo,
-    scope,
-    from: change.from,
-    to: change.to,
-    diff: change.diff,
-    base,
-    head
-  }));
+        return parent ? `${hash}~1` : undefined;
+      } catch {
+        return undefined;
+      }
+    },
+    readFile: (filePath: string) =>
+      fs.promises.readFile(
+        path.join(repository.rootUri.fsPath, filePath),
+        'utf8'
+      )
+  };
+  const filled = [];
+
+  for (const change of changes) {
+    const relative = change.path.startsWith(`${repo}/`)
+      ? change.path.slice(repo.length + 1)
+      : change.path;
+    const extension = relative.split('.').pop()?.toLowerCase() ?? '';
+    const loaded = await fillChangeDiff(
+      reader,
+      {
+        path: relative,
+        status: change.status,
+        binary: binaryExtensions.includes(extension)
+      },
+      scope,
+      { commit: commitRef, base }
+    );
+
+    filled.push({
+      ...change,
+      repo,
+      scope,
+      diff: loaded.diff,
+      binary: loaded.binary,
+      base,
+      head
+    });
+  }
+
+  return filled;
 };
 
 const confirmExcluded = async (
