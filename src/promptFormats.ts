@@ -3,7 +3,6 @@ import {
   type PromptChangeEntry,
   type PromptFile
 } from './promptXml';
-import { changeStatusLabel } from './selectChanges';
 
 export type OutputFormat = 'xml' | 'markdown' | 'plain';
 
@@ -48,25 +47,9 @@ export const languageFor = (filePath: string) => {
   return languageAliases[extension] ?? extension;
 };
 
-const scopeLabel = (scope?: string) => {
-  if (scope === 'uncommitted') {
-    return 'sin commit';
-  }
+const promptStatus = (status: string) => status.toLowerCase();
 
-  if (scope === 'staged') {
-    return 'en stage';
-  }
-
-  if (scope === 'commit') {
-    return 'commit';
-  }
-
-  if (scope === 'branch') {
-    return 'rama';
-  }
-
-  return scope ?? 'cambios';
-};
+const promptScope = (scope?: string) => (scope ?? 'uncommitted').toLowerCase();
 
 const changeGroupKey = (change: PromptChangeEntry) =>
   `${change.repo}\0${change.scope ?? ''}\0${change.base ?? ''}\0${change.head ?? ''}`;
@@ -105,7 +88,7 @@ export const languageIdFor = (format: OutputFormat) => {
 const hasDiff = (diff?: string) => (diff ?? '').trim().length > 0;
 
 const markdownChange = (change: PromptChangeEntry) => {
-  const heading = `### ${change.path} (${changeStatusLabel(change.status)})`;
+  const heading = `### ${change.path} (${promptStatus(change.status)})`;
 
   if (change.binary) {
     return `${heading}\n_Binary file, no diff._`;
@@ -121,7 +104,7 @@ const markdownChange = (change: PromptChangeEntry) => {
 };
 
 const plainChange = (change: PromptChangeEntry) => {
-  const status = changeStatusLabel(change.status);
+  const status = promptStatus(change.status);
 
   if (change.binary) {
     return `=== DIFF ${change.path} (${status}, binary) ===`;
@@ -155,7 +138,7 @@ const renderMarkdown = (input: PromptDocument) => {
 
   for (const group of groups.values()) {
     const sample = group[0];
-    const heading = `## Cambios de Git — ${sample.repo} (${scopeLabel(sample.scope)}, ${sample.base ?? '—'} → ${sample.head ?? 'HEAD'})`;
+    const heading = `## Git changes — ${sample.repo} (${promptScope(sample.scope)}, ${sample.base ?? '—'} → ${sample.head ?? 'HEAD'})`;
     const blocks = group.map(markdownChange);
 
     parts.push([heading, ...blocks].join('\n\n'));

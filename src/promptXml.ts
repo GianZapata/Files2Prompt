@@ -78,7 +78,7 @@ export const serializeChanges = (changes: PromptChangeEntry[]) => {
         .map(change => {
           const changeAttrs = [
             `path="${escapeAttribute(change.path)}"`,
-            `status="${escapeAttribute(change.status)}"`,
+            `status="${escapeAttribute(change.status.toLowerCase())}"`,
             change.from ? `from="${escapeAttribute(change.from)}"` : '',
             change.to ? `to="${escapeAttribute(change.to)}"` : '',
             change.binary ? 'binary="true"' : ''
