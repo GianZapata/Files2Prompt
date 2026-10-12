@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { EMPTY_TREE, fillChangeDiff, type DiffReader } from '../src/gitDiff';
+import {
+  EMPTY_TREE,
+  branchRangeBase,
+  fillChangeDiff,
+  type DiffReader
+} from '../src/gitDiff';
 
 const reader = (): DiffReader & { calls: string[] } => {
   const calls: string[] = [];
@@ -72,6 +77,26 @@ test('uncommitted diff keeps staged and unstaged hunks', async () => {
   assert.equal(api.calls.includes('with:HEAD:mixed.ts'), true);
 });
 
+test('branch diff does not collapse to HEAD...HEAD', async () => {
+  assert.equal(branchRangeBase(undefined, 'dev'), 'dev');
+  assert.equal(branchRangeBase('HEAD', 'dev'), 'dev');
+  assert.equal(branchRangeBase('abc', 'dev'), 'abc');
+
+  const api = reader();
+  const result = await fillChangeDiff(
+    api,
+    { path: 'a.ts', status: 'modified' },
+    'branch',
+    { base: branchRangeBase('HEAD', 'dev') }
+  );
+
+  assert.match(result.diff ?? '', /diff dev HEAD a.ts/);
+  assert.equal(
+    api.calls.some(call => call.startsWith('between:HEAD:HEAD')),
+    false
+  );
+});
+
 test('four scopes produce a non-empty diff', async () => {
   const api = reader();
   const staged = await fillChangeDiff(
@@ -118,7 +143,7 @@ test('four scopes produce a non-empty diff', async () => {
   assert.match(untracked.diff ?? '', /new file mode/);
   assert.match(commit.diff ?? '', /diff parent abc d.ts/);
   assert.match(first.diff ?? '', new RegExp(EMPTY_TREE));
-  assert.match(branch.diff ?? '', /diff mergebase HEAD f.ts/);
+  assert.match(branch.diff ?? '', /diff dev HEAD f.ts/);
   assert.equal(binary.diff, undefined);
   assert.equal(binary.binary, true);
   assert.equal(api.calls.includes('index:logo.png'), false);

@@ -11,7 +11,7 @@ import {
   filterByExtensions
 } from './extensionFilter';
 import { FileTreeProvider } from './fileTreeProvider';
-import { fillChangeDiff } from './gitDiff';
+import { branchRangeBase, fillChangeDiff } from './gitDiff';
 import {
   discoverRepositories,
   gitUnavailableMessage,
@@ -1281,9 +1281,11 @@ const changesFromRepository = async (
           })
         : picked?.label;
 
-    if (baseName && repository.getMergeBase && repository.diffBetween) {
-      base = await repository.getMergeBase(baseName, 'HEAD');
-      const listed = await repository.diffBetween(base ?? baseName, 'HEAD');
+    if (baseName && repository.diffBetween) {
+      const mergeBase = await repository.getMergeBase?.(baseName, 'HEAD');
+
+      base = branchRangeBase(mergeBase, baseName);
+      const listed = await repository.diffBetween(base, 'HEAD');
 
       branch = Array.isArray(listed)
         ? listed

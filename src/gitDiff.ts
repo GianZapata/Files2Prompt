@@ -1,5 +1,10 @@
 export const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 
+export const branchRangeBase = (
+  mergeBase: string | undefined,
+  baseName: string
+) => (mergeBase && mergeBase !== 'HEAD' ? mergeBase : baseName);
+
 export type DiffReader = {
   diffWithHEAD: (filePath: string) => Promise<string>;
   diffWith?: (ref: string, filePath: string) => Promise<string>;
@@ -47,12 +52,13 @@ export const fillChangeDiff = async (
     return { diff: await reader.diffBetween(parent, hash, change.path) };
   }
 
-  const mergeBase =
-    (await reader.getMergeBase(refs.base ?? 'HEAD', 'HEAD')) ??
-    refs.base ??
-    'HEAD';
+  const from = refs.base && refs.base !== 'HEAD' ? refs.base : undefined;
 
-  return { diff: await reader.diffBetween(mergeBase, 'HEAD', change.path) };
+  if (!from) {
+    return { diff: '' };
+  }
+
+  return { diff: await reader.diffBetween(from, 'HEAD', change.path) };
 };
 
 const newFileDiff = (filePath: string, content: string) => {
