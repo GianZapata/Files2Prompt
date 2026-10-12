@@ -95,6 +95,32 @@ test('the view title keeps four codicon actions and a select submenu', () => {
   );
 });
 
+test('git changes and extensions start collapsed', () => {
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8')
+  ) as {
+    contributes: {
+      views: {
+        files2prompt: Array<{ id: string; visibility?: string }>;
+      };
+    };
+  };
+  const views = manifest.contributes.views.files2prompt;
+
+  assert.equal(
+    views.find(view => view.id === 'files2PromptView')?.visibility,
+    undefined
+  );
+  assert.equal(
+    views.find(view => view.id === 'files2prompt.gitChanges')?.visibility,
+    'collapsed'
+  );
+  assert.equal(
+    views.find(view => view.id === 'files2prompt.extensions')?.visibility,
+    'collapsed'
+  );
+});
+
 test('view shortcuts use the focused view, not a custom active flag', () => {
   const manifest = JSON.parse(
     fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8')

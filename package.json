@@ -47,11 +47,13 @@
         },
         {
           "id": "files2prompt.gitChanges",
-          "name": "%files2prompt.gitChanges.name%"
+          "name": "%files2prompt.gitChanges.name%",
+          "visibility": "collapsed"
         },
         {
           "id": "files2prompt.extensions",
-          "name": "%files2prompt.extensions.name%"
+          "name": "%files2prompt.extensions.name%",
+          "visibility": "collapsed"
         }
       ]
     },
