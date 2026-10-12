@@ -1,4 +1,5 @@
 import type { ForcedRoot } from './ignore/ignoreReason';
+import type { PromptChange } from './selectChanges';
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -18,7 +19,6 @@ import {
   parentCheckbox,
   watcherShouldRefresh
 } from './parentCheck';
-import type { PromptChange } from './selectChanges';
 
 export class FileTreeProvider
   implements vscode.TreeDataProvider<FileItem>, vscode.Disposable

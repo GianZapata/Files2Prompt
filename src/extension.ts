@@ -10,9 +10,9 @@ import {
   extensionPickItems,
   filterByExtensions
 } from './extensionFilter';
+import { ExtensionsProvider } from './extensionsProvider';
 import { FileTreeProvider } from './fileTreeProvider';
 import { GitChangeItem, GitChangesProvider } from './gitChangesProvider';
-import { ExtensionsProvider } from './extensionsProvider';
 import { branchRangeBase, fillChangeDiff, listCommitChanges } from './gitDiff';
 import {
   discoverRepositories,
@@ -52,7 +52,6 @@ import {
   type PromptChange,
   type RawGitChange
 } from './selectChanges';
-import { syncChangeCheck, syncExtensionCheck } from './sideViews';
 import {
   formatByteSize,
   overLimitNotice,
@@ -63,6 +62,7 @@ import {
   createSelectionHistory,
   type SelectionSnapshot
 } from './selectionHistory';
+import { syncChangeCheck, syncExtensionCheck } from './sideViews';
 import { copyStatusMessage, previewStatusMessage } from './userMessages';
 
 export function activate(context: vscode.ExtensionContext) {

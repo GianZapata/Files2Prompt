@@ -1,6 +1,7 @@
+import type { DiscoveredRepository } from './gitRepos';
+
 import * as vscode from 'vscode';
 
-import type { DiscoveredRepository } from './gitRepos';
 import { changeBadge, type PromptChange } from './selectChanges';
 import {
   groupChangesByRepo,

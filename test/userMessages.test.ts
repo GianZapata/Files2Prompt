@@ -81,7 +81,9 @@ test('the view title keeps four codicon actions and a select submenu', () => {
     false
   );
   assert.equal(
-    manifest.contributes.submenus?.some(item => item.id === 'files2prompt.copyAs'),
+    manifest.contributes.submenus?.some(
+      item => item.id === 'files2prompt.copyAs'
+    ),
     false
   );
   assert.equal(
