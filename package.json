@@ -24,7 +24,8 @@
   ],
   "activationEvents": [
     "onView:files2PromptView",
-    "onView:files2prompt.gitChanges"
+    "onView:files2prompt.gitChanges",
+    "onView:files2prompt.extensions"
   ],
   "main": "./out/extension.js",
   "l10n": "./l10n",
@@ -47,6 +48,10 @@
         {
           "id": "files2prompt.gitChanges",
           "name": "%files2prompt.gitChanges.name%"
+        },
+        {
+          "id": "files2prompt.extensions",
+          "name": "%files2prompt.extensions.name%"
         }
       ]
     },

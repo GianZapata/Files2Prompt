@@ -2,6 +2,7 @@
   "files2prompt.container.title": "Files2Prompt Fork",
   "files2prompt.view.name": "Files",
   "files2prompt.gitChanges.name": "Git changes",
+  "files2prompt.extensions.name": "Extensions",
   "files2prompt.gitChanges.setScope.title": "Change scope",
   "files2prompt.gitChanges.setBase.title": "Change base",
   "files2prompt.welcome": "Open a folder to choose files for the prompt.\n[Open Folder](command:vscode.openFolder)",

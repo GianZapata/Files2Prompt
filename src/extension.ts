@@ -12,6 +12,7 @@ import {
 } from './extensionFilter';
 import { FileTreeProvider } from './fileTreeProvider';
 import { GitChangeItem, GitChangesProvider } from './gitChangesProvider';
+import { ExtensionsProvider } from './extensionsProvider';
 import { branchRangeBase, fillChangeDiff, listCommitChanges } from './gitDiff';
 import {
   discoverRepositories,
@@ -51,7 +52,7 @@ import {
   type PromptChange,
   type RawGitChange
 } from './selectChanges';
-import { syncChangeCheck } from './sideViews';
+import { syncChangeCheck, syncExtensionCheck } from './sideViews';
 import {
   formatByteSize,
   overLimitNotice,
@@ -320,6 +321,41 @@ export function activate(context: vscode.ExtensionContext) {
         manageCheckboxStateManually: true
       }
     );
+    const extensions = new ExtensionsProvider();
+    const extensionsView = vscode.window.createTreeView(
+      'files2prompt.extensions',
+      {
+        treeDataProvider: extensions,
+        manageCheckboxStateManually: true
+      }
+    );
+    let extensionTimer: ReturnType<typeof setTimeout> | undefined;
+    const refreshExtensions = () => {
+      if (extensionTimer) {
+        clearTimeout(extensionTimer);
+      }
+
+      extensionTimer = setTimeout(() => {
+        void filesSelectedByFolderAsync(
+          workspaceRoot,
+          workspaceRoot,
+          fileTreeProvider.resolvePath.bind(fileTreeProvider)
+        ).then(listed => {
+          const available = listed.files.map(filePath =>
+            path.relative(workspaceRoot, filePath).split(path.sep).join('/')
+          );
+          const selected = fileTreeProvider
+            .getCheckedFiles()
+            .map(filePath =>
+              path.relative(workspaceRoot, filePath).split(path.sep).join('/')
+            );
+
+          extensions.setFiles(available, selected);
+        });
+      }, 200);
+    };
+
+    refreshExtensions();
     const publishChanges = (changes: PromptChange[]) => {
       fileTreeProvider.setPromptChanges(changes);
       gitChanges.setListed(changes);
@@ -387,6 +423,7 @@ export function activate(context: vscode.ExtensionContext) {
       fileTreeProvider,
       treeView,
       gitChangesView,
+      extensionsView,
       previewEmitter,
       detailsEmitter,
       vscode.workspace.registerTextDocumentContentProvider(PREVIEW_SCHEME, {
@@ -1062,7 +1099,35 @@ export function activate(context: vscode.ExtensionContext) {
 
           await reloadGitRepo(item.repo, 'branch', baseName);
         }
-      )
+      ),
+      extensionsView.onDidChangeCheckboxState(async event => {
+        const available = extensions.availableFiles();
+        let selected = fileTreeProvider
+          .getCheckedFiles()
+          .map(filePath =>
+            path.relative(workspaceRoot, filePath).split(path.sep).join('/')
+          );
+
+        for (const [item, state] of event.items) {
+          selected = syncExtensionCheck({
+            checked: state === vscode.TreeItemCheckboxState.Checked,
+            suffix: item.suffix,
+            available,
+            selected
+          });
+        }
+
+        await fileTreeProvider.setCheckedFiles(
+          selected.map(filePath => path.join(workspaceRoot, filePath))
+        );
+        extensions.setFiles(available, selected);
+        history.record(currentSnapshot());
+        await saveHistory();
+        scheduleDescription();
+      }),
+      fileTreeProvider.onDidChangeTreeData(() => {
+        refreshExtensions();
+      })
     );
   } else {
     vscode.window.showInformationMessage(
