@@ -49,54 +49,37 @@
       {
         "command": "files2prompt.refresh",
         "title": "%files2prompt.refresh.title%",
-        "icon": {
-          "light": "resources/light/refresh.svg",
-          "dark": "resources/dark/refresh.svg"
-        }
+        "icon": "$(refresh)"
       },
       {
         "command": "files2prompt.copyFiles",
         "title": "%files2prompt.copyFiles.title%",
-        "icon": {
-          "light": "resources/light/copy.svg",
-          "dark": "resources/dark/copy.svg"
-        }
+        "icon": "$(copy)"
       },
       {
         "command": "files2prompt.clearChecks",
         "title": "%files2prompt.clearChecks.title%",
-        "icon": {
-          "light": "resources/light/clear.svg",
-          "dark": "resources/dark/clear.svg"
-        }
+        "icon": "$(clear-all)"
       },
       {
         "command": "files2prompt.goBack",
         "title": "%files2prompt.goBack.title%",
-        "icon": {
-          "light": "resources/light/back.svg",
-          "dark": "resources/dark/back.svg"
-        }
+        "icon": "$(arrow-left)"
       },
       {
         "command": "files2prompt.goForward",
         "title": "%files2prompt.goForward.title%",
-        "icon": {
-          "light": "resources/light/forward.svg",
-          "dark": "resources/dark/forward.svg"
-        }
+        "icon": "$(arrow-right)"
       },
       {
         "command": "files2prompt.pasteXml",
         "title": "%files2prompt.pasteXml.title%",
-        "icon": {
-          "light": "resources/light/play.svg",
-          "dark": "resources/dark/play.svg"
-        }
+        "icon": "$(clippy)"
       },
       {
         "command": "files2prompt.copyOpenFiles",
-        "title": "%files2prompt.copyOpenFiles.title%"
+        "title": "%files2prompt.copyOpenFiles.title%",
+        "icon": "$(files)"
       },
       {
         "command": "files2prompt.copyExplorerSelection",
@@ -105,42 +88,34 @@
       {
         "command": "files2prompt.previewPrompt",
         "title": "%files2prompt.previewPrompt.title%",
-        "icon": {
-          "light": "resources/light/preview.svg",
-          "dark": "resources/dark/preview.svg"
-        }
+        "icon": "$(open-preview)"
       },
       {
         "command": "files2prompt.showDetails",
         "title": "%files2prompt.showDetails.title%",
-        "icon": {
-          "light": "resources/light/details.svg",
-          "dark": "resources/dark/details.svg"
-        }
+        "icon": "$(list-selection)"
       },
       {
         "command": "files2prompt.selectAll",
         "title": "%files2prompt.selectAll.title%",
-        "icon": {
-          "light": "resources/light/select-all.svg",
-          "dark": "resources/dark/select-all.svg"
-        }
+        "icon": "$(checklist)"
       },
       {
         "command": "files2prompt.selectByExtension",
         "title": "%files2prompt.selectByExtension.title%",
-        "icon": {
-          "light": "resources/light/extension.svg",
-          "dark": "resources/dark/extension.svg"
-        }
+        "icon": "$(symbol-misc)"
       },
       {
         "command": "files2prompt.selectChanges",
         "title": "%files2prompt.selectChanges.title%",
-        "icon": {
-          "light": "resources/light/changes.svg",
-          "dark": "resources/dark/changes.svg"
-        }
+        "icon": "$(git-compare)"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "files2prompt.select",
+        "label": "%files2prompt.select.title%",
+        "icon": "$(checklist)"
       }
     ],
     "menus": {
@@ -169,11 +144,6 @@
       ],
       "view/title": [
         {
-          "command": "files2prompt.pasteXml",
-          "when": "view == files2PromptView",
-          "group": "navigation@0"
-        },
-        {
           "command": "files2prompt.copyFiles",
           "when": "view == files2PromptView",
           "group": "navigation@1"
@@ -184,44 +154,62 @@
           "group": "navigation@2"
         },
         {
-          "command": "files2prompt.selectChanges",
+          "submenu": "files2prompt.select",
           "when": "view == files2PromptView",
           "group": "navigation@3"
         },
         {
-          "command": "files2prompt.clearChecks",
+          "command": "files2prompt.selectChanges",
           "when": "view == files2PromptView",
           "group": "navigation@4"
         },
         {
-          "command": "files2prompt.showDetails",
+          "command": "files2prompt.pasteXml",
           "when": "view == files2PromptView",
-          "group": "1_select@1"
-        },
-        {
-          "command": "files2prompt.refresh",
-          "when": "view == files2PromptView",
-          "group": "1_select@2"
+          "group": "1_overflow@1"
         },
         {
           "command": "files2prompt.goBack",
           "when": "view == files2PromptView",
-          "group": "1_select@3"
+          "group": "1_overflow@2"
         },
         {
           "command": "files2prompt.goForward",
           "when": "view == files2PromptView",
-          "group": "1_select@4"
+          "group": "1_overflow@3"
         },
         {
-          "command": "files2prompt.selectAll",
+          "command": "files2prompt.refresh",
           "when": "view == files2PromptView",
-          "group": "1_select@5"
+          "group": "1_overflow@4"
+        },
+        {
+          "command": "files2prompt.showDetails",
+          "when": "view == files2PromptView",
+          "group": "1_overflow@5"
+        },
+        {
+          "command": "files2prompt.copyOpenFiles",
+          "when": "view == files2PromptView",
+          "group": "1_overflow@6"
+        }
+      ],
+      "files2prompt.select": [
+        {
+          "command": "files2prompt.selectAll",
+          "group": "1_select@1"
         },
         {
           "command": "files2prompt.selectByExtension",
-          "when": "view == files2PromptView",
-          "group": "1_select@6"
+          "group": "1_select@2"
+        },
+        {
+          "command": "files2prompt.selectChanges",
+          "group": "1_select@3"
+        },
+        {
+          "command": "files2prompt.clearChecks",
+          "group": "1_select@4"
         }
       ]
     },
