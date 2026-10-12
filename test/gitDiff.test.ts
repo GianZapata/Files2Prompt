@@ -134,7 +134,10 @@ test('a root commit uses a two-dot diff, not three-dot against the empty tree', 
     listed.map(item => item.path),
     ['app.ts']
   );
-  assert.equal(calls.some(call => call.startsWith('between:')), false);
+  assert.equal(
+    calls.some(call => call.startsWith('between:')),
+    false
+  );
   assert.equal(calls.includes(`blobs:${EMPTY_TREE}:root`), true);
   assert.equal(
     api.calls.some(call => call.startsWith(`between:${EMPTY_TREE}`)),

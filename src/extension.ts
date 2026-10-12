@@ -11,11 +11,7 @@ import {
   filterByExtensions
 } from './extensionFilter';
 import { FileTreeProvider } from './fileTreeProvider';
-import {
-  branchRangeBase,
-  fillChangeDiff,
-  listCommitChanges
-} from './gitDiff';
+import { branchRangeBase, fillChangeDiff, listCommitChanges } from './gitDiff';
 import {
   discoverRepositories,
   gitUnavailableMessage,
@@ -1173,10 +1169,7 @@ const changesFromRepository = async (
       workingTreeChanges?: GitStatusChange[];
       refs?: Array<{ name?: string }>;
     };
-    diffWith?: (
-      ref: string,
-      filePath: string
-    ) => Promise<string | unknown[]>;
+    diffWith?: (ref: string, filePath: string) => Promise<string | unknown[]>;
     diffWithHEAD?: (filePath?: string) => Promise<string | unknown[]>;
     diffIndexWithHEAD?: (filePath?: string) => Promise<string | unknown[]>;
     diffBetween?: (

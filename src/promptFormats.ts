@@ -1,9 +1,9 @@
-import { changeStatusLabel } from './selectChanges';
 import {
   serializePrompt,
   type PromptChangeEntry,
   type PromptFile
 } from './promptXml';
+import { changeStatusLabel } from './selectChanges';
 
 export type OutputFormat = 'xml' | 'markdown' | 'plain';
 

@@ -30,10 +30,7 @@ export const pathsFromPatch = (patch: string): ListedCommitChange[] =>
 export const listCommitChanges = async (
   reader: {
     parentOf: (hash: string) => Promise<string | undefined>;
-    diffBetween: (
-      from: string,
-      to: string
-    ) => Promise<ListedCommitChange[]>;
+    diffBetween: (from: string, to: string) => Promise<ListedCommitChange[]>;
     diffBlobs: (from: string, to: string) => Promise<string>;
   },
   hash: string
