@@ -59,6 +59,10 @@
     },
     "commands": [
       {
+        "command": "files2prompt.changeOutputFormat",
+        "title": "%files2prompt.changeOutputFormat.title%"
+      },
+      {
         "command": "files2prompt.refresh",
         "title": "%files2prompt.refresh.title%",
         "icon": "$(refresh)"
@@ -213,33 +217,19 @@
           "group": "navigation@4"
         },
         {
-          "command": "files2prompt.goBack",
+          "command": "files2prompt.copyOpenFiles",
+          "when": "view == files2PromptView",
+          "group": "1_overflow@1"
+        },
+        {
+          "command": "files2prompt.refresh",
           "when": "view == files2PromptView",
           "group": "1_overflow@2"
         },
         {
-          "command": "files2prompt.goForward",
-          "when": "view == files2PromptView",
-          "group": "1_overflow@3"
-        },
-      {
-        "command": "files2prompt.chooseOutputFormat",
-        "title": "%files2prompt.chooseOutputFormat.title%"
-      },
-      {
-        "command": "files2prompt.refresh",
-          "when": "view == files2PromptView",
-          "group": "1_overflow@4"
-        },
-        {
           "command": "files2prompt.showDetails",
           "when": "view == files2PromptView",
-          "group": "1_overflow@5"
-        },
-        {
-          "command": "files2prompt.copyOpenFiles",
-          "when": "view == files2PromptView",
-          "group": "1_overflow@6"
+          "group": "1_overflow@3"
         }
       ],
       "files2prompt.select": [

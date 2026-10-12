@@ -95,6 +95,46 @@ test('the view title keeps four codicon actions and a select submenu', () => {
     title.some(item => item.command === 'files2prompt.pasteXml'),
     false
   );
+  assert.deepEqual(
+    title
+      .filter(item => item.group?.startsWith('1_overflow'))
+      .map(item => item.command),
+    [
+      'files2prompt.copyOpenFiles',
+      'files2prompt.refresh',
+      'files2prompt.showDetails'
+    ]
+  );
+  assert.equal(
+    title.some(
+      item =>
+        item.command === 'files2prompt.goBack' ||
+        item.command === 'files2prompt.goForward'
+    ),
+    false
+  );
+  assert.equal(
+    manifest.contributes.commands.some(
+      item => item.command === 'files2prompt.goBack'
+    ),
+    true
+  );
+  assert.equal(
+    manifest.contributes.commands.some(
+      item => item.command === 'files2prompt.changeOutputFormat'
+    ),
+    true
+  );
+  assert.equal(
+    title.some(item => item.command === 'files2prompt.changeOutputFormat'),
+    false
+  );
+  assert.equal(
+    manifest.contributes.commands.some(
+      item => item.command === 'files2prompt.copyAsMarkdown'
+    ),
+    true
+  );
 });
 
 test('git changes and extensions start collapsed', () => {

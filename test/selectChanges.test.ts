@@ -6,9 +6,22 @@ import {
   changeBadge,
   changesNodeLabel,
   changesForScope,
+  gitScopeMenu,
   mergeChanges,
   pathsToCheck
 } from '../src/selectChanges';
+
+test('git scopes keep current and staged ahead of the advanced pair', () => {
+  const menu = gitScopeMenu();
+  const options = menu.filter(item => item.kind === 'option');
+
+  assert.deepEqual(
+    options.map(item => item.scope),
+    ['uncommitted', 'staged', 'commit', 'branch']
+  );
+  assert.equal(menu[2]?.kind, 'separator');
+  assert.equal(menu[2]?.labelKey, 'Advanced');
+});
 
 test('adding changes merges by repository and path', () => {
   const merged = mergeChanges(

@@ -1,3 +1,15 @@
+export const nextOutputFormat = (current: string, picked?: string) => ({
+  format: picked ?? current,
+  changed: picked !== undefined && picked !== current,
+  wroteClipboard: false
+});
+
+export const formatForCopy = <T extends string>(setting: T, override?: T) =>
+  override ?? setting;
+
+export const shouldRefreshSummary = (section: string) =>
+  section === 'files2prompt.outputFormat';
+
 export const outputFormatLabel = (format: string) => {
   if (format === 'markdown') {
     return 'Markdown';

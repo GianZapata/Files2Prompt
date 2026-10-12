@@ -46,6 +46,7 @@ import {
   changeBadge,
   changeStatusLabel,
   changesForScope,
+  gitScopeMenu,
   mapGitStatus,
   mergeChanges,
   type ChangeScope,
@@ -54,9 +55,13 @@ import {
 } from './selectChanges';
 import {
   formatByteSize,
+  formatForCopy,
+  nextOutputFormat,
+  outputFormatLabel,
   overLimitNotice,
   selectionStatus,
-  shouldConfirmIgnored
+  shouldConfirmIgnored,
+  shouldRefreshSummary
 } from './selectionBudget';
 import {
   createSelectionHistory,
@@ -103,7 +108,7 @@ export function activate(context: vscode.ExtensionContext) {
         maxFiles: config.get<number>('maxFiles', 5000),
         changes:
           diffMode === 'filesOnly' ? [] : fileTreeProvider.promptChangeList(),
-        format: outputFormat
+        format: formatForCopy(outputFormat, format)
       });
     };
 
@@ -454,8 +459,8 @@ export function activate(context: vscode.ExtensionContext) {
       50
     );
 
-    selectionItem.command = 'files2prompt.chooseOutputFormat';
-    selectionItem.name = 'Files2Prompt selection';
+    selectionItem.command = 'files2prompt.changeOutputFormat';
+    selectionItem.name = vscode.l10n.t('Files2Prompt selection');
     let descriptionTimer: ReturnType<typeof setTimeout> | undefined;
     const scheduleDescription = () => {
       if (descriptionTimer) {
@@ -546,23 +551,25 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
       vscode.commands.registerCommand(
-        'files2prompt.chooseOutputFormat',
+        'files2prompt.changeOutputFormat',
         async () => {
-          const xml = vscode.l10n.t('XML');
-          const markdown = vscode.l10n.t('Markdown');
-          const plain = vscode.l10n.t('Plain text');
+          const current = vscode.workspace
+            .getConfiguration('files2prompt')
+            .get<string>('outputFormat', 'xml');
           const picked = await vscode.window.showQuickPick(
-            [
-              { label: xml, format: 'xml' },
-              { label: markdown, format: 'markdown' },
-              { label: plain, format: 'plain' }
-            ],
+            (['xml', 'markdown', 'plain'] as const).map(format => ({
+              label: vscode.l10n.t(outputFormatLabel(format)),
+              description:
+                format === current ? vscode.l10n.t('Current') : undefined,
+              format
+            })),
             {
               placeHolder: vscode.l10n.t('Choose the output format')
             }
           );
+          const next = nextOutputFormat(current, picked?.format);
 
-          if (!picked) {
+          if (!next.changed || next.wroteClipboard) {
             return;
           }
 
@@ -570,12 +577,22 @@ export function activate(context: vscode.ExtensionContext) {
             .getConfiguration('files2prompt')
             .update(
               'outputFormat',
-              picked.format,
+              next.format,
               vscode.ConfigurationTarget.Workspace
             );
           scheduleDescription();
         }
       ),
+      vscode.workspace.onDidChangeConfiguration(event => {
+        const section = 'files2prompt.outputFormat';
+
+        if (
+          event.affectsConfiguration(section) &&
+          shouldRefreshSummary(section)
+        ) {
+          scheduleDescription();
+        }
+      }),
       vscode.commands.registerCommand('files2prompt.refresh', () =>
         fileTreeProvider.refresh()
       ),
@@ -1056,26 +1073,11 @@ export function activate(context: vscode.ExtensionContext) {
             return;
           }
 
-          const picked = await vscode.window.showQuickPick(
-            [
-              {
-                label: vscode.l10n.t('Uncommitted changes'),
-                scope: 'uncommitted' as const
-              },
-              {
-                label: vscode.l10n.t('Staged changes'),
-                scope: 'staged' as const
-              },
-              { label: vscode.l10n.t('One commit'), scope: 'commit' as const },
-              {
-                label: vscode.l10n.t('Current branch against a base'),
-                scope: 'branch' as const
-              }
-            ],
-            { placeHolder: vscode.l10n.t('Which changes should be selected?') }
-          );
+          const picked = await vscode.window.showQuickPick(gitScopeItems(), {
+            placeHolder: vscode.l10n.t('Which changes should be selected?')
+          });
 
-          if (!picked) {
+          if (!picked || !('scope' in picked) || !picked.scope) {
             return;
           }
 
@@ -1137,6 +1139,19 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {}
+
+const gitScopeItems = () =>
+  gitScopeMenu().map(item =>
+    item.kind === 'separator'
+      ? {
+          label: vscode.l10n.t(item.labelKey),
+          kind: vscode.QuickPickItemKind.Separator
+        }
+      : {
+          label: vscode.l10n.t(item.labelKey),
+          scope: item.scope
+        }
+  );
 
 const watchGitRepositories = (
   workspaceRoot: string,
@@ -1336,23 +1351,13 @@ const selectGitChanges = async (
     return undefined;
   }
 
-  const scopePick = await vscode.window.showQuickPick(
-    [
-      {
-        label: vscode.l10n.t('Uncommitted changes'),
-        scope: 'uncommitted' as const
-      },
-      { label: vscode.l10n.t('Staged changes'), scope: 'staged' as const },
-      { label: vscode.l10n.t('One commit'), scope: 'commit' as const },
-      {
-        label: vscode.l10n.t('Current branch against a base'),
-        scope: 'branch' as const
-      }
-    ],
-    { placeHolder: vscode.l10n.t('Which changes should be selected?') }
-  );
+  const scopePick = await vscode.window.showQuickPick(gitScopeItems(), {
+    placeHolder: vscode.l10n.t('Which changes should be selected?')
+  });
 
-  if (!scopePick) {
+  const scope = scopePick && 'scope' in scopePick ? scopePick.scope : undefined;
+
+  if (!scope) {
     return undefined;
   }
 
@@ -1376,11 +1381,7 @@ const selectGitChanges = async (
       .relative(workspaceRoot, repository.rootUri.fsPath)
       .split(path.sep)
       .join('/');
-    const collected = await changesFromRepository(
-      repository,
-      relative,
-      scopePick.scope
-    );
+    const collected = await changesFromRepository(repository, relative, scope);
 
     changes.push(...collected);
   }

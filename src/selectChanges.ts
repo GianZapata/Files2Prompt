@@ -54,6 +54,31 @@ export const changesNodeLabel = (
   repositoryCount: number
 ) => `Git changes · ${changeCount} (${repositoryCount} repositories)`;
 
+export const gitScopeMenu = () =>
+  [
+    {
+      kind: 'option' as const,
+      scope: 'uncommitted' as const,
+      labelKey: 'Current changes'
+    },
+    {
+      kind: 'option' as const,
+      scope: 'staged' as const,
+      labelKey: 'Staged only'
+    },
+    { kind: 'separator' as const, labelKey: 'Advanced' },
+    {
+      kind: 'option' as const,
+      scope: 'commit' as const,
+      labelKey: 'A specific commit'
+    },
+    {
+      kind: 'option' as const,
+      scope: 'branch' as const,
+      labelKey: 'Compare branch'
+    }
+  ] as const;
+
 export const changeBadge = (status: string) => {
   if (status === 'added') {
     return 'A';

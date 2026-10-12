@@ -2,9 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  formatForCopy,
+  nextOutputFormat,
   overLimitNotice,
   selectionStatus,
-  shouldConfirmIgnored
+  shouldConfirmIgnored,
+  shouldRefreshSummary
 } from '../src/selectionBudget';
 
 test('status text includes git changes and a readable breakdown', () => {
@@ -20,6 +23,36 @@ test('status text includes git changes and a readable breakdown', () => {
   assert.match(status.tooltip, /2 repositories/);
   assert.match(status.tooltip, /Markdown/);
   assert.match(status.accessibility, /Choose the output format/);
+});
+
+test('an empty selection still names the output format', () => {
+  const status = selectionStatus({
+    fileCount: 0,
+    byteLabel: '0 B',
+    changeCount: 0,
+    repositoryCount: 0,
+    format: 'xml'
+  });
+
+  assert.match(status.text, /0 files · 0 B · XML/);
+  assert.match(status.tooltip, /XML/);
+  assert.match(status.accessibility, /Choose the output format/);
+});
+
+test('choosing a format does not write the clipboard', () => {
+  const kept = nextOutputFormat('xml', undefined);
+  const changed = nextOutputFormat('xml', 'markdown');
+
+  assert.equal(kept.format, 'xml');
+  assert.equal(kept.changed, false);
+  assert.equal(kept.wroteClipboard, false);
+  assert.equal(changed.format, 'markdown');
+  assert.equal(changed.changed, true);
+  assert.equal(changed.wroteClipboard, false);
+  assert.equal(shouldRefreshSummary('files2prompt.outputFormat'), true);
+  assert.equal(shouldRefreshSummary('files2prompt.maxFiles'), false);
+  assert.equal(formatForCopy('markdown'), 'markdown');
+  assert.equal(formatForCopy('markdown', 'xml'), 'xml');
 });
 
 test('ignored-folder confirmation can be skipped for the project', () => {
