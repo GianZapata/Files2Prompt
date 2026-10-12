@@ -36,6 +36,25 @@ export const parseExtensionList = (text: string) => [
   )
 ];
 
+export const extensionPickItems = <T extends { suffixes: string[] }>(
+  detected: T[],
+  typed: string
+) => {
+  const custom = parseExtensionList(typed);
+
+  if (custom.length === 0) return detected;
+
+  return [
+    {
+      label: typed,
+      description: custom.join(', '),
+      suffixes: custom,
+      alwaysShow: true
+    },
+    ...detected
+  ];
+};
+
 export const matchesExtension = (filePath: string, query: string) => {
   const normalized = normalizeExtensionQuery(query);
   const base = baseName(filePath).toLowerCase();

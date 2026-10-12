@@ -10,8 +10,8 @@ import { buildPrompt } from './buildPrompt';
 import { createCopyGate } from './copyGate';
 import {
   extensionCounts,
-  filterByExtensions,
-  parseExtensionList
+  extensionPickItems,
+  filterByExtensions
 } from './extensionFilter';
 import { FileTreeProvider } from './fileTreeProvider';
 import {
@@ -59,10 +59,7 @@ import {
   createSelectionHistory,
   type SelectionSnapshot
 } from './selectionHistory';
-import {
-  copyStatusMessage,
-  previewStatusMessage
-} from './userMessages';
+import { copyStatusMessage, previewStatusMessage } from './userMessages';
 
 export function activate(context: vscode.ExtensionContext) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -449,13 +446,16 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.commands.registerCommand('files2prompt.copyAsXml', async () => {
         await copyCollected(fileTreeProvider.getCheckedFiles(), true, 'xml');
       }),
-      vscode.commands.registerCommand('files2prompt.copyAsMarkdown', async () => {
-        await copyCollected(
-          fileTreeProvider.getCheckedFiles(),
-          true,
-          'markdown'
-        );
-      }),
+      vscode.commands.registerCommand(
+        'files2prompt.copyAsMarkdown',
+        async () => {
+          await copyCollected(
+            fileTreeProvider.getCheckedFiles(),
+            true,
+            'markdown'
+          );
+        }
+      ),
       vscode.commands.registerCommand('files2prompt.copyAsPlain', async () => {
         await copyCollected(fileTreeProvider.getCheckedFiles(), true, 'plain');
       }),
@@ -721,45 +721,57 @@ export function activate(context: vscode.ExtensionContext) {
           const presets = vscode.workspace
             .getConfiguration('files2prompt')
             .get<Record<string, string[]>>('extensionPresets', {});
-          const picked = await vscode.window.showQuickPick(
-            [
-              ...Object.entries(presets).map(([name, suffixes]) => ({
-                label: name,
-                description: suffixes.join(', '),
-                suffixes
-              })),
-              ...extensionCounts(relative).map(([suffix, count]) => ({
-                label: `${suffix} (${count})`,
-                description: String(count),
-                suffixes: [suffix === '(no extension)' ? '' : suffix]
-              })),
-              {
-                label: vscode.l10n.t('Type a list…'),
-                description: 'md, ts, php',
-                suffixes: [] as string[]
-              }
-            ],
-            {
-              canPickMany: true,
-              placeHolder: vscode.l10n.t('Choose extensions')
-            }
-          );
+          const detected = [
+            ...Object.entries(presets).map(([name, suffixes]) => ({
+              label: name,
+              description: suffixes.join(', '),
+              suffixes
+            })),
+            ...extensionCounts(relative).map(([suffix, count]) => ({
+              label: `${suffix} (${count})`,
+              description: String(count),
+              suffixes: [suffix === '(no extension)' ? '' : suffix]
+            }))
+          ];
+          const picked = await new Promise<
+            Array<{ suffixes: string[] }> | undefined
+          >(resolve => {
+            const pick = vscode.window.createQuickPick<
+              vscode.QuickPickItem & { suffixes: string[] }
+            >();
+            let settled = false;
+            const finish = (
+              value: Array<{ suffixes: string[] }> | undefined
+            ) => {
+              if (settled) return;
+
+              settled = true;
+              pick.dispose();
+              resolve(value);
+            };
+
+            pick.canSelectMany = true;
+            pick.placeholder = vscode.l10n.t(
+              'Select several or type md, ts, php'
+            );
+            pick.items = detected;
+            pick.onDidChangeValue(value => {
+              pick.items = extensionPickItems(detected, value);
+            });
+            pick.onDidAccept(() => {
+              finish([...pick.selectedItems]);
+            });
+            pick.onDidHide(() => {
+              finish(undefined);
+            });
+            pick.show();
+          });
 
           if (!picked || picked.length === 0) {
             return;
           }
 
-          let suffixes = picked.flatMap(item => item.suffixes);
-
-          if (picked.some(item => item.suffixes.length === 0)) {
-            const typed = await vscode.window.showInputBox({
-              prompt: vscode.l10n.t('Type extensions, for example md, ts, php')
-            });
-
-            if (typed) {
-              suffixes = [...suffixes, ...parseExtensionList(typed)];
-            }
-          }
+          const suffixes = picked.flatMap(item => item.suffixes);
 
           if (suffixes.length === 0) {
             return;

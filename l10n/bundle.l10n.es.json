@@ -18,6 +18,7 @@
   "Selecting files": "Seleccionando archivos",
   "{0} files · {1}": "{0} archivos · {1}",
   "Choose extensions": "Elige extensiones",
+  "Select several or type md, ts, php": "Marca varias o escribe md, ts, php",
   "Type a list…": "Escribir una lista…",
   "Type extensions, for example md, ts, php": "Escribe extensiones, por ejemplo md, ts, php",
   "Add to selection": "Agregar a la selección",
