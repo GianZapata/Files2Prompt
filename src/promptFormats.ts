@@ -102,6 +102,40 @@ export const languageIdFor = (format: OutputFormat) => {
   return 'xml';
 };
 
+const hasDiff = (diff?: string) => (diff ?? '').trim().length > 0;
+
+const markdownChange = (change: PromptChangeEntry) => {
+  const heading = `### ${change.path} (${changeStatusLabel(change.status)})`;
+
+  if (change.binary) {
+    return `${heading}\n_Binary file, no diff._`;
+  }
+
+  if (!hasDiff(change.diff)) {
+    return `${heading}\n_No diff._`;
+  }
+
+  const fence = fenceFor(change.diff ?? '');
+
+  return `${heading}\n${fence}diff\n${change.diff ?? ''}\n${fence}`;
+};
+
+const plainChange = (change: PromptChangeEntry) => {
+  const status = changeStatusLabel(change.status);
+
+  if (change.binary) {
+    return `=== DIFF ${change.path} (${status}, binary) ===`;
+  }
+
+  const heading = `=== DIFF ${change.path} (${status}) ===`;
+
+  if (!hasDiff(change.diff)) {
+    return `${heading}\n_No diff._`;
+  }
+
+  return `${heading}\n${change.diff ?? ''}`;
+};
+
 const renderMarkdown = (input: PromptDocument) => {
   const parts: string[] = [];
 
@@ -122,11 +156,7 @@ const renderMarkdown = (input: PromptDocument) => {
   for (const group of groups.values()) {
     const sample = group[0];
     const heading = `## Cambios de Git — ${sample.repo} (${scopeLabel(sample.scope)}, ${sample.base ?? '—'} → ${sample.head ?? 'HEAD'})`;
-    const blocks = group.map(change => {
-      const fence = fenceFor(change.diff ?? '');
-
-      return `### ${change.path} (${changeStatusLabel(change.status)})\n${fence}diff\n${change.diff ?? ''}\n${fence}`;
-    });
+    const blocks = group.map(markdownChange);
 
     parts.push([heading, ...blocks].join('\n\n'));
   }
@@ -151,9 +181,7 @@ const renderPlain = (input: PromptDocument) => {
   }
 
   for (const change of input.changes ?? []) {
-    parts.push(
-      `=== DIFF ${change.path} (${changeStatusLabel(change.status)}) ===\n${change.diff ?? ''}`
-    );
+    parts.push(plainChange(change));
   }
 
   for (const file of input.files) {

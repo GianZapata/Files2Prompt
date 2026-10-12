@@ -44,6 +44,35 @@ test('markdown names each file and groups git changes', () => {
   assert.match(rendered, /### src\/app.ts\n```ts/);
 });
 
+test('binary and empty diffs are notes, not code blocks', () => {
+  const changes = [
+    {
+      repo: 'api',
+      path: 'logo.png',
+      status: 'modified',
+      binary: true,
+      diff: 'should-not-appear'
+    },
+    {
+      repo: 'api',
+      path: 'empty.ts',
+      status: 'modified',
+      diff: '   '
+    }
+  ];
+  const markdown = renderPrompt('markdown', { files: [], changes });
+  const plain = renderPrompt('plain', { files: [], changes });
+
+  assert.match(markdown, /### logo.png \(Modified\)\n_Binary file, no diff._/);
+  assert.equal(markdown.includes('```'), false);
+  assert.equal(markdown.includes('should-not-appear'), false);
+  assert.match(markdown, /### empty.ts \(Modified\)\n_No diff._/);
+  assert.match(plain, /=== DIFF logo.png \(Modified, binary\) ===/);
+  assert.equal(plain.includes('should-not-appear'), false);
+  assert.match(plain, /=== DIFF empty.ts \(Modified\) ===\n_No diff._/);
+  assert.equal(plain.includes('```'), false);
+});
+
 test('plain text distinguishes a diff from a file with the same path', () => {
   const rendered = renderPrompt('plain', {
     files: [{ name: 'src/a.ts', content: 'export const a = 1;' }],
