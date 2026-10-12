@@ -6,6 +6,7 @@ import {
   branchRangeBase,
   fillChangeDiff,
   listCommitChanges,
+  pathsFromPatch,
   type DiffReader
 } from '../src/gitDiff';
 
@@ -43,6 +44,27 @@ const reader = (): DiffReader & { calls: string[] } => {
     readFile: async () => 'hello\n'
   };
 };
+
+test('quoted git paths keep spaces, utf-8, and c escapes', () => {
+  const patch = [
+    'diff --git "a/espa\\303\\261ol.md" "b/espa\\303\\261ol.md"',
+    'new file mode 100644',
+    'diff --git "a/con espacio.txt" "b/con espacio.txt"',
+    'new file mode 100644',
+    'diff --git "a/tab\\tquote\\"slash\\\\x" "b/tab\\tquote\\"slash\\\\x"',
+    'new file mode 100644',
+    'diff --git a/normal.ts b/normal.ts',
+    'new file mode 100644'
+  ].join('\n');
+  const paths = pathsFromPatch(patch).map(item => item.path);
+
+  assert.deepEqual(paths, [
+    'español.md',
+    'con espacio.txt',
+    'tab\tquote"slash\\x',
+    'normal.ts'
+  ]);
+});
 
 test('uncommitted diff keeps staged and unstaged hunks', async () => {
   const api = reader();

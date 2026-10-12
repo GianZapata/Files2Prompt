@@ -21,11 +21,126 @@ export type ListedCommitChange = {
   status: 'added' | 'modified' | 'deleted';
 };
 
+const decodeGitQuoted = (body: string) => {
+  const bytes: number[] = [];
+
+  for (let index = 0; index < body.length; index += 1) {
+    const char = body[index];
+
+    if (char !== '\\') {
+      bytes.push(char.charCodeAt(0));
+      continue;
+    }
+
+    const next = body[index + 1];
+
+    if (next === 't') {
+      bytes.push(9);
+      index += 1;
+      continue;
+    }
+
+    if (next === 'n') {
+      bytes.push(10);
+      index += 1;
+      continue;
+    }
+
+    if (next === '"') {
+      bytes.push(34);
+      index += 1;
+      continue;
+    }
+
+    if (next === '\\') {
+      bytes.push(92);
+      index += 1;
+      continue;
+    }
+
+    if (next < '0' || next > '7') {
+      bytes.push(char.charCodeAt(0));
+      continue;
+    }
+
+    let octal = '';
+
+    while (
+      octal.length < 3 &&
+      index + 1 < body.length &&
+      body[index + 1] >= '0' &&
+      body[index + 1] <= '7'
+    ) {
+      index += 1;
+      octal += body[index];
+    }
+
+    bytes.push(Number.parseInt(octal, 8));
+  }
+
+  return Buffer.from(bytes).toString('utf8');
+};
+
+const readGitPath = (line: string, start: number) => {
+  if (line[start] === '"') {
+    let body = '';
+    let index = start + 1;
+
+    while (index < line.length) {
+      if (line[index] === '\\') {
+        body += line[index] + (line[index + 1] ?? '');
+        index += 2;
+        continue;
+      }
+
+      if (line[index] === '"') {
+        return { path: decodeGitQuoted(body), next: index + 1 };
+      }
+
+      body += line[index];
+      index += 1;
+    }
+
+    return undefined;
+  }
+
+  const match = line.slice(start).match(/^\S+/);
+
+  if (!match) {
+    return undefined;
+  }
+
+  return { path: match[0], next: start + match[0].length };
+};
+
+const pathWithoutPrefix = (value: string) =>
+  value.startsWith('a/') || value.startsWith('b/') ? value.slice(2) : value;
+
 export const pathsFromPatch = (patch: string): ListedCommitChange[] =>
-  [...patch.matchAll(/^diff --git a\/(.+?) b\/(.+)$/gm)].map(match => ({
-    path: match[2],
-    status: 'added' as const
-  }));
+  patch.split('\n').flatMap(line => {
+    if (!line.startsWith('diff --git ')) {
+      return [];
+    }
+
+    const left = readGitPath(line, 'diff --git '.length);
+
+    if (!left) {
+      return [];
+    }
+
+    const right = readGitPath(line, left.next + 1);
+
+    if (!right) {
+      return [];
+    }
+
+    return [
+      {
+        path: pathWithoutPrefix(right.path),
+        status: 'added' as const
+      }
+    ];
+  });
 
 export const listCommitChanges = async (
   reader: {
