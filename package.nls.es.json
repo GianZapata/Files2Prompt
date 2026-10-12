@@ -15,6 +15,7 @@
   "files2prompt.selectAll.title": "Todo el proyecto",
   "files2prompt.selectByExtension.title": "Por extensión…",
   "files2prompt.selectChanges.title": "Cambios de Git",
+  "files2prompt.clearGitChanges.title": "Quitar los cambios de Git",
   "files2prompt.maxFiles.description": "Preguntar antes de copiar más archivos que este límite. Copiar lo que cabe se detiene igual en este límite.",
   "files2prompt.diffMode.description": "Cómo aparecen los cambios de Git en el prompt: diff y archivos, solo diff, o solo archivos.",
   "files2prompt.extensionPresets.description": "Listas de extensiones con nombre que aparecen primero en Seleccionar por extensión. Ejemplo: { \"Web\": [\"ts\", \"php\"] }.",

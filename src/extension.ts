@@ -38,6 +38,8 @@ import { runCopy, runPreview } from './promptRun';
 import {
   applyChangeSelection,
   baseChoices,
+  changeBadge,
+  changeStatusLabel,
   changesForScope,
   mapGitStatus,
   type ChangeScope,
@@ -373,7 +375,34 @@ export function activate(context: vscode.ExtensionContext) {
       }, 200);
     };
 
-    context.subscriptions.push(selectionItem);
+    context.subscriptions.push(
+      selectionItem,
+      vscode.window.registerFileDecorationProvider({
+        onDidChangeFileDecorations: fileTreeProvider.onDidChangeDecorations,
+        provideFileDecoration: uri => {
+          const relative = path
+            .relative(workspaceRoot, uri.fsPath)
+            .split(path.sep)
+            .join('/');
+          const change = fileTreeProvider
+            .promptChangeList()
+            .find(item => item.path === relative);
+
+          if (!change) {
+            return undefined;
+          }
+
+          const badge = changeBadge(change.status);
+          const word = changeStatusLabel(change.status);
+
+          return new vscode.FileDecoration(
+            badge,
+            vscode.l10n.t('{0} in the Git changes', word),
+            new vscode.ThemeColor('gitDecoration.modifiedResourceForeground')
+          );
+        }
+      })
+    );
     scheduleDescription();
 
     context.subscriptions.push(
@@ -572,6 +601,10 @@ export function activate(context: vscode.ExtensionContext) {
           await copyCollected([...files], false);
         }
       ),
+      vscode.commands.registerCommand('files2prompt.clearGitChanges', () => {
+        fileTreeProvider.clearGitChanges();
+        scheduleDescription();
+      }),
       vscode.commands.registerCommand('files2prompt.selectAll', async () => {
         const outcome = await vscode.window.withProgress(
           {

@@ -49,6 +49,51 @@ export const changesForScope = (
   return source.map(change => toPromptChange(input.repo, change));
 };
 
+export const changesNodeLabel = (
+  changeCount: number,
+  repositoryCount: number
+) => `Git changes · ${changeCount} (${repositoryCount} repositories)`;
+
+export const changeBadge = (status: string) => {
+  if (status === 'added') {
+    return 'A';
+  }
+
+  if (status === 'deleted') {
+    return 'D';
+  }
+
+  if (status === 'renamed') {
+    return 'R';
+  }
+
+  if (status === 'modified' || status === 'submodule') {
+    return 'M';
+  }
+
+  return '';
+};
+
+export const changeStatusLabel = (status: string) => {
+  if (status === 'added') {
+    return 'Added';
+  }
+
+  if (status === 'deleted') {
+    return 'Deleted';
+  }
+
+  if (status === 'renamed') {
+    return 'Renamed';
+  }
+
+  if (status === 'submodule') {
+    return 'Submodule';
+  }
+
+  return 'Modified';
+};
+
 export const pathsToCheck = (changes: PromptChange[]) =>
   changes
     .filter(change => change.status === 'added' || change.status === 'modified')

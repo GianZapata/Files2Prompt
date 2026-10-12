@@ -1,5 +1,4 @@
 import type { ForcedRoot } from './ignore/ignoreReason';
-import type { PromptChange } from './selectChanges';
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -19,6 +18,7 @@ import {
   parentCheckbox,
   watcherShouldRefresh
 } from './parentCheck';
+import { changeStatusLabel, type PromptChange } from './selectChanges';
 
 export class FileTreeProvider
   implements vscode.TreeDataProvider<FileItem>, vscode.Disposable
@@ -113,8 +113,19 @@ export class FileTreeProvider
     this.refresh();
   }
 
+  private readonly decorationEmitter = new vscode.EventEmitter<
+    vscode.Uri[] | undefined
+  >();
+  readonly onDidChangeDecorations = this.decorationEmitter.event;
+
   setPromptChanges(changes: PromptChange[]): void {
     this.promptChanges = changes;
+    this.decorationEmitter.fire(undefined);
+    this.refresh();
+  }
+
+  clearGitChanges(): void {
+    this.setPromptChanges([]);
   }
 
   promptChangeList(): PromptChange[] {
@@ -290,7 +301,7 @@ export class FileTreeProvider
     }
 
     if (!element) {
-      return [
+      const roots = [
         this.withRepositoryLabel(
           '',
           new FileItem(
@@ -305,6 +316,58 @@ export class FileTreeProvider
           )
         )
       ];
+      const changes = this.promptChangeList();
+
+      if (changes.length === 0) {
+        return roots;
+      }
+
+      const repositories = new Set(changes.map(change => change.repo)).size;
+      const label = vscode.l10n.t(
+        'Git changes · {0} ({1} repositories)',
+        changes.length,
+        repositories
+      );
+      const node = new FileItem(
+        label,
+        vscode.Uri.parse('files2prompt-changes:root'),
+        vscode.TreeItemCollapsibleState.Expanded,
+        true,
+        undefined,
+        false,
+        false,
+        true
+      );
+
+      node.contextValue = 'gitChanges';
+      node.accessibilityInformation = {
+        label: vscode.l10n.t('{0}. Expand to review each changed file.', label)
+      };
+
+      return [node, ...roots];
+    }
+
+    if (element.resourceUri.scheme === 'files2prompt-changes') {
+      return this.promptChangeList().map(change => {
+        const item = new FileItem(
+          change.path,
+          vscode.Uri.file(path.join(this.workspaceRoot, change.path)),
+          vscode.TreeItemCollapsibleState.None,
+          false,
+          undefined,
+          false,
+          false,
+          true
+        );
+
+        item.description = changeStatusLabel(change.status);
+        item.contextValue = 'gitChangeFile';
+        item.accessibilityInformation = {
+          label: `${change.path}, ${changeStatusLabel(change.status)}`
+        };
+
+        return item;
+      });
     }
 
     const dirPath = element.resourceUri.fsPath;

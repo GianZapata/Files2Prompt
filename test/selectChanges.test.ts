@@ -3,9 +3,19 @@ import test from 'node:test';
 
 import {
   applyChangeSelection,
+  changeBadge,
+  changesNodeLabel,
   changesForScope,
   pathsToCheck
 } from '../src/selectChanges';
+
+test('git changes node names the count and badges each status', () => {
+  assert.equal(changesNodeLabel(4, 2), 'Git changes · 4 (2 repositories)');
+  assert.equal(changeBadge('modified'), 'M');
+  assert.equal(changeBadge('added'), 'A');
+  assert.equal(changeBadge('deleted'), 'D');
+  assert.equal(changeBadge('renamed'), 'R');
+});
 
 test('uncommitted changes keep deletions for the diff and check only live files', () => {
   const changes = changesForScope(

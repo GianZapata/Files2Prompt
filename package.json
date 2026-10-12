@@ -109,6 +109,11 @@
         "command": "files2prompt.selectChanges",
         "title": "%files2prompt.selectChanges.title%",
         "icon": "$(git-compare)"
+      },
+      {
+        "command": "files2prompt.clearGitChanges",
+        "title": "%files2prompt.clearGitChanges.title%",
+        "icon": "$(close)"
       }
     ],
     "submenus": [
@@ -140,6 +145,11 @@
           "command": "files2prompt.selectChanges",
           "when": "view == files2PromptView && viewItem == repository",
           "group": "navigation"
+        },
+        {
+          "command": "files2prompt.clearGitChanges",
+          "when": "view == files2PromptView && viewItem == gitChanges",
+          "group": "inline"
         }
       ],
       "view/title": [

@@ -52,5 +52,13 @@
   "Preview includes {0} files. {1} were left out because the prompt is too large. Change files2prompt.maxTotalBytes.": "La vista previa incluye {0} archivos. Quedaron {1} fuera porque el prompt es demasiado grande. Cambia files2prompt.maxTotalBytes.",
   "Preview includes {0} files. {1} were left out because the file limit was reached. Change files2prompt.maxFiles.": "La vista previa incluye {0} archivos. Quedaron {1} fuera porque se alcanzó el límite de archivos. Cambia files2prompt.maxFiles.",
   "Preview includes {0} files. {1} were left out.": "La vista previa incluye {0} archivos. Quedaron {1} fuera.",
-  "Show details": "Ver detalles"
+  "Show details": "Ver detalles",
+  "Git changes · {0} ({1} repositories)": "Cambios de Git · {0} ({1} repositorios)",
+  "{0}. Expand to review each changed file.": "{0}. Expande para revisar cada archivo cambiado.",
+  "Added": "Agregado",
+  "Deleted": "Eliminado",
+  "Renamed": "Renombrado",
+  "Submodule": "Submódulo",
+  "Modified": "Modificado",
+  "{0} in the Git changes": "{0} en los cambios de Git"
 }
