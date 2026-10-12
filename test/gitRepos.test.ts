@@ -17,8 +17,7 @@ test('discovery keeps repositories and submodules, and skips an excluded worktre
         branch: 'main'
       },
       {
-        rootPath:
-          '/ws/launcher/launcher/web/.worktrees/feature-structure-01',
+        rootPath: '/ws/launcher/launcher/web/.worktrees/feature-structure-01',
         branch: 'feature-structure-01'
       }
     ],

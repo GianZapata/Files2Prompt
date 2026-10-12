@@ -3,9 +3,6 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { fillChangeDiff } from './gitDiff';
-import { languageIdFor, type OutputFormat } from './promptFormats';
-import { binaryExtensions } from './ignore/builtInPatterns';
 import { buildPrompt } from './buildPrompt';
 import { createCopyGate } from './copyGate';
 import {
@@ -14,6 +11,7 @@ import {
   filterByExtensions
 } from './extensionFilter';
 import { FileTreeProvider } from './fileTreeProvider';
+import { fillChangeDiff } from './gitDiff';
 import {
   discoverRepositories,
   gitUnavailableMessage,
@@ -21,6 +19,7 @@ import {
   recordsFromGitApi,
   type GitApiLike
 } from './gitRepos';
+import { binaryExtensions } from './ignore/builtInPatterns';
 import {
   dedupeResolved,
   filesSelectedByFolderAsync
@@ -30,6 +29,7 @@ import {
   formatOperationReport,
   isEmptySelection
 } from './operationReport';
+import { languageIdFor, type OutputFormat } from './promptFormats';
 import {
   createDetailsSource,
   createPreviewSource,
@@ -1418,6 +1418,7 @@ const confirmExcluded = async (
   const count = fs.lstatSync(folderPath).isDirectory()
     ? await provider.countIfForced(folderPath, root)
     : 1;
+
   if (!prompt.confirm) {
     provider.addForcedRoot(root);
 

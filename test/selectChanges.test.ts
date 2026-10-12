@@ -70,6 +70,10 @@ test('uncommitted changes keep deletions for the diff and check only live files'
   );
   assert.deepEqual(
     applyChangeSelection(['launcher/api/README.md'], changes, 'add'),
-    ['launcher/api/README.md', 'launcher/api/app/Foo.php', 'launcher/api/app/New.php']
+    [
+      'launcher/api/README.md',
+      'launcher/api/app/Foo.php',
+      'launcher/api/app/New.php'
+    ]
   );
 });

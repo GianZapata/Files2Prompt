@@ -23,9 +23,18 @@ test('status text includes git changes and a readable breakdown', () => {
 });
 
 test('ignored-folder confirmation can be skipped for the project', () => {
-  assert.equal(shouldConfirmIgnored({ setting: true, remembered: false }), true);
-  assert.equal(shouldConfirmIgnored({ setting: true, remembered: true }), false);
-  assert.equal(shouldConfirmIgnored({ setting: false, remembered: false }), false);
+  assert.equal(
+    shouldConfirmIgnored({ setting: true, remembered: false }),
+    true
+  );
+  assert.equal(
+    shouldConfirmIgnored({ setting: true, remembered: true }),
+    false
+  );
+  assert.equal(
+    shouldConfirmIgnored({ setting: false, remembered: false }),
+    false
+  );
 });
 
 test('over-limit notice names the setting and hides internal codes', () => {

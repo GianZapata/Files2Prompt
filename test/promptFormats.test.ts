@@ -18,7 +18,9 @@ test('markdown fence is longer than the longest backtick run', () => {
 test('plain text separates files by path', () => {
   const rendered = renderPrompt('plain', {
     files: [{ name: 'src/a.ts', content: 'export const a = 1;' }],
-    changes: [{ repo: 'api', path: 'src/a.ts', status: 'modified', diff: 'diff' }]
+    changes: [
+      { repo: 'api', path: 'src/a.ts', status: 'modified', diff: 'diff' }
+    ]
   });
 
   assert.match(rendered, /--- src\/a.ts ---/);

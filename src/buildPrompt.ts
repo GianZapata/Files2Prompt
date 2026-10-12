@@ -1,10 +1,10 @@
 import type { IgnoreDecision } from './ignore/ignoreReason';
+import type { PromptChangeEntry, PromptFile } from './promptXml';
 
 import fs from 'fs';
 import path from 'path';
 
 import { renderPrompt, type OutputFormat } from './promptFormats';
-import type { PromptChangeEntry, PromptFile } from './promptXml';
 
 export type CopyStop =
   'completed' | 'user-cancelled' | 'file-budget' | 'total-bytes';
@@ -59,7 +59,6 @@ export const buildPrompt = async (
       changes: input.changes
     });
   const empty = rendered([]);
-  let runningBytes = Buffer.byteLength(empty);
 
   if (Buffer.byteLength(empty) > input.maxTotalBytes) {
     return finish(
@@ -160,7 +159,6 @@ export const buildPrompt = async (
       );
     }
 
-    runningBytes = Buffer.byteLength(nextXml);
     included.push({ name, content });
   }
 

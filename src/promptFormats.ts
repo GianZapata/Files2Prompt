@@ -1,4 +1,8 @@
-import { serializePrompt, type PromptChangeEntry, type PromptFile } from './promptXml';
+import {
+  serializePrompt,
+  type PromptChangeEntry,
+  type PromptFile
+} from './promptXml';
 
 export type OutputFormat = 'xml' | 'markdown' | 'plain';
 
