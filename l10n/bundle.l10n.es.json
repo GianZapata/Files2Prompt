@@ -67,5 +67,7 @@
   "XML": "XML",
   "Markdown": "Markdown",
   "Plain text": "Texto plano",
-  "Choose the output format": "Elige el formato de salida"
+  "Choose the output format": "Elige el formato de salida",
+  "{0}, scope {1}. Expand to review changed files.": "{0}, alcance {1}. Expande para revisar los archivos cambiados.",
+  "{0}, {1}": "{0}, {1}"
 }
