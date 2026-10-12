@@ -2,6 +2,7 @@ export const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 
 export type DiffReader = {
   diffWithHEAD: (filePath: string) => Promise<string>;
+  diffWith?: (ref: string, filePath: string) => Promise<string>;
   diffIndexWithHEAD: (filePath: string) => Promise<string>;
   diffBetween: (from: string, to: string, filePath: string) => Promise<string>;
   getMergeBase: (base: string, head: string) => Promise<string | undefined>;
@@ -36,7 +37,7 @@ export const fillChangeDiff = async (
       return { diff: newFileDiff(change.path, content) };
     }
 
-    return { diff: await reader.diffWithHEAD(change.path) };
+    return { diff: await reader.diffWith?.('HEAD', change.path) };
   }
 
   if (scope === 'commit') {

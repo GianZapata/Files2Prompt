@@ -13,6 +13,11 @@ const reader = (): DiffReader & { calls: string[] } => {
 
       return `diff work ${filePath}`;
     },
+    diffWith: async (ref, filePath) => {
+      calls.push(`with:${ref}:${filePath}`);
+
+      return `diff ${ref} ${filePath}`;
+    },
     diffIndexWithHEAD: async filePath => {
       calls.push(`index:${filePath}`);
 
@@ -32,6 +37,40 @@ const reader = (): DiffReader & { calls: string[] } => {
     readFile: async () => 'hello\n'
   };
 };
+
+test('uncommitted diff keeps staged and unstaged hunks', async () => {
+  const api = reader();
+
+  api.diffWithHEAD = async filePath => {
+    api.calls.push(`work:${filePath}`);
+
+    return filePath === 'staged.ts' ? '' : 'unstaged only';
+  };
+  api.diffWith = async (ref, filePath) => {
+    api.calls.push(`with:${ref}:${filePath}`);
+
+    return filePath === 'staged.ts'
+      ? 'staged hunk'
+      : 'staged hunk\nunstaged hunk';
+  };
+
+  const stagedOnly = await fillChangeDiff(
+    api,
+    { path: 'staged.ts', status: 'modified' },
+    'uncommitted'
+  );
+  const mixed = await fillChangeDiff(
+    api,
+    { path: 'mixed.ts', status: 'modified' },
+    'uncommitted'
+  );
+
+  assert.match(stagedOnly.diff ?? '', /staged hunk/);
+  assert.match(mixed.diff ?? '', /staged hunk/);
+  assert.match(mixed.diff ?? '', /unstaged hunk/);
+  assert.equal(api.calls.includes('work:staged.ts'), false);
+  assert.equal(api.calls.includes('with:HEAD:mixed.ts'), true);
+});
 
 test('four scopes produce a non-empty diff', async () => {
   const api = reader();
@@ -75,7 +114,7 @@ test('four scopes produce a non-empty diff', async () => {
   );
 
   assert.match(staged.diff ?? '', /diff index a.ts/);
-  assert.match(working.diff ?? '', /diff work b.ts/);
+  assert.match(working.diff ?? '', /diff HEAD b.ts/);
   assert.match(untracked.diff ?? '', /new file mode/);
   assert.match(commit.diff ?? '', /diff parent abc d.ts/);
   assert.match(first.diff ?? '', new RegExp(EMPTY_TREE));

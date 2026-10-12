@@ -997,6 +997,10 @@ const selectGitChanges = async (
       getAPI: (version: 1) => GitApiLike & {
         repositories: Array<
           GitApiLike['repositories'][number] & {
+            diffWith?: (
+              ref: string,
+              path: string
+            ) => Promise<string | unknown[]>;
             diffWithHEAD?: (path?: string) => Promise<string | unknown[]>;
             diffBetween?: (
               ref1: string,
@@ -1165,6 +1169,10 @@ const changesFromRepository = async (
       workingTreeChanges?: GitStatusChange[];
       refs?: Array<{ name?: string }>;
     };
+    diffWith?: (
+      ref: string,
+      filePath: string
+    ) => Promise<string | unknown[]>;
     diffWithHEAD?: (filePath?: string) => Promise<string | unknown[]>;
     diffIndexWithHEAD?: (filePath?: string) => Promise<string | unknown[]>;
     diffBetween?: (
@@ -1299,6 +1307,8 @@ const changesFromRepository = async (
   const asText = (value: string | unknown[] | undefined) =>
     typeof value === 'string' ? value : '';
   const reader = {
+    diffWith: async (ref: string, filePath: string) =>
+      asText(await repository.diffWith?.(ref, filePath)),
     diffWithHEAD: async (filePath: string) =>
       asText(await repository.diffWithHEAD?.(filePath)),
     diffIndexWithHEAD: async (filePath: string) =>
