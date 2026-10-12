@@ -100,6 +100,25 @@ test('cancel keeps a non-empty clipboard and does not write', async () => {
   assert.equal(board.writes.length, 0);
 });
 
+test('copy writes when the prompt has only git changes', async () => {
+  const gate = createCopyGate();
+  const board = clipboard();
+  const xml = '<files><changes repo="api"></changes></files>';
+  const result = await runCopy({
+    gate,
+    clipboard: board,
+    summarize: built => built,
+    build: async () => ({
+      ...completed(xml),
+      included: []
+    }),
+    withProgress: work => work(() => false)
+  });
+
+  assert.equal(result.wrote, true);
+  assert.equal(board.read(), xml);
+});
+
 test('preview does not write the clipboard', async () => {
   const board = clipboard('SENTINEL');
   const result = await runPreview({

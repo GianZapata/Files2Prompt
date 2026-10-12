@@ -6,8 +6,34 @@ import {
   changeBadge,
   changesNodeLabel,
   changesForScope,
+  mergeChanges,
   pathsToCheck
 } from '../src/selectChanges';
+
+test('adding changes merges by repository and path', () => {
+  const merged = mergeChanges(
+    [
+      {
+        repo: 'api',
+        path: 'api/a.ts',
+        status: 'modified',
+        diff: 'old'
+      }
+    ],
+    [
+      {
+        repo: 'api',
+        path: 'api/a.ts',
+        status: 'modified',
+        diff: 'new'
+      },
+      { repo: 'web', path: 'web/b.ts', status: 'added', diff: 'add' }
+    ]
+  );
+
+  assert.equal(merged.length, 2);
+  assert.equal(merged.find(change => change.path === 'api/a.ts')?.diff, 'new');
+});
 
 test('git changes node names the count and badges each status', () => {
   assert.equal(changesNodeLabel(4, 2), 'Git changes · 4 (2 repositories)');

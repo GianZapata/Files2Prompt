@@ -99,6 +99,19 @@ export const pathsToCheck = (changes: PromptChange[]) =>
     .filter(change => change.status === 'added' || change.status === 'modified')
     .map(change => change.path);
 
+export const mergeChanges = (
+  current: PromptChange[],
+  next: PromptChange[]
+) => {
+  const merged = new Map<string, PromptChange>();
+
+  for (const change of [...current, ...next]) {
+    merged.set(`${change.repo}\0${change.path}`, change);
+  }
+
+  return [...merged.values()];
+};
+
 export const applyChangeSelection = (
   current: string[],
   changes: PromptChange[],

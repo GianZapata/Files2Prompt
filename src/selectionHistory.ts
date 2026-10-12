@@ -4,15 +4,27 @@ export type StoredForcedRoot = {
   sourceFile: string;
 };
 
+export type StoredPromptChange = {
+  repo: string;
+  path: string;
+  status: 'added' | 'modified' | 'deleted' | 'renamed' | 'submodule';
+  diff?: string;
+};
+
 export type SelectionSnapshot = {
   files: string[];
   forcedRoots: StoredForcedRoot[];
+  promptChanges: StoredPromptChange[];
 };
 
 const asSnapshot = (value: string[] | SelectionSnapshot): SelectionSnapshot =>
   Array.isArray(value)
-    ? { files: [...value], forcedRoots: [] }
-    : { files: [...value.files], forcedRoots: [...value.forcedRoots] };
+    ? { files: [...value], forcedRoots: [], promptChanges: [] }
+    : {
+        files: [...value.files],
+        forcedRoots: [...value.forcedRoots],
+        promptChanges: [...(value.promptChanges ?? [])]
+      };
 
 const sameSnapshot = (left: SelectionSnapshot, right: SelectionSnapshot) => {
   const files =
@@ -21,7 +33,15 @@ const sameSnapshot = (left: SelectionSnapshot, right: SelectionSnapshot) => {
     [...left.forcedRoots.map(root => root.relativePath)].sort().join('\0') ===
     [...right.forcedRoots.map(root => root.relativePath)].sort().join('\0');
 
-  return files && roots;
+  const changes =
+    [...left.promptChanges.map(change => `${change.repo}:${change.path}`)]
+      .sort()
+      .join('\0') ===
+    [...right.promptChanges.map(change => `${change.repo}:${change.path}`)]
+      .sort()
+      .join('\0');
+
+  return files && roots && changes;
 };
 
 export const createSelectionHistory = (

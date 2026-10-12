@@ -44,6 +44,7 @@ import {
   changeStatusLabel,
   changesForScope,
   mapGitStatus,
+  mergeChanges,
   type ChangeScope,
   type PromptChange,
   type RawGitChange
@@ -177,7 +178,10 @@ export function activate(context: vscode.ExtensionContext) {
       filePaths: string[],
       includeSystemMessage = true
     ) => {
-      if (isEmptySelection(filePaths, fileTreeProvider.omittedFolders())) {
+      if (
+        isEmptySelection(filePaths, fileTreeProvider.omittedFolders()) &&
+        fileTreeProvider.promptChangeList().length === 0
+      ) {
         vscode.window.showWarningMessage('No files selected.');
 
         return;
@@ -335,7 +339,8 @@ export function activate(context: vscode.ExtensionContext) {
     );
     const currentSnapshot = (): SelectionSnapshot => ({
       files: fileTreeProvider.getCheckedFiles(),
-      forcedRoots: fileTreeProvider.forcedRootList()
+      forcedRoots: fileTreeProvider.forcedRootList(),
+      promptChanges: fileTreeProvider.promptChangeList()
     });
     const selectionItem = vscode.window.createStatusBarItem(
       vscode.StatusBarAlignment.Left,
@@ -440,6 +445,7 @@ export function activate(context: vscode.ExtensionContext) {
         if (previousSelection) {
           await saveHistory();
           fileTreeProvider.setForcedRoots(previousSelection.forcedRoots);
+          fileTreeProvider.setPromptChanges(previousSelection.promptChanges);
           await fileTreeProvider.setCheckedFiles(previousSelection.files);
         } else {
           vscode.window.showWarningMessage(
@@ -453,6 +459,7 @@ export function activate(context: vscode.ExtensionContext) {
         if (nextSelection) {
           await saveHistory();
           fileTreeProvider.setForcedRoots(nextSelection.forcedRoots);
+          fileTreeProvider.setPromptChanges(nextSelection.promptChanges);
           await fileTreeProvider.setCheckedFiles(nextSelection.files);
         } else {
           vscode.window.showWarningMessage(
@@ -655,7 +662,14 @@ export function activate(context: vscode.ExtensionContext) {
           await fileTreeProvider.setCheckedFiles(
             next.map(filePath => path.join(workspaceRoot, filePath))
           );
-          fileTreeProvider.setPromptChanges(applied.changes);
+          fileTreeProvider.setPromptChanges(
+            applied.mode === 'add'
+              ? mergeChanges(
+                  fileTreeProvider.promptChangeList(),
+                  applied.changes
+                )
+              : applied.changes
+          );
           history.record(currentSnapshot());
           await saveHistory();
           scheduleDescription();

@@ -30,7 +30,7 @@ export const runCopy = async (input: {
     const built = await input.withProgress(cancelled => input.build(cancelled));
     const summary = input.summarize(built);
 
-    if (summary.stop === 'user-cancelled' || summary.included.length === 0) {
+    if (summary.stop === 'user-cancelled' || summary.xml.length === 0) {
       return { started: true, wrote: false, summary };
     }
 

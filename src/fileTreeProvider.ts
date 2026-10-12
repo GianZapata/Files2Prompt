@@ -110,6 +110,8 @@ export class FileTreeProvider
     this.forcedRoots = [];
     this.reloadRules();
     this.checkedItems.clear();
+    this.promptChanges = [];
+    this.decorationEmitter.fire(undefined);
     this.refresh();
   }
 
