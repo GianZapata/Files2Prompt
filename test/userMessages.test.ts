@@ -4,13 +4,9 @@ import test from 'node:test';
 import path from 'path';
 
 import { createDetailsSource, createPreviewSource } from '../src/promptPreview';
-import {
-  copyStatusMessage,
-  pasteStatusMessage,
-  previewStatusMessage
-} from '../src/userMessages';
+import { copyStatusMessage, previewStatusMessage } from '../src/userMessages';
 
-test('copy and paste notices do not show internal stop codes', () => {
+test('copy notices do not show internal stop codes', () => {
   const copy = copyStatusMessage({
     stop: 'file-budget',
     included: 1,
@@ -18,12 +14,9 @@ test('copy and paste notices do not show internal stop codes', () => {
     omittedFolders: 0,
     pending: 4
   });
-  const paste = pasteStatusMessage('unsaved-conflict');
 
   assert.equal(copy.message.includes('file-budget'), false);
-  assert.equal(paste.message.includes('unsaved-conflict'), false);
   assert.match(copy.message, /file limit/);
-  assert.match(paste.message, /unsaved changes/);
 });
 
 test('a partial preview says how many files were left out', () => {
@@ -85,17 +78,8 @@ test('the view title keeps four codicon actions and a select submenu', () => {
     ]
   );
 
-  const paste = manifest.contributes.commands.find(
-    item => item.command === 'files2prompt.pasteXml'
-  );
-
-  assert.equal(typeof paste?.icon === 'string' ? paste.icon : '', '$(clippy)');
   assert.equal(
-    title.some(
-      item =>
-        item.command === 'files2prompt.pasteXml' &&
-        item.group?.startsWith('navigation')
-    ),
+    title.some(item => item.command === 'files2prompt.pasteXml'),
     false
   );
 });

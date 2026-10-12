@@ -3,7 +3,6 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { applyPastedXml } from './applyPastedXml';
 import { fillChangeDiff } from './gitDiff';
 import { binaryExtensions } from './ignore/builtInPatterns';
 import { buildPrompt } from './buildPrompt';
@@ -60,7 +59,6 @@ import {
 } from './selectionHistory';
 import {
   copyStatusMessage,
-  pasteStatusMessage,
   previewStatusMessage
 } from './userMessages';
 
@@ -586,11 +584,6 @@ export function activate(context: vscode.ExtensionContext) {
             });
         }
       ),
-      vscode.commands.registerCommand('files2prompt.pasteXml', async () => {
-        const clipboardContent = await vscode.env.clipboard.readText();
-
-        await processXmlContent(clipboardContent, details);
-      }),
       vscode.commands.registerCommand(
         'files2prompt.copyOpenFiles',
         async () => {
@@ -1399,166 +1392,3 @@ const openTextFor = (filePath: string) => {
 
   return document ? document.getText() : undefined;
 };
-
-async function processXmlContent(
-  xmlContent: string,
-  details: vscode.OutputChannel
-) {
-  const workspaceRoot = vscode.workspace.workspaceFolders![0].uri.fsPath;
-  const applied = await applyPastedXml({
-    xml: xmlContent,
-    workspaceRoot,
-    isDirty: absolutePath =>
-      vscode.workspace.textDocuments.some(
-        document =>
-          !document.isUntitled &&
-          document.isDirty &&
-          document.uri.fsPath === absolutePath
-      ),
-    exists: fs.existsSync,
-    mkdir: async () => undefined,
-    write: async (filePath, content) => {
-      const uri = vscode.Uri.file(filePath);
-      const edit = new vscode.WorkspaceEdit();
-
-      if (fs.existsSync(filePath)) {
-        const document = await vscode.workspace.openTextDocument(uri);
-        const end = document.positionAt(document.getText().length);
-
-        edit.replace(
-          uri,
-          new vscode.Range(new vscode.Position(0, 0), end),
-          content
-        );
-      } else {
-        edit.createFile(uri, {
-          overwrite: false,
-          contents: Buffer.from(content, 'utf8')
-        });
-      }
-
-      const appliedEdit = await vscode.workspace.applyEdit(edit);
-
-      if (!appliedEdit) {
-        throw new Error('The editor rejected the paste.');
-      }
-
-      const savedDocument = await vscode.workspace.openTextDocument(uri);
-
-      if (savedDocument.isDirty) {
-        const saved = await savedDocument.save();
-
-        if (!saved) {
-          throw new Error('The pasted file could not be saved.');
-        }
-      }
-    },
-    read: filePath => fs.promises.readFile(filePath, 'utf8'),
-    confirm: async changes => {
-      const lines = [
-        ...changes.created.map(file => vscode.l10n.t('New: {0}', file)),
-        ...changes.modified.map(file => vscode.l10n.t('Modified: {0}', file))
-      ];
-      const apply = vscode.l10n.t('Apply');
-      const choice = await vscode.window.showWarningMessage(
-        vscode.l10n.t('Apply pasted files?\n{0}', lines.join('\n')),
-        { modal: true },
-        apply,
-        vscode.l10n.t('Cancel')
-      );
-
-      return choice === apply;
-    }
-  });
-
-  if (applied.reason !== 'ok' || !applied.written) {
-    const pasteStatus = pasteStatusMessage(applied.reason);
-
-    vscode.window.showErrorMessage(
-      vscode.l10n.t(pasteStatus.message, ...pasteStatus.args)
-    );
-
-    return;
-  }
-
-  const changedFiles = applied.written
-    .filter(file => file.existed)
-    .map(file => ({
-      path: file.relativePath,
-      uri: vscode.Uri.file(file.absolutePath)
-    }));
-  const newFiles = applied.written
-    .filter(file => !file.existed)
-    .map(file => ({
-      path: file.relativePath,
-      uri: vscode.Uri.file(file.absolutePath)
-    }));
-
-  if (changedFiles.length > 0 || newFiles.length > 0) {
-    // Create quick pick items for all changed/new files
-    const quickPickItems: Array<vscode.QuickPickItem & { uri: vscode.Uri }> = [
-      ...changedFiles.map(f => ({
-        label: `📝 ${f.path}`,
-        description: 'Modified',
-        uri: f.uri
-      })),
-      ...newFiles.map(f => ({
-        label: `✨ ${f.path}`,
-        description: 'New',
-        uri: f.uri
-      }))
-    ];
-
-    // Show information message with multiple actions
-    vscode.window
-      .showInformationMessage(
-        `Files have been updated successfully. ${changedFiles.length} modified, ${newFiles.length} new.`,
-        'Show Details',
-        'Open Changed Files'
-      )
-      .then(async selection => {
-        if (selection === 'Show Details') {
-          // Create and show output channel with details and clickable links
-          details.clear();
-
-          if (changedFiles.length > 0) {
-            details.appendLine('Modified files:');
-            changedFiles.forEach(file => {
-              details.appendLine(`${file.path}`);
-            });
-            details.appendLine('');
-          }
-
-          if (newFiles.length > 0) {
-            details.appendLine('New files:');
-            newFiles.forEach(file => {
-              details.appendLine(`${file.path}`);
-            });
-          }
-
-          details.show(true);
-        } else if (selection === 'Open Changed Files') {
-          // Show quick pick with all changed files
-          const selected = await vscode.window.showQuickPick(quickPickItems, {
-            placeHolder: 'Select files to open',
-            canPickMany: true
-          });
-
-          if (selected) {
-            // Open each selected file
-            for (const item of selected) {
-              const uri = item.uri;
-
-              if (uri) {
-                const doc = await vscode.workspace.openTextDocument(uri);
-
-                await vscode.window.showTextDocument(doc, { preview: false });
-              }
-            }
-          }
-        }
-      });
-  } else {
-    vscode.window.showInformationMessage('No files were changed.');
-  }
-}

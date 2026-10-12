@@ -1,5 +1,3 @@
-import { XMLParser } from 'fast-xml-parser';
-
 export type PromptFile = {
   name: string;
   content: string;
@@ -23,20 +21,6 @@ export type PromptPayload = {
   files: PromptFile[];
   changes?: PromptChangeEntry[];
 };
-
-export type ParsePromptResult =
-  | { ok: true; payload: PromptPayload }
-  | {
-      ok: false;
-      reason: 'invalid' | 'empty' | 'missing-cdata';
-      paths: string[];
-    };
-
-const parser = new XMLParser({
-  ignoreAttributes: false,
-  cdataPropName: '__cdata',
-  trimValues: false
-});
 
 const escapeAttribute = (value: string) =>
   value
@@ -113,92 +97,4 @@ export const serializeChanges = (changes: PromptChangeEntry[]) => {
       return `<changes ${attrs}>${body}</changes>`;
     })
     .join('');
-};
-
-const textOf = (node: unknown): string => {
-  if (typeof node === 'string') {
-    return node;
-  }
-
-  if (Array.isArray(node)) {
-    return node.map(textOf).join('');
-  }
-
-  if (node && typeof node === 'object') {
-    const record = node as { __cdata?: unknown; '#text'?: unknown };
-
-    if (record.__cdata !== undefined) {
-      return textOf(record.__cdata);
-    }
-
-    if (record['#text'] !== undefined) {
-      return textOf(record['#text']);
-    }
-  }
-
-  return '';
-};
-
-const isEntirelyCdata = (file: Record<string, unknown>) => {
-  const keys = Object.keys(file).filter(key => key !== '@_name');
-
-  if (keys.length === 0 || keys.some(key => key !== '__cdata')) {
-    return false;
-  }
-
-  return file.__cdata !== undefined;
-};
-
-export const parsePrompt = (xml: string): ParsePromptResult => {
-  let parsed: {
-    files?: {
-      file?: unknown;
-      systemMessage?: unknown;
-    };
-  };
-
-  try {
-    parsed = parser.parse(xml);
-  } catch {
-    return { ok: false, reason: 'invalid', paths: [] };
-  }
-
-  if (!parsed?.files?.file) {
-    return { ok: false, reason: 'empty', paths: [] };
-  }
-
-  const rawFiles = Array.isArray(parsed.files.file)
-    ? parsed.files.file
-    : [parsed.files.file];
-  const missing: string[] = [];
-  const files: PromptFile[] = [];
-
-  for (const raw of rawFiles) {
-    const file = (raw ?? {}) as Record<string, unknown>;
-    const name = typeof file['@_name'] === 'string' ? file['@_name'] : '';
-
-    if (!name || !isEntirelyCdata(file)) {
-      missing.push(name || '(unnamed)');
-
-      continue;
-    }
-
-    files.push({ name, content: textOf(file.__cdata) });
-  }
-
-  if (missing.length > 0) {
-    return { ok: false, reason: 'missing-cdata', paths: missing };
-  }
-
-  const systemMessage = parsed.files.systemMessage
-    ? textOf(parsed.files.systemMessage)
-    : undefined;
-
-  return { ok: true, payload: { systemMessage, files } };
-};
-
-export const parseFiles = (xml: string) => {
-  const parsed = parsePrompt(xml);
-
-  return parsed.ok ? parsed.payload.files : undefined;
 };

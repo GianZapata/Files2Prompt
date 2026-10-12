@@ -20,7 +20,6 @@ Copy file contents in XML format for LLM prompts effortlessly.
 - **Git Ignore Support**: Automatically ignores files and directories specified in your .gitignore.
 - **Prompt Ignore**: `.promptignore` controls what is copied into an LLM prompt. It does not replace `.gitignore`. A `!` rule cannot bring back a file while its parent directory stays excluded.
 - **Selection History**: Quickly switch between sets of previously selected files.
-- **Paste XML Response**: If XML is pasted into the editor in the same format as the copied output, the files will automatically be updated or created in your workspace. This allows for rapid iteration. See [recommended workflow](#recommended-workflow) for more information.
 
 ## Installation
 
@@ -72,18 +71,6 @@ Install this fork from a local VSIX only. Do not install `thomas-mckanna.files2p
 - To clear all file selections, click the Clear Selection button or use the keyboard shortcut:
   - Windows/Linux: `Ctrl+Shift+X`
   - macOS: `Cmd+Shift+X`
-
-### Paste XML Response:
-
-- To update or create files in your workspace from LLM-outputted XML content, use the following keyboard shortcut while the extension UI is active:
-  - Windows/Linux: `Ctrl+V`
-  - macOS: `Cmd+V`
-
-It is recommended that if you use this feature you have a custom system message (see section below) to ensure that the XML content is correctly formatted. Here is an example of such a system message:
-
-```
-Always provide full code listings. You only need to include files that have changed. I repeat, ALWAYS provide full code listings. Your output should be in XML format (in a code block) that mirrors the input format (that is, `<files>` element with a list of `<file>` in the interior).
-```
 
 ### Include System Message:
 
@@ -163,22 +150,14 @@ With more than one repository, pick which ones to include. Then add to the selec
 </files>
 ```
 
-Paste XML ignores `<changes>` and writes only `<file>` entries. A submodule pointer change uses `status="submodule"` with `from` and `to`.
+A submodule pointer change uses `status="submodule"` with `from` and `to`.
 
 ## Recommended Workflow
 
-The Files2Prompt extension allows for a rapid iterative workflow when working with an LLM. It is first recommended that you set the system message setting to that described [above](#include-system-message). This will ensure that the XML content is correctly formatted when pasted back into the editor.
+Copy the selected files into the LLM, then edit the project yourself from the reply.
 
-Next, create a file called `prompt` in the root of your repository. You will want to add this to `.gitignore`. This file acts as a scratchpad for you latest prompt.
-
-Optionally, create a directory called `docs` (also in `.gitignore`) where you can paste documentation into files for any technologies or code that is related to your project.
-
-Then, a single iteration of the workflow might look like this:
-
-1. Alter the `prompt` file with you desired next state.
-2. Open the Files2Prompt view and select `prompt` and any other files that are relevant to your prompt. Also select any relevant documentation files from the `docs` directory.
-3. Copy your XML prompt with the keyboard shortcut or button.
-4. Paste the content into the LLM and submit.
-5. Copy the LLM contents, which should be in XML format if you followed the system message instructions.
-6. With the Files2Prompt view open, paste the LLM content with the keyboard shortcut or press the "play" icon in the UI. This will update the file contents or make brand new files.
-7. Loop back to step 1.
+1. Open the Files view and select the files that belong in the prompt.
+2. Copy them with the button or the keyboard shortcut.
+3. Paste that prompt into the LLM and submit.
+4. Apply the reply in the editor.
+5. Repeat.

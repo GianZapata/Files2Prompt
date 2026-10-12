@@ -72,11 +72,6 @@
         "icon": "$(arrow-right)"
       },
       {
-        "command": "files2prompt.pasteXml",
-        "title": "%files2prompt.pasteXml.title%",
-        "icon": "$(clippy)"
-      },
-      {
         "command": "files2prompt.copyOpenFiles",
         "title": "%files2prompt.copyOpenFiles.title%",
         "icon": "$(files)"
@@ -174,11 +169,6 @@
           "group": "navigation@4"
         },
         {
-          "command": "files2prompt.pasteXml",
-          "when": "view == files2PromptView",
-          "group": "1_overflow@1"
-        },
-        {
           "command": "files2prompt.goBack",
           "when": "view == files2PromptView",
           "group": "1_overflow@2"
@@ -251,13 +241,6 @@
         "mac": "cmd+shift+x",
         "when": "focusedView == 'files2PromptView'",
         "title": "%files2prompt.clearChecks.title%"
-      },
-      {
-        "command": "files2prompt.pasteXml",
-        "key": "ctrl+v",
-        "mac": "cmd+v",
-        "when": "focusedView == 'files2PromptView'",
-        "title": "%files2prompt.pasteXml.title%"
       },
       {
         "command": "files2prompt.copyOpenFiles",
