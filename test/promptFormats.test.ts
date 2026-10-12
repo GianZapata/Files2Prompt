@@ -70,7 +70,8 @@ test('binary and empty diffs are notes, not code blocks', () => {
   assert.match(markdown, /### empty.ts \(modified\)\n_No diff._/);
   assert.match(plain, /=== DIFF logo.png \(modified, binary\) ===/);
   assert.equal(plain.includes('should-not-appear'), false);
-  assert.match(plain, /=== DIFF empty.ts \(modified\) ===\n_No diff._/);
+  assert.match(plain, /=== DIFF empty.ts \(modified\) ===\n\(no diff\)/);
+  assert.equal(plain.includes('_No diff._'), false);
   assert.equal(plain.includes('```'), false);
 });
 

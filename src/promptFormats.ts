@@ -113,7 +113,7 @@ const plainChange = (change: PromptChangeEntry) => {
   const heading = `=== DIFF ${change.path} (${status}) ===`;
 
   if (!hasDiff(change.diff)) {
-    return `${heading}\n_No diff._`;
+    return `${heading}\n(no diff)`;
   }
 
   return `${heading}\n${change.diff ?? ''}`;
