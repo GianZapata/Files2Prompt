@@ -63,5 +63,9 @@
   "Submodule": "Submódulo",
   "Modified": "Modificado",
   "{0} in the Git changes": "{0} en los cambios de Git",
-  "Include and do not ask again in this project": "Incluir y no volver a preguntar en este proyecto"
+  "Include and do not ask again in this project": "Incluir y no volver a preguntar en este proyecto",
+  "XML": "XML",
+  "Markdown": "Markdown",
+  "Plain text": "Texto plano",
+  "Choose the output format": "Elige el formato de salida"
 }

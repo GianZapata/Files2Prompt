@@ -12,14 +12,14 @@ test('status text includes git changes and a readable breakdown', () => {
     fileCount: 12,
     byteLabel: '4.2 KB',
     changeCount: 3,
-    repositoryCount: 2
+    repositoryCount: 2,
+    format: 'markdown'
   });
 
-  assert.match(status.text, /12/);
-  assert.match(status.text, /4\.2 KB/);
-  assert.match(status.text, /3/);
+  assert.match(status.text, /12 files · 4\.2 KB · Markdown/);
   assert.match(status.tooltip, /2 repositories/);
-  assert.match(status.accessibility, /12 selected files/);
+  assert.match(status.tooltip, /Markdown/);
+  assert.match(status.accessibility, /Choose the output format/);
 });
 
 test('ignored-folder confirmation can be skipped for the project', () => {

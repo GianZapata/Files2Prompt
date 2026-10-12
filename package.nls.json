@@ -3,6 +3,7 @@
   "files2prompt.view.name": "Files",
   "files2prompt.welcome": "Open a folder to choose files for the prompt.\n[Open Folder](command:vscode.openFolder)",
   "files2prompt.refresh.title": "Refresh the file tree",
+  "files2prompt.chooseOutputFormat.title": "Choose output format",
   "files2prompt.copyFiles.title": "Copy selected files",
   "files2prompt.copyAs.title": "Copy as…",
   "files2prompt.copyAsXml.title": "XML",

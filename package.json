@@ -190,8 +190,12 @@
           "when": "view == files2PromptView",
           "group": "1_overflow@3"
         },
-        {
-          "command": "files2prompt.refresh",
+      {
+        "command": "files2prompt.chooseOutputFormat",
+        "title": "%files2prompt.chooseOutputFormat.title%"
+      },
+      {
+        "command": "files2prompt.refresh",
           "when": "view == files2PromptView",
           "group": "1_overflow@4"
         },

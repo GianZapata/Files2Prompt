@@ -1,20 +1,29 @@
+export const outputFormatLabel = (format: string) => {
+  if (format === 'markdown') {
+    return 'Markdown';
+  }
+
+  if (format === 'plain') {
+    return 'Plain text';
+  }
+
+  return 'XML';
+};
+
 export const selectionStatus = (input: {
   fileCount: number;
   byteLabel: string;
   changeCount: number;
   repositoryCount: number;
+  format: string;
 }) => {
-  const changes =
-    input.changeCount > 0 ? ` · $(git-compare) ${input.changeCount}` : '';
-  const tooltip =
-    input.changeCount > 0
-      ? `${input.fileCount} selected files, ${input.byteLabel}. ${input.changeCount} Git changes in ${input.repositoryCount} repositories.`
-      : `${input.fileCount} selected files, ${input.byteLabel}.`;
+  const formatLabel = outputFormatLabel(input.format);
+  const tooltip = `${input.fileCount} selected files, ${input.byteLabel}. ${input.changeCount} Git changes in ${input.repositoryCount} repositories. Output format: ${formatLabel}.`;
 
   return {
-    text: `$(files) ${input.fileCount} · ${input.byteLabel}${changes}`,
+    text: `$(files) ${input.fileCount} files · ${input.byteLabel} · ${formatLabel}`,
     tooltip,
-    accessibility: `${tooltip} Opens the prompt preview.`
+    accessibility: `${tooltip} Choose the output format.`
   };
 };
 

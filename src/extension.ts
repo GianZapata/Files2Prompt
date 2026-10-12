@@ -347,7 +347,7 @@ export function activate(context: vscode.ExtensionContext) {
       50
     );
 
-    selectionItem.command = 'files2prompt.previewPrompt';
+    selectionItem.command = 'files2prompt.chooseOutputFormat';
     selectionItem.name = 'Files2Prompt selection';
     let descriptionTimer: ReturnType<typeof setTimeout> | undefined;
     const scheduleDescription = () => {
@@ -363,7 +363,10 @@ export function activate(context: vscode.ExtensionContext) {
             fileCount: stats.count,
             byteLabel,
             changeCount: changes.length,
-            repositoryCount: new Set(changes.map(change => change.repo)).size
+            repositoryCount: new Set(changes.map(change => change.repo)).size,
+            format: vscode.workspace
+              .getConfiguration('files2prompt')
+              .get<string>('outputFormat', 'xml')
           });
 
           treeView.description = vscode.l10n.t(
@@ -433,6 +436,37 @@ export function activate(context: vscode.ExtensionContext) {
       });
 
     context.subscriptions.push(
+      vscode.commands.registerCommand(
+        'files2prompt.chooseOutputFormat',
+        async () => {
+          const xml = vscode.l10n.t('XML');
+          const markdown = vscode.l10n.t('Markdown');
+          const plain = vscode.l10n.t('Plain text');
+          const picked = await vscode.window.showQuickPick(
+            [
+              { label: xml, format: 'xml' },
+              { label: markdown, format: 'markdown' },
+              { label: plain, format: 'plain' }
+            ],
+            {
+              placeHolder: vscode.l10n.t('Choose the output format')
+            }
+          );
+
+          if (!picked) {
+            return;
+          }
+
+          await vscode.workspace
+            .getConfiguration('files2prompt')
+            .update(
+              'outputFormat',
+              picked.format,
+              vscode.ConfigurationTarget.Workspace
+            );
+          scheduleDescription();
+        }
+      ),
       vscode.commands.registerCommand('files2prompt.refresh', () =>
         fileTreeProvider.refresh()
       ),
