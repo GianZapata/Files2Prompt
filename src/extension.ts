@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { fillChangeDiff } from './gitDiff';
+import { languageIdFor, type OutputFormat } from './promptFormats';
 import { binaryExtensions } from './ignore/builtInPatterns';
 import { buildPrompt } from './buildPrompt';
 import { createCopyGate } from './copyGate';
@@ -77,10 +78,13 @@ export function activate(context: vscode.ExtensionContext) {
     const collectPrompt = (
       filePaths: string[],
       cancelled = () => false,
-      includeSystemMessage = true
+      includeSystemMessage = true,
+      format?: OutputFormat
     ) => {
       const config = vscode.workspace.getConfiguration('files2prompt');
       const diffMode = config.get<string>('diffMode', 'diffAndFiles');
+      const outputFormat =
+        format ?? config.get<OutputFormat>('outputFormat', 'xml');
 
       return buildPrompt({
         workspaceRoot,
@@ -96,9 +100,8 @@ export function activate(context: vscode.ExtensionContext) {
         maxTotalBytes: config.get<number>('maxTotalBytes', 8388608),
         maxFiles: config.get<number>('maxFiles', 5000),
         changes:
-          config.get<string>('diffMode', 'diffAndFiles') === 'filesOnly'
-            ? []
-            : fileTreeProvider.promptChangeList()
+          diffMode === 'filesOnly' ? [] : fileTreeProvider.promptChangeList(),
+        format: outputFormat
       });
     };
 
@@ -174,7 +177,8 @@ export function activate(context: vscode.ExtensionContext) {
 
     const copyCollected = async (
       filePaths: string[],
-      includeSystemMessage = true
+      includeSystemMessage = true,
+      format?: OutputFormat
     ) => {
       if (
         isEmptySelection(filePaths, fileTreeProvider.omittedFolders()) &&
@@ -225,7 +229,7 @@ export function activate(context: vscode.ExtensionContext) {
         },
         summarize: selectionSummary,
         build: cancelled =>
-          collectPrompt(filePaths, cancelled, includeSystemMessage),
+          collectPrompt(filePaths, cancelled, includeSystemMessage, format),
         withProgress: work =>
           vscode.window.withProgress(
             {
@@ -430,6 +434,19 @@ export function activate(context: vscode.ExtensionContext) {
         await saveHistory();
         await copyCollected(checkedFiles);
       }),
+      vscode.commands.registerCommand('files2prompt.copyAsXml', async () => {
+        await copyCollected(fileTreeProvider.getCheckedFiles(), true, 'xml');
+      }),
+      vscode.commands.registerCommand('files2prompt.copyAsMarkdown', async () => {
+        await copyCollected(
+          fileTreeProvider.getCheckedFiles(),
+          true,
+          'markdown'
+        );
+      }),
+      vscode.commands.registerCommand('files2prompt.copyAsPlain', async () => {
+        await copyCollected(fileTreeProvider.getCheckedFiles(), true, 'plain');
+      }),
       vscode.commands.registerCommand('files2prompt.clearChecks', async () => {
         history.record(currentSnapshot());
         fileTreeProvider.clearChecks();
@@ -560,7 +577,14 @@ export function activate(context: vscode.ExtensionContext) {
           previewEmitter.fire(previewUri);
           const document = await vscode.workspace.openTextDocument(previewUri);
 
-          await vscode.languages.setTextDocumentLanguage(document, 'xml');
+          await vscode.languages.setTextDocumentLanguage(
+            document,
+            languageIdFor(
+              vscode.workspace
+                .getConfiguration('files2prompt')
+                .get<OutputFormat>('outputFormat', 'xml')
+            )
+          );
           await vscode.window.showTextDocument(document, { preview: true });
           const reportId = rememberReport('preview', preview.summary, false);
           const report = detailBook.open(reportId) ?? '';

@@ -3,12 +3,8 @@ import type { IgnoreDecision } from './ignore/ignoreReason';
 import fs from 'fs';
 import path from 'path';
 
-import {
-  serializePrompt,
-  serializedFile,
-  type PromptChangeEntry,
-  type PromptFile
-} from './promptXml';
+import { renderPrompt, type OutputFormat } from './promptFormats';
+import type { PromptChangeEntry, PromptFile } from './promptXml';
 
 export type CopyStop =
   'completed' | 'user-cancelled' | 'file-budget' | 'total-bytes';
@@ -40,6 +36,7 @@ export type BuildPromptInput = {
   maxTotalBytes: number;
   maxFiles: number;
   changes?: PromptChangeEntry[];
+  format?: OutputFormat;
 };
 
 const relativeName = (workspaceRoot: string, filePath: string) =>
@@ -55,12 +52,14 @@ export const buildPrompt = async (
   const omittedFolders: string[] = [];
   const seen = new Set<string>();
 
-  const empty = serializePrompt({
-    systemMessage: input.systemMessage,
-    files: [],
-    changes: input.changes
-  });
-  let runningBytes = Buffer.byteLength(empty) - Buffer.byteLength('</files>');
+  const rendered = (files: PromptFile[]) =>
+    renderPrompt(input.format ?? 'xml', {
+      systemMessage: input.systemMessage,
+      files,
+      changes: input.changes
+    });
+  const empty = rendered([]);
+  let runningBytes = Buffer.byteLength(empty);
 
   if (Buffer.byteLength(empty) > input.maxTotalBytes) {
     return finish(
@@ -148,12 +147,9 @@ export const buildPrompt = async (
 
     const content =
       input.openText(normalized) ?? fs.readFileSync(normalized, 'utf8');
-    const addition = Buffer.byteLength(serializedFile({ name, content }));
+    const nextXml = rendered([...included, { name, content }]);
 
-    if (
-      runningBytes + addition + Buffer.byteLength('</files>') >
-      input.maxTotalBytes
-    ) {
+    if (Buffer.byteLength(nextXml) > input.maxTotalBytes) {
       return finish(
         'total-bytes',
         input,
@@ -164,7 +160,7 @@ export const buildPrompt = async (
       );
     }
 
-    runningBytes += addition;
+    runningBytes = Buffer.byteLength(nextXml);
     included.push({ name, content });
   }
 
@@ -182,7 +178,7 @@ const finish = (
   const xml =
     stop === 'user-cancelled'
       ? ''
-      : serializePrompt({
+      : renderPrompt(input.format ?? 'xml', {
           systemMessage: input.systemMessage,
           files: included,
           changes: input.changes

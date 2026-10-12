@@ -57,6 +57,18 @@
         "icon": "$(copy)"
       },
       {
+        "command": "files2prompt.copyAsXml",
+        "title": "%files2prompt.copyAsXml.title%"
+      },
+      {
+        "command": "files2prompt.copyAsMarkdown",
+        "title": "%files2prompt.copyAsMarkdown.title%"
+      },
+      {
+        "command": "files2prompt.copyAsPlain",
+        "title": "%files2prompt.copyAsPlain.title%"
+      },
+      {
         "command": "files2prompt.clearChecks",
         "title": "%files2prompt.clearChecks.title%",
         "icon": "$(clear-all)"
@@ -116,6 +128,10 @@
         "id": "files2prompt.select",
         "label": "%files2prompt.select.title%",
         "icon": "$(checklist)"
+      },
+      {
+        "id": "files2prompt.copyAs",
+        "label": "%files2prompt.copyAs.title%"
       }
     ],
     "menus": {
@@ -192,6 +208,11 @@
           "command": "files2prompt.copyOpenFiles",
           "when": "view == files2PromptView",
           "group": "1_overflow@6"
+        },
+        {
+          "submenu": "files2prompt.copyAs",
+          "when": "view == files2PromptView",
+          "group": "1_overflow@7"
         }
       ],
       "files2prompt.select": [
@@ -210,6 +231,20 @@
         {
           "command": "files2prompt.clearChecks",
           "group": "1_select@4"
+        }
+      ],
+      "files2prompt.copyAs": [
+        {
+          "command": "files2prompt.copyAsXml",
+          "group": "1_format@1"
+        },
+        {
+          "command": "files2prompt.copyAsMarkdown",
+          "group": "1_format@2"
+        },
+        {
+          "command": "files2prompt.copyAsPlain",
+          "group": "1_format@3"
         }
       ]
     },
@@ -280,6 +315,12 @@
           "type": "number",
           "default": 8388608,
           "description": "%files2prompt.maxTotalBytes.description%"
+        },
+        "files2prompt.outputFormat": {
+          "type": "string",
+          "enum": ["xml", "markdown", "plain"],
+          "default": "xml",
+          "description": "%files2prompt.outputFormat.description%"
         },
         "files2prompt.diffMode": {
           "type": "string",
