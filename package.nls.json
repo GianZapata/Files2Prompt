@@ -1,6 +1,7 @@
 {
   "files2prompt.container.title": "Files2Prompt Fork",
   "files2prompt.view.name": "Files",
+  "files2prompt.welcome": "Open a folder to choose files for the prompt.\n[Open Folder](command:vscode.openFolder)",
   "files2prompt.refresh.title": "Refresh the file tree",
   "files2prompt.copyFiles.title": "Copy selected files",
   "files2prompt.clearChecks.title": "Clear selection",

@@ -223,6 +223,13 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "files2PromptView",
+        "when": "workbenchState == empty",
+        "contents": "%files2prompt.welcome%"
+      }
+    ],
     "keybindings": [
       {
         "command": "files2prompt.refresh",
