@@ -128,10 +128,6 @@
         "id": "files2prompt.select",
         "label": "%files2prompt.select.title%",
         "icon": "$(checklist)"
-      },
-      {
-        "id": "files2prompt.copyAs",
-        "label": "%files2prompt.copyAs.title%"
       }
     ],
     "menus": {
@@ -208,11 +204,6 @@
           "command": "files2prompt.copyOpenFiles",
           "when": "view == files2PromptView",
           "group": "1_overflow@6"
-        },
-        {
-          "submenu": "files2prompt.copyAs",
-          "when": "view == files2PromptView",
-          "group": "1_overflow@7"
         }
       ],
       "files2prompt.select": [
@@ -225,26 +216,8 @@
           "group": "1_select@2"
         },
         {
-          "command": "files2prompt.selectChanges",
-          "group": "1_select@3"
-        },
-        {
           "command": "files2prompt.clearChecks",
-          "group": "1_select@4"
-        }
-      ],
-      "files2prompt.copyAs": [
-        {
-          "command": "files2prompt.copyAsXml",
-          "group": "1_format@1"
-        },
-        {
-          "command": "files2prompt.copyAsMarkdown",
-          "group": "1_format@2"
-        },
-        {
-          "command": "files2prompt.copyAsPlain",
-          "group": "1_format@3"
+          "group": "1_select@3"
         }
       ]
     },

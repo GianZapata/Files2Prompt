@@ -73,9 +73,20 @@ test('the view title keeps four codicon actions and a select submenu', () => {
     [
       'files2prompt.selectAll',
       'files2prompt.selectByExtension',
-      'files2prompt.selectChanges',
       'files2prompt.clearChecks'
     ]
+  );
+  assert.equal(
+    title.some(item => item.submenu === 'files2prompt.copyAs'),
+    false
+  );
+  assert.equal(
+    manifest.contributes.submenus?.some(item => item.id === 'files2prompt.copyAs'),
+    false
+  );
+  assert.equal(
+    navigation.some(item => item.command === 'files2prompt.selectChanges'),
+    true
   );
 
   assert.equal(
