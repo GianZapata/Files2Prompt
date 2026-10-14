@@ -1,7 +1,7 @@
 {
   "name": "files2prompt",
   "displayName": "Files2Prompt Fork",
-  "icon": "./files2prompt-icon.webp",
+  "icon": "./files2prompt-icon.png",
   "description": "Fork of Thomas-McKanna/Files2Prompt. Copy file contents for LLM prompts.",
   "version": "2.0.0",
   "publisher": "gianzapata",
