@@ -4,7 +4,11 @@ import test from 'node:test';
 import path from 'path';
 
 import { createDetailsSource, createPreviewSource } from '../src/promptPreview';
-import { copyStatusMessage, previewStatusMessage } from '../src/userMessages';
+import {
+  copyStatusMessage,
+  previewStatusMessage,
+  saveStatusMessage
+} from '../src/userMessages';
 
 test('copy notices do not show internal stop codes', () => {
   const copy = copyStatusMessage({
@@ -17,6 +21,20 @@ test('copy notices do not show internal stop codes', () => {
 
   assert.equal(copy.message.includes('file-budget'), false);
   assert.match(copy.message, /file limit/);
+});
+
+test('save notices do not show internal stop codes and mention file name', () => {
+  const save = saveStatusMessage({
+    stop: 'completed',
+    included: 3,
+    omittedFiles: 1,
+    omittedFolders: 0,
+    pending: 0,
+    fileName: 'prompt.md'
+  });
+
+  assert.equal(save.message.includes('completed'), false);
+  assert.deepEqual(save.args, [3, 'prompt.md', 1, 0]);
 });
 
 test('a partial preview says how many files were left out', () => {
@@ -102,7 +120,8 @@ test('the view title keeps four codicon actions and a select submenu', () => {
     [
       'files2prompt.copyOpenFiles',
       'files2prompt.refresh',
-      'files2prompt.showDetails'
+      'files2prompt.showDetails',
+      'files2prompt.savePromptAs'
     ]
   );
   assert.equal(
@@ -116,6 +135,12 @@ test('the view title keeps four codicon actions and a select submenu', () => {
   assert.equal(
     manifest.contributes.commands.some(
       item => item.command === 'files2prompt.goBack'
+    ),
+    true
+  );
+  assert.equal(
+    manifest.contributes.commands.some(
+      item => item.command === 'files2prompt.savePromptAs'
     ),
     true
   );

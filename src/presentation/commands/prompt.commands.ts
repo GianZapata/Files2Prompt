@@ -7,6 +7,7 @@ import type { DeliverPromptUseCase } from '../../domain/use-cases/prompt/deliver
 import type { GeneratePromptUseCase } from '../../domain/use-cases/prompt/generate-prompt.use-case';
 import type { IgnoreDecision } from '../../ignore/ignoreReason';
 import type { SelectionSnapshot } from '../../selectionHistory';
+import type { SavePromptDialogOptions } from '../pickers/save-prompt.dialog';
 import type {
   createDetailsSource,
   createPreviewSource
@@ -30,6 +31,10 @@ import {
   type OutputFormat as OutputFormatType
 } from '../../domain/services/prompt-formats.service';
 import {
+  defaultPromptFileName,
+  fileFiltersForFormat
+} from '../../domain/services/saved-prompt-file.service';
+import {
   overLimitNotice,
   type LimitNotice
 } from '../../domain/services/selection-budget.service';
@@ -37,10 +42,13 @@ import {
   dedupeResolved,
   filesSelectedByFolderAsync
 } from '../../ignore/selectFiles';
+import { FileOutputDataSource } from '../../infrastructure/datasources/file-output.datasource';
 import {
   copyStatusMessage,
-  previewStatusMessage
+  previewStatusMessage,
+  saveStatusMessage
 } from '../messages/user-messages';
+import { promptSaveDestination } from '../pickers/save-prompt.dialog';
 
 export interface PromptForcedRoot {
   pattern: string;
@@ -66,6 +74,12 @@ export interface PromptHistoryPort {
   record: (snapshot: SelectionSnapshot) => void;
 }
 
+export type SaveDestinationPicker = (
+  options?: SavePromptDialogOptions
+) => Promise<vscode.Uri | undefined>;
+
+export type FileOutputFactory = (uri: vscode.Uri) => PromptOutputDataSource;
+
 export interface PromptCommandDeps {
   workspaceRoot: string;
   generatePrompt: GeneratePromptUseCase;
@@ -88,6 +102,14 @@ export interface PromptCommandDeps {
     relative: string,
     decision: PromptExcludedDecision
   ) => Promise<boolean>;
+  saveDestinationPicker?: SaveDestinationPicker;
+  createFileOutput?: FileOutputFactory;
+}
+
+export interface DeliverCollectedOptions {
+  includeSystemMessage?: boolean;
+  format?: OutputFormat;
+  destinationUri?: vscode.Uri;
 }
 
 const resolveCommandUris = (
@@ -103,6 +125,21 @@ const resolveCommandUris = (
   }
 
   return [];
+};
+
+const resolveReportKind = (
+  stop: string,
+  destinationUri?: vscode.Uri
+): OperationKind => {
+  if (stop === 'user-cancelled') {
+    return OperationKind.Cancelled;
+  }
+
+  if (destinationUri) {
+    return OperationKind.Save;
+  }
+
+  return OperationKind.Copy;
 };
 
 export const registerPromptCommands = (
@@ -168,9 +205,12 @@ export const registerPromptCommands = (
   const deliverCollected = async (
     filePaths: string[],
     output: PromptOutputDataSource,
-    includeSystemMessage = true,
-    format?: OutputFormat
+    options: DeliverCollectedOptions = {}
   ) => {
+    const includeSystemMessage = options.includeSystemMessage ?? true;
+    const format = options.format;
+    const destinationUri = options.destinationUri;
+
     if (
       isEmptySelection(filePaths, deps.selection.omittedFolders()) &&
       deps.selection.promptChangeList().length === 0
@@ -213,11 +253,14 @@ export const registerPromptCommands = (
     }
 
     let currentBuild: PromptBuild | undefined;
+    const progressTitle = destinationUri
+      ? vscode.l10n.t('Saving prompt')
+      : vscode.l10n.t('Copying prompt');
 
     const result = await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
-        title: vscode.l10n.t('Copying prompt'),
+        title: progressTitle,
         cancellable: true
       },
       async (_progress, token) => {
@@ -251,22 +294,17 @@ export const registerPromptCommands = (
       return;
     }
 
-    const reportId = rememberReport(
-      summary.stop === 'user-cancelled'
-        ? OperationKind.Cancelled
-        : OperationKind.Copy,
-      summary,
-      result.wrote
-    );
-
+    const reportKind = resolveReportKind(summary.stop, destinationUri);
+    const reportId = rememberReport(reportKind, summary, result.wrote);
     const report = deps.detailBook.open(reportId) ?? '';
 
     if (summary.stop === 'user-cancelled') {
       const detailsLabel = vscode.l10n.t('Show details');
+      const verb = destinationUri ? 'Saved' : 'Copied';
 
       vscode.window
         .showWarningMessage(
-          `Cancelled. Collected ${summary.included.length}. Copied 0. Clipboard not written.`,
+          `Cancelled. Collected ${summary.included.length}. ${verb} 0.`,
           detailsLabel
         )
         .then(choice => {
@@ -288,6 +326,38 @@ export const registerPromptCommands = (
       return;
     }
 
+    const detailsLabel = vscode.l10n.t('Show details');
+
+    if (destinationUri) {
+      const fileName = path.basename(destinationUri.fsPath);
+      const status = saveStatusMessage({
+        stop: summary.stop,
+        included: summary.included.length,
+        omittedFiles: summary.omittedFiles.length,
+        omittedFolders: summary.omittedFolders.length,
+        pending: summary.pending,
+        fileName
+      });
+
+      const message = vscode.l10n.t(status.message, ...status.args);
+      const openLabel = vscode.l10n.t('Open file');
+
+      vscode.window
+        .showInformationMessage(message, openLabel, detailsLabel)
+        .then(async choice => {
+          if (choice === openLabel) {
+            const document =
+              await vscode.workspace.openTextDocument(destinationUri);
+
+            await vscode.window.showTextDocument(document);
+          } else if (choice === detailsLabel) {
+            void openReport(report);
+          }
+        });
+
+      return;
+    }
+
     const status = copyStatusMessage({
       stop: summary.stop,
       included: summary.included.length,
@@ -297,7 +367,6 @@ export const registerPromptCommands = (
     });
 
     const message = vscode.l10n.t(status.message, ...status.args);
-    const detailsLabel = vscode.l10n.t('Show details');
 
     vscode.window.showInformationMessage(message, detailsLabel).then(choice => {
       if (choice === detailsLabel) {
@@ -311,7 +380,10 @@ export const registerPromptCommands = (
     includeSystemMessage = true,
     format?: OutputFormat
   ) =>
-    deliverCollected(filePaths, deps.clipboard, includeSystemMessage, format);
+    deliverCollected(filePaths, deps.clipboard, {
+      includeSystemMessage,
+      format
+    });
 
   return [
     vscode.commands.registerCommand('files2prompt.copyFiles', async () => {
@@ -481,6 +553,59 @@ export const registerPromptCommands = (
             void openReport(report);
           }
         });
-    })
+    }),
+
+    vscode.commands.registerCommand(
+      'files2prompt.savePromptAs',
+      async (formatOverride?: OutputFormat) => {
+        const checkedFiles = deps.selection.getCheckedFiles();
+
+        if (
+          isEmptySelection(checkedFiles, deps.selection.omittedFolders()) &&
+          deps.selection.promptChangeList().length === 0
+        ) {
+          vscode.window.showWarningMessage(vscode.l10n.t('No files selected.'));
+
+          return;
+        }
+
+        const format =
+          formatOverride ??
+          vscode.workspace
+            .getConfiguration('files2prompt')
+            .get<OutputFormatType>('outputFormat', OutputFormat.Xml);
+
+        const fileName = defaultPromptFileName(format);
+        const defaultUri = vscode.Uri.file(
+          path.join(deps.workspaceRoot, fileName)
+        );
+
+        const filters = fileFiltersForFormat(format);
+
+        const picker = deps.saveDestinationPicker ?? promptSaveDestination;
+        const destination = await picker({
+          defaultUri,
+          filters,
+          title: vscode.l10n.t('Save prompt as…')
+        });
+
+        if (!destination) {
+          return;
+        }
+
+        deps.history.record(deps.currentSnapshot());
+        await deps.saveHistory();
+
+        const fileOutput = deps.createFileOutput
+          ? deps.createFileOutput(destination)
+          : new FileOutputDataSource(destination);
+
+        await deliverCollected(checkedFiles, fileOutput, {
+          includeSystemMessage: true,
+          format: format as OutputFormat,
+          destinationUri: destination
+        });
+      }
+    )
   ];
 };

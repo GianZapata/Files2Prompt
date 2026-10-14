@@ -85,6 +85,11 @@
         "title": "%files2prompt.copyAsPlain.title%"
       },
       {
+        "command": "files2prompt.savePromptAs",
+        "title": "%files2prompt.savePromptAs.title%",
+        "icon": "$(save-as)"
+      },
+      {
         "command": "files2prompt.clearChecks",
         "title": "%files2prompt.clearChecks.title%",
         "icon": "$(clear-all)"
@@ -230,6 +235,11 @@
           "command": "files2prompt.showDetails",
           "when": "view == files2PromptView",
           "group": "1_overflow@3"
+        },
+        {
+          "command": "files2prompt.savePromptAs",
+          "when": "view == files2PromptView",
+          "group": "1_overflow@4"
         }
       ],
       "files2prompt.select": [
