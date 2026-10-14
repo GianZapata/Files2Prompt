@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { discoverRepositories, repositoryLabel } from '../src/gitRepos';
+import {
+  discoverRepositories,
+  repositoryLabel
+} from '../src/domain/services/git-repos.service';
 
 test('discovery keeps repositories and submodules, and skips an excluded worktree', () => {
   const found = discoverRepositories(

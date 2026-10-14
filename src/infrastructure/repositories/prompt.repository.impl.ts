@@ -1,5 +1,6 @@
 import type { SettingsDataSource } from '../../domain/datasources/settings.datasource';
 import type { WorkspaceFilesDataSource } from '../../domain/datasources/workspace-files.datasource';
+import type { IgnoreDecision } from '../../domain/entities/ignore-reason.enum';
 import type { PathKind } from '../../domain/entities/path-kind.enum';
 import type {
   OmittedFile,
@@ -7,7 +8,6 @@ import type {
   PromptChangeEntry,
   PromptFile
 } from '../../domain/entities/prompt-payload.entity';
-import type { IgnoreDecision } from '../../ignore/ignoreReason';
 
 import { CopyStop } from '../../domain/entities/copy-stop.enum';
 import { DiffMode } from '../../domain/entities/diff-mode.enum';

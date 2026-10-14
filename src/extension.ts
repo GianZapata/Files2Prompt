@@ -8,22 +8,23 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { createCopyGate } from './copyGate';
+import { createCopyGate } from './domain/services/copy-gate.service';
+import { createDetailBook } from './domain/services/operation-report.service';
+import { shouldConfirmIgnored } from './domain/services/selection-budget.service';
 import { createSelectionHistory } from './domain/services/selection-history.service';
 import { DiscoverGitRepositories } from './domain/use-cases/git/discover-git-repositories.use-case';
 import { GetGitChanges } from './domain/use-cases/git/get-git-changes.use-case';
 import { DeliverPrompt } from './domain/use-cases/prompt/deliver-prompt.use-case';
 import { GeneratePrompt } from './domain/use-cases/prompt/generate-prompt.use-case';
 import { RecordSelection } from './domain/use-cases/selection/record-selection.use-case';
-import { filesSelectedByFolderAsync } from './ignore/selectFiles';
 import { ClipboardOutputDataSource } from './infrastructure/datasources/clipboard-output.datasource';
 import { NodeWorkspaceFilesDataSource } from './infrastructure/datasources/node-workspace-files.datasource';
 import { VscodeGitDataSource } from './infrastructure/datasources/vscode-git.datasource';
 import { VscodeSettingsDataSource } from './infrastructure/datasources/vscode-settings.datasource';
 import { WorkspaceStateDataSource } from './infrastructure/datasources/workspace-state.datasource';
+import { filesSelectedByFolderAsync } from './infrastructure/filesystem/select-files.walker';
 import { GitChangesRepositoryImpl } from './infrastructure/repositories/git-changes.repository.impl';
 import { PromptRepositoryImpl } from './infrastructure/repositories/prompt.repository.impl';
-import { createDetailBook } from './operationReport';
 import { registerGitCommands } from './presentation/commands/git.commands';
 import { registerHistoryCommands } from './presentation/commands/history.commands';
 import { registerPromptCommands } from './presentation/commands/prompt.commands';
@@ -36,7 +37,6 @@ import { GitChangesProvider } from './presentation/views/git-changes.tree-provid
 import { registerGitFileDecoration } from './presentation/views/git-file-decoration.provider';
 import { createPromptVirtualDocuments } from './presentation/views/prompt-virtual-documents.provider';
 import { watchGitRepositories } from './presentation/watchers/git-repositories.watcher';
-import { shouldConfirmIgnored } from './selectionBudget';
 
 export function activate(context: vscode.ExtensionContext) {
   const workspaceFolders = vscode.workspace.workspaceFolders;

@@ -25,7 +25,7 @@ import {
   syncChangeCheck,
   syncExtensionCheck
 } from '../../domain/services/side-views.service';
-import { filesSelectedByFolderAsync } from '../../ignore/selectFiles';
+import { filesSelectedByFolderAsync } from '../../infrastructure/filesystem/select-files.walker';
 
 export interface SelectionTargetPort {
   resourceUri?: vscode.Uri;

@@ -4,7 +4,7 @@ import test from 'node:test';
 import os from 'os';
 import path from 'path';
 
-import { readContextText } from '../src/readContextFile';
+import { readContextText } from '../src/infrastructure/filesystem/read-context-file';
 
 test('uses the open buffer when it differs from disk', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'f2p-read-'));

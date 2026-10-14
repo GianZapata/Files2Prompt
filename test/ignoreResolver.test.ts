@@ -4,9 +4,9 @@ import test from 'node:test';
 import os from 'os';
 import path from 'path';
 
-import { createIgnoreResolver } from '../src/ignore/ignoreResolver';
-import { filesSelectedByFolder } from '../src/ignore/selectFiles';
-import { checkboxForFolder } from '../src/parentCheck';
+import { checkboxForFolder } from '../src/domain/services/parent-check.service';
+import { filesSelectedByFolder } from '../src/infrastructure/filesystem/select-files.walker';
+import { createIgnoreResolver } from '../src/infrastructure/ignore/ignore-resolver.service';
 
 const makeRoot = () => fs.mkdtempSync(path.join(os.tmpdir(), 'f2p-ignore-'));
 

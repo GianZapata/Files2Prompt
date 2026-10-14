@@ -4,7 +4,7 @@ import test from 'node:test';
 import os from 'os';
 import path from 'path';
 
-import { buildPrompt } from '../src/buildPrompt';
+import { buildPrompt } from '../src/infrastructure/builders/prompt-builder.service';
 
 test('file budget reports pending work when nothing else was excluded', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'f2p-budget-'));

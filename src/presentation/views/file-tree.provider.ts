@@ -1,6 +1,6 @@
 import type { PromptChange } from '../../domain/entities/git-change.entity';
+import type { ForcedRoot } from '../../domain/entities/ignore-reason.enum';
 import type { DiscoveredRepository } from '../../domain/services/git-repos.service';
-import type { ForcedRoot } from '../../ignore/ignoreReason';
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -8,18 +8,18 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { repositoryLabel } from '../../domain/services/git-repos.service';
-import { createIgnoreResolver } from '../../ignore/ignoreResolver';
+import {
+  checkboxForFolder,
+  parentCheckbox,
+  watcherShouldRefresh
+} from '../../domain/services/parent-check.service';
 import {
   filesSelectedByFolder,
   filesSelectedByFolderAsync,
   omittedFoldersForSelection,
   selectionRoots
-} from '../../ignore/selectFiles';
-import {
-  checkboxForFolder,
-  parentCheckbox,
-  watcherShouldRefresh
-} from '../../parentCheck';
+} from '../../infrastructure/filesystem/select-files.walker';
+import { createIgnoreResolver } from '../../infrastructure/ignore/ignore-resolver.service';
 
 export class FileTreeProvider
   implements vscode.TreeDataProvider<FileItem>, vscode.Disposable

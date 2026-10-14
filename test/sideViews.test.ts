@@ -6,7 +6,7 @@ import {
   repoNodeLabel,
   syncChangeCheck,
   syncExtensionCheck
-} from '../src/sideViews';
+} from '../src/domain/services/side-views.service';
 
 test('git changes group by repository and keep the branch', () => {
   const groups = groupChangesByRepo([

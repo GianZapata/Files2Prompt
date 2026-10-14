@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { takeUntilStop } from '../src/copyStops';
+import { takeUntilStop } from '../src/domain/services/copy-stops.service';
 
 test('cancel during copy does not keep later files', async () => {
   let seen = 0;

@@ -3,12 +3,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import path from 'path';
 
-import { createDetailsSource, createPreviewSource } from '../src/promptPreview';
 import {
   copyStatusMessage,
   previewStatusMessage,
   saveStatusMessage
-} from '../src/userMessages';
+} from '../src/presentation/messages/user-messages';
+import {
+  createDetailsSource,
+  createPreviewSource
+} from '../src/presentation/views/prompt-preview.source';
 
 test('copy notices do not show internal stop codes', () => {
   const copy = copyStatusMessage({

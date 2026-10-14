@@ -1,4 +1,7 @@
-import type { DiscoveredRepository, GitApiLike } from '../../gitRepos';
+import type {
+  DiscoveredRepository,
+  GitApiLike
+} from '../../domain/services/git-repos.service';
 import type { FileTreeProvider } from '../views/file-tree.provider';
 
 import * as vscode from 'vscode';

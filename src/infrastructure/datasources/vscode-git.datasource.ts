@@ -32,7 +32,7 @@ import {
   fillChangeDiff,
   listCommitChanges
 } from '../../domain/services/git-diff.service';
-import { binaryExtensions } from '../../ignore/builtInPatterns';
+import { binaryExtensions } from '../ignore/built-in-patterns.constant';
 
 export interface VscodeGitUriLike {
   fsPath: string;

@@ -4,8 +4,11 @@ import test from 'node:test';
 import os from 'os';
 import path from 'path';
 
-import { buildPrompt } from '../src/buildPrompt';
-import { uncheckFolder, restoreEffective } from '../src/selectionState';
+import {
+  restoreEffective,
+  uncheckFolder
+} from '../src/domain/services/selection-state.service';
+import { buildPrompt } from '../src/infrastructure/builders/prompt-builder.service';
 
 const root = () => fs.mkdtempSync(path.join(os.tmpdir(), 'f2p-build-'));
 

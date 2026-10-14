@@ -4,8 +4,8 @@ import test from 'node:test';
 import os from 'os';
 import path from 'path';
 
-import { createIgnoreResolver } from '../src/ignore/ignoreResolver';
-import { filesSelectedByFolderAsync } from '../src/ignore/selectFiles';
+import { filesSelectedByFolderAsync } from '../src/infrastructure/filesystem/select-files.walker';
+import { createIgnoreResolver } from '../src/infrastructure/ignore/ignore-resolver.service';
 
 test('a cancelled folder walk returns no files', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'f2p-async-'));

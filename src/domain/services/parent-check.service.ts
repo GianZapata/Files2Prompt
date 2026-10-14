@@ -1,39 +1,45 @@
-export const checkboxForFolder = (input: {
+export interface CheckboxForFolderInput {
   included: boolean;
   reason?: string;
-}) => {
+}
+
+export interface ParentCheckboxChild {
+  excluded: boolean;
+  checked: boolean;
+  emptyFolder?: boolean;
+}
+
+export const checkboxForFolder = (
+  input: CheckboxForFolderInput
+): 'hidden' | 'unchecked' => {
   if (
     !input.included &&
     (input.reason === 'built-in' || input.reason === 'promptignore')
   ) {
-    return 'hidden' as const;
+    return 'hidden';
   }
 
-  return 'unchecked' as const;
+  return 'unchecked';
 };
 
 export const parentCheckbox = (
-  children: Array<{
-    excluded: boolean;
-    checked: boolean;
-    emptyFolder?: boolean;
-  }>
-) => {
+  children: ParentCheckboxChild[]
+): 'checked' | 'unchecked' => {
   const visible = children.filter(
     child => !child.excluded && !child.emptyFolder
   );
 
   if (visible.length === 0 || visible.some(child => !child.checked)) {
-    return 'unchecked' as const;
+    return 'unchecked';
   }
 
-  return 'checked' as const;
+  return 'checked';
 };
 
 export const watcherShouldRefresh = (
   relativePath: string,
   excluded: (directory: string) => boolean
-) => {
+): boolean => {
   const normalized = relativePath.split('\\').join('/');
   const name = normalized.split('/').pop() ?? '';
 

@@ -8,7 +8,7 @@ import {
   selectionStatus,
   shouldConfirmIgnored,
   shouldRefreshSummary
-} from '../src/selectionBudget';
+} from '../src/domain/services/selection-budget.service';
 
 test('status text includes git changes and a readable breakdown', () => {
   const status = selectionStatus({

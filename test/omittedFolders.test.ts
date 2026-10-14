@@ -4,11 +4,11 @@ import test from 'node:test';
 import os from 'os';
 import path from 'path';
 
-import { createIgnoreResolver } from '../src/ignore/ignoreResolver';
 import {
   omittedFoldersForSelection,
   selectionRoots
-} from '../src/ignore/selectFiles';
+} from '../src/infrastructure/filesystem/select-files.walker';
+import { createIgnoreResolver } from '../src/infrastructure/ignore/ignore-resolver.service';
 
 const makeRoot = () => fs.mkdtempSync(path.join(os.tmpdir(), 'f2p-omit-'));
 

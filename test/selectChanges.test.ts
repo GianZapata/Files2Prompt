@@ -9,7 +9,7 @@ import {
   gitScopeMenu,
   mergeChanges,
   pathsToCheck
-} from '../src/selectChanges';
+} from '../src/domain/services/git-changes.service';
 
 test('git scopes keep current and staged ahead of the advanced pair', () => {
   const menu = gitScopeMenu();

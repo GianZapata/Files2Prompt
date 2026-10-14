@@ -1,10 +1,10 @@
-import type { PromptBuild } from '../src/buildPrompt';
+import type { PromptBuild } from '../src/infrastructure/builders/prompt-builder.service';
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createCopyGate } from '../src/copyGate';
-import { runCopy, runPreview } from '../src/promptRun';
+import { createCopyGate } from '../src/domain/services/copy-gate.service';
+import { runCopy, runPreview } from '../src/domain/services/prompt-run.service';
 
 const completed = (xml = '<files></files>'): PromptBuild => ({
   stop: 'completed',

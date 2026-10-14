@@ -1,14 +1,25 @@
-import type { IgnoreDecision } from './ignoreReason';
+import type { IgnoreDecision } from '../../domain/entities/ignore-reason.enum';
 
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
+
+export interface SelectFilesAsyncOptions {
+  isCancelled?: () => boolean;
+  yieldEvery?: number;
+  omittedFolders?: string[];
+}
+
+export interface SelectFilesAsyncResult {
+  files: string[];
+  cancelled: boolean;
+}
 
 export const filesSelectedByFolder = (
   workspaceRoot: string,
   folderPath: string,
   resolve: (relativePath: string, kind: 'file' | 'directory') => IgnoreDecision,
   omittedFolders: string[] = []
-) => {
+): string[] => {
   const selected: string[] = [];
   const visit = (directory: string) => {
     const relativeDirectory = path.relative(workspaceRoot, directory);
@@ -51,12 +62,8 @@ export const filesSelectedByFolderAsync = async (
   workspaceRoot: string,
   folderPath: string,
   resolve: (relativePath: string, kind: 'file' | 'directory') => IgnoreDecision,
-  options: {
-    isCancelled?: () => boolean;
-    yieldEvery?: number;
-    omittedFolders?: string[];
-  } = {}
-) => {
+  options: SelectFilesAsyncOptions = {}
+): Promise<SelectFilesAsyncResult> => {
   const selected: string[] = [];
   const omittedFolders = options.omittedFolders ?? [];
   const yieldEvery = options.yieldEvery ?? 64;
@@ -121,17 +128,20 @@ export const filesSelectedByFolderAsync = async (
   const finished = await visit(folderPath);
 
   if (!finished) {
-    return { files: [] as string[], cancelled: true };
+    return { files: [], cancelled: true };
   }
 
   return { files: selected.sort(), cancelled: false };
 };
 
-export const dedupeResolved = (paths: string[]) => [
+export const dedupeResolved = (paths: string[]): string[] => [
   ...new Set(paths.map(filePath => path.resolve(filePath)))
 ];
 
-export const selectionRoots = (workspaceRoot: string, filePaths: string[]) => {
+export const selectionRoots = (
+  workspaceRoot: string,
+  filePaths: string[]
+): string[] => {
   if (filePaths.length === 0) {
     return [];
   }
@@ -164,7 +174,7 @@ export const omittedFoldersForSelection = (
   workspaceRoot: string,
   checkedDirectories: string[],
   resolve: (relativePath: string, kind: 'file' | 'directory') => IgnoreDecision
-) => {
+): string[] => {
   const normalized = [
     ...new Set(checkedDirectories.map(directory => path.resolve(directory)))
   ];

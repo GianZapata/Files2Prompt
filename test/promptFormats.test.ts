@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { fenceFor, languageFor, renderPrompt } from '../src/promptFormats';
+import {
+  fenceFor,
+  languageFor,
+  renderPrompt
+} from '../src/domain/services/prompt-formats.service';
 
 test('markdown fence is longer than the longest backtick run', () => {
   const content = 'const sample = ```code```;';

@@ -1,15 +1,15 @@
-import type { PromptBuild } from '../src/buildPrompt';
+import type { PromptBuild } from '../src/infrastructure/builders/prompt-builder.service';
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createCopyGate } from '../src/copyGate';
+import { createCopyGate } from '../src/domain/services/copy-gate.service';
 import {
   createDetailBook,
   formatOperationReport,
   isEmptySelection
-} from '../src/operationReport';
-import { runCopy } from '../src/promptRun';
+} from '../src/domain/services/operation-report.service';
+import { runCopy } from '../src/domain/services/prompt-run.service';
 
 const summary = (name: string, count: number): PromptBuild => ({
   stop: 'completed',

@@ -5,7 +5,7 @@ import {
   createPreviewSource,
   DETAILS_SCHEME,
   PREVIEW_SCHEME
-} from '../../promptPreview';
+} from './prompt-preview.source';
 
 export interface PromptVirtualDocuments {
   previewSource: ReturnType<typeof createPreviewSource>;

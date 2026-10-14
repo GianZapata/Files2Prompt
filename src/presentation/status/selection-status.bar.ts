@@ -8,7 +8,7 @@ import {
   outputFormatLabel,
   selectionStatus,
   shouldRefreshSummary
-} from '../../selectionBudget';
+} from '../../domain/services/selection-budget.service';
 
 export interface SelectionStatusBarOptions {
   fileTreeProvider: FileTreeProvider;

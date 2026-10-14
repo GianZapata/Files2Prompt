@@ -1,22 +1,33 @@
-import fs from 'fs';
-import path from 'path';
+import type {
+  ForcedRoot,
+  IgnoreDecision
+} from '../../domain/entities/ignore-reason.enum';
+
+import * as fs from 'fs';
+import * as path from 'path';
 
 import ignore from 'ignore';
 
-import { binaryExtensions, builtInPatterns } from './builtInPatterns';
-import {
-  IgnoreReason,
-  type ForcedRoot,
-  type IgnoreDecision
-} from './ignoreReason';
+import { IgnoreReason } from '../../domain/entities/ignore-reason.enum';
 
-export type IgnoreResolverOptions = {
+import {
+  binaryExtensions,
+  builtInPatterns
+} from './built-in-patterns.constant';
+
+export interface IgnoreResolverOptions {
   workspaceRoot: string;
   excludePatterns?: string[];
   ignoredExtensions?: string[];
   maxFileBytes?: number;
   forcedRoots?: ForcedRoot[];
-};
+}
+
+export interface IgnoreResolver {
+  resolve: (relativePath: string, kind: 'file' | 'directory') => IgnoreDecision;
+  invalidate: (filePath?: string) => void;
+  explain: (relativePath: string, kind: 'file' | 'directory') => IgnoreDecision;
+}
 
 const toPosix = (value: string) => value.split(path.sep).join('/');
 
@@ -35,7 +46,9 @@ const probeFor = (relativePath: string, kind: 'file' | 'directory') => {
   return kind === 'directory' ? `${normalized}/` : normalized;
 };
 
-export const createIgnoreResolver = (options: IgnoreResolverOptions) => {
+export const createIgnoreResolver = (
+  options: IgnoreResolverOptions
+): IgnoreResolver => {
   const extensionPatterns = (options.ignoredExtensions ?? [])
     .filter(Boolean)
     .map(extension => `*.${extension.replace(/^\./, '')}`)

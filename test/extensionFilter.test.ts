@@ -7,7 +7,7 @@ import {
   filterByExtensions,
   matchesExtension,
   parseExtensionList
-} from '../src/extensionFilter';
+} from '../src/domain/services/extension-filter.service';
 
 test('suffix match keeps compound extensions and dotfiles', () => {
   assert.equal(extensionSuffix('src/foo.blade.php'), '.blade.php');

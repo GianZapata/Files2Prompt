@@ -1,17 +1,17 @@
-import type { PromptBuild } from './buildPrompt';
+import type { PromptBuild } from '../entities/prompt-payload.entity';
 
-import { createCopyGate } from './copyGate';
+import { createCopyGate } from './copy-gate.service';
 
-export type ClipboardPort = {
+export interface ClipboardPort {
   read: () => string;
   write: (text: string) => PromiseLike<void> | void;
-};
+}
 
-export type CopyRun = {
+export interface CopyRun {
   started: boolean;
   wrote: boolean;
   summary?: PromptBuild;
-};
+}
 
 export const runCopy = async (input: {
   gate: ReturnType<typeof createCopyGate>;

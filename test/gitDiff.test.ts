@@ -8,7 +8,7 @@ import {
   listCommitChanges,
   pathsFromPatch,
   type DiffReader
-} from '../src/gitDiff';
+} from '../src/domain/services/git-diff.service';
 
 const reader = (): DiffReader & { calls: string[] } => {
   const calls: string[] = [];

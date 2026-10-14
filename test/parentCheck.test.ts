@@ -5,7 +5,7 @@ import {
   checkboxForFolder,
   parentCheckbox,
   watcherShouldRefresh
-} from '../src/parentCheck';
+} from '../src/domain/services/parent-check.service';
 
 test('parent is checked when every visible child is checked', () => {
   assert.equal(

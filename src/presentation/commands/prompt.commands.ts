@@ -1,12 +1,12 @@
 import type { PromptOutputDataSource } from '../../domain/datasources/prompt-output.datasource';
+import type { IgnoreDecision } from '../../domain/entities/ignore-reason.enum';
 import type {
   PromptBuild,
   PromptChangeEntry
 } from '../../domain/entities/prompt-payload.entity';
+import type { SelectionSnapshot } from '../../domain/entities/selection-snapshot.entity';
 import type { DeliverPromptUseCase } from '../../domain/use-cases/prompt/deliver-prompt.use-case';
 import type { GeneratePromptUseCase } from '../../domain/use-cases/prompt/generate-prompt.use-case';
-import type { IgnoreDecision } from '../../ignore/ignoreReason';
-import type { SelectionSnapshot } from '../../selectionHistory';
 import type { SavePromptDialogOptions } from '../pickers/save-prompt.dialog';
 import type {
   createDetailsSource,
@@ -38,11 +38,11 @@ import {
   overLimitNotice,
   type LimitNotice
 } from '../../domain/services/selection-budget.service';
+import { FileOutputDataSource } from '../../infrastructure/datasources/file-output.datasource';
 import {
   dedupeResolved,
   filesSelectedByFolderAsync
-} from '../../ignore/selectFiles';
-import { FileOutputDataSource } from '../../infrastructure/datasources/file-output.datasource';
+} from '../../infrastructure/filesystem/select-files.walker';
 import {
   copyStatusMessage,
   previewStatusMessage,

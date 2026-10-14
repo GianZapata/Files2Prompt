@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createSelectionHistory } from '../src/selectionHistory';
+import { createSelectionHistory } from '../src/domain/services/selection-history.service';
 
 test('clear then back restores the previous selection and forward returns empty', () => {
   const history = createSelectionHistory();

@@ -1,31 +1,21 @@
-import type { IgnoreDecision } from './ignore/ignoreReason';
-import type { PromptChangeEntry, PromptFile } from './promptXml';
+import type { AnyCopyStop } from '../../domain/entities/copy-stop.enum';
+import type { IgnoreDecision } from '../../domain/entities/ignore-reason.enum';
+import type { OutputFormat } from '../../domain/entities/output-format.enum';
+import type {
+  OmittedFile,
+  PromptBuild,
+  PromptChangeEntry,
+  PromptFile
+} from '../../domain/entities/prompt-payload.entity';
 
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 
-import { renderPrompt, type OutputFormat } from './promptFormats';
+import { renderPrompt } from '../../domain/services/prompt-formats.service';
 
-export type CopyStop =
-  'completed' | 'user-cancelled' | 'file-budget' | 'total-bytes';
+export type { OmittedFile, PromptBuild };
 
-export type OmittedFile = {
-  path: string;
-  reason: string;
-  pattern?: string;
-};
-
-export type PromptBuild = {
-  stop: CopyStop;
-  xml: string;
-  included: PromptFile[];
-  omittedFiles: OmittedFile[];
-  omittedFolders: string[];
-  pending: number;
-  byteLength: number;
-};
-
-export type BuildPromptInput = {
+export interface BuildPromptInput {
   workspaceRoot: string;
   filePaths: string[];
   systemMessage?: string;
@@ -37,7 +27,7 @@ export type BuildPromptInput = {
   maxFiles: number;
   changes?: PromptChangeEntry[];
   format?: OutputFormat;
-};
+}
 
 const relativeName = (workspaceRoot: string, filePath: string) =>
   path.relative(workspaceRoot, filePath).split(path.sep).join('/');
@@ -166,7 +156,7 @@ export const buildPrompt = async (
 };
 
 const finish = (
-  stop: CopyStop,
+  stop: AnyCopyStop,
   input: BuildPromptInput,
   included: PromptFile[],
   omittedFiles: OmittedFile[],

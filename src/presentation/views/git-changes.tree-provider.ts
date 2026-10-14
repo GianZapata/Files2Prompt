@@ -10,7 +10,7 @@ import {
   groupChangesByRepo,
   repoNodeLabel,
   type ChangeGroup
-} from '../../sideViews';
+} from '../../domain/services/side-views.service';
 
 export enum GitTreeItemKind {
   Repo = 'repo',

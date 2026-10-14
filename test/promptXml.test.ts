@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { serializePrompt } from '../src/promptXml';
+import { serializePrompt } from '../src/domain/services/prompt-xml.service';
 
 test('serialized xml keeps names, cdata, and the system message', () => {
   const xml = serializePrompt({

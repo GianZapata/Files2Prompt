@@ -2,9 +2,12 @@ export const restoreEffective = (
   paths: string[],
   exists: (filePath: string) => boolean,
   included: (filePath: string) => boolean
-) => paths.filter(filePath => exists(filePath) && included(filePath));
+): string[] => paths.filter(filePath => exists(filePath) && included(filePath));
 
-export const uncheckFolder = (checked: Set<string>, folderPath: string) => {
+export const uncheckFolder = (
+  checked: Set<string>,
+  folderPath: string
+): void => {
   const prefix = folderPath.endsWith('/') ? folderPath : `${folderPath}/`;
 
   for (const filePath of [...checked]) {
