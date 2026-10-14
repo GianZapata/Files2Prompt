@@ -369,7 +369,7 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "node -e \"require('fs').rmSync('out',{recursive:true,force:true})\" && npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src test test-integration",
