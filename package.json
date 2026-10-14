@@ -3,14 +3,22 @@
   "displayName": "Files2Prompt Fork",
   "icon": "./files2prompt-icon.webp",
   "description": "Fork of Thomas-McKanna/Files2Prompt. Copy file contents for LLM prompts.",
-  "version": "1.8.0",
+  "version": "2.0.0",
   "publisher": "gianzapata",
   "keywords": [
     "files",
     "prompt",
     "copy",
     "llm",
-    "gpt"
+    "gpt",
+    "tokens",
+    "context",
+    "ai",
+    "claude",
+    "chatgpt",
+    "git",
+    "diff",
+    "markdown"
   ],
   "repository": {
     "type": "git",
