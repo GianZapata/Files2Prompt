@@ -249,4 +249,34 @@ suite('Files2Prompt with two git repositories', () => {
     assert.equal(xml.includes('PRIVATE KEY MATERIAL'), false);
     assert.equal(xml.includes('id_rsa'), false);
   });
+
+  test('uses the unsaved text of an open editor instead of the file on disk', async () => {
+    const target = inWorkspace('web/src/app.ts');
+    const document = await vscode.workspace.openTextDocument(target);
+    const edit = new vscode.WorkspaceEdit();
+
+    edit.insert(target, new vscode.Position(0, 0), '// unsaved-edit\n');
+    await vscode.workspace.applyEdit(edit);
+
+    await vscode.env.clipboard.writeText('');
+    await withStubs({}, () =>
+      vscode.commands.executeCommand(
+        'files2prompt.copyExplorerSelection',
+        target,
+        [target]
+      )
+    );
+
+    const xml = await vscode.env.clipboard.readText();
+
+    assert.equal(document.isDirty, true);
+    assert.ok(xml.includes('// unsaved-edit'));
+    assert.equal(
+      fs.readFileSync(target.fsPath, 'utf8').includes('unsaved'),
+      false
+    );
+
+    await vscode.commands.executeCommand('workbench.action.files.revert');
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+  });
 });

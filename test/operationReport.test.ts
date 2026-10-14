@@ -1,4 +1,4 @@
-import type { PromptBuild } from '../src/infrastructure/builders/prompt-builder.service';
+import type { PromptBuild } from '../src/domain/entities/prompt-payload.entity';
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -9,7 +9,7 @@ import {
   formatOperationReport,
   isEmptySelection
 } from '../src/domain/services/operation-report.service';
-import { runCopy } from '../src/domain/services/prompt-run.service';
+import { DeliverPrompt } from '../src/domain/use-cases/prompt/deliver-prompt.use-case';
 
 const summary = (name: string, count: number): PromptBuild => ({
   stop: 'completed',
@@ -81,17 +81,17 @@ test('empty selection does not start a copy and the next copy can start', async 
   assert.equal(skipped, true);
   assert.equal(writes.length, 0);
 
-  const next = await runCopy({
-    gate,
-    clipboard: {
-      write: text => {
+  const next = await new DeliverPrompt(
+    { build: async () => summary('next', 1) },
+    gate
+  ).execute(
+    { filePaths: [] },
+    {
+      write: async text => {
         writes.push(text);
       }
-    },
-    summarize: built => built,
-    build: async () => summary('next', 1),
-    withProgress: work => work(() => false)
-  });
+    }
+  );
 
   assert.equal(next.started, true);
   assert.equal(next.wrote, true);
@@ -109,4 +109,17 @@ test('details name a saved prompt left out of the selection', () => {
   });
 
   assert.match(report, /out\/prompt\.md — saved-prompt/);
+});
+
+test('details name a secret left out and the rule that caught it', () => {
+  const report = formatOperationReport({
+    kind: 'copy',
+    wrote: true,
+    summary: {
+      ...summary('A', 1),
+      omittedFiles: [{ path: 'api/.env', reason: 'sensitive', pattern: '.env' }]
+    }
+  });
+
+  assert.match(report, /api\/\.env — sensitive \(\.env\)/);
 });

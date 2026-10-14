@@ -4,12 +4,16 @@ import test from 'node:test';
 import os from 'os';
 import path from 'path';
 
-import { WorkspaceFilesDataSource } from '../src/domain/datasources/workspace-files.datasource';
 import { DiffMode } from '../src/domain/entities/diff-mode.enum';
 import { IgnoreReason } from '../src/domain/entities/ignore-reason.enum';
 import { OutputFormat } from '../src/domain/entities/output-format.enum';
 import { createIgnoreResolver } from '../src/infrastructure/ignore/ignore-resolver.service';
 import { PromptRepositoryImpl } from '../src/infrastructure/repositories/prompt.repository.impl';
+
+import {
+  DiskFilesDataSource,
+  defaultLimits
+} from './support/prompt-repository';
 
 const SENSITIVE_PATHS = [
   '.env',
@@ -128,19 +132,6 @@ test('folders are not treated as secrets', () => {
   assert.equal(resolver.resolve('keys', 'directory').included, true);
 });
 
-class DiskFilesDataSource extends WorkspaceFilesDataSource {
-  existsAndIsFile = async (filePath: string) =>
-    fs.existsSync(filePath) && fs.lstatSync(filePath).isFile();
-
-  sizeOf = async (filePath: string) => fs.statSync(filePath).size;
-
-  isBinary = async () => false;
-
-  readText = async (filePath: string) => fs.readFileSync(filePath, 'utf8');
-
-  realPathOf = async (filePath: string) => fs.realpathSync(filePath);
-}
-
 test('the diff of a secret never reaches the prompt', async () => {
   const workspace = makeRoot();
   const resolver = createIgnoreResolver({ workspaceRoot: workspace });
@@ -151,9 +142,7 @@ test('the diff of a secret never reaches the prompt', async () => {
       promptSettings: () => ({
         outputFormat: OutputFormat.Xml,
         diffMode: DiffMode.DiffAndFiles,
-        maxFileBytes: 1048576,
-        maxTotalBytes: 8388608,
-        maxFiles: 5000
+        ...defaultLimits
       })
     },
     { resolvePath: resolver.resolve }
