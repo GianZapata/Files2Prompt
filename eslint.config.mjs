@@ -11,7 +11,7 @@ export default [
       '**/dist',
       '**/out',
       '**/out-test',
-      '**/out-integration',
+      '**/test-fixtures',
       '**/node_modules',
       '**/coverage',
       '**/.vscode-test',

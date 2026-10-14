@@ -1,6 +1,6 @@
 out
 out-test
-out-integration
 node_modules
+test-fixtures
 *.vsix
 coverage

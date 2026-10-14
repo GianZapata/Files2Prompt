@@ -20,7 +20,6 @@ vsc-extension-quickstart.md
 odd/**
 test/**
 out-test/**
-out-integration/**
-test-integration/**
+test-fixtures/**
 scripts/**
 demo.gif
