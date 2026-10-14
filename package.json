@@ -400,7 +400,7 @@
     "format": "prettier --write src test scripts .vscode-test.mjs eslint.config.mjs",
     "format:check": "prettier --check src test scripts .vscode-test.mjs eslint.config.mjs",
     "compile:integration": "tsc -p tsconfig.integration.json",
-        "test:unit": "node -e \"for (const dir of ['out-test/src', 'out-test/test']) require('fs').rmSync(dir, { recursive: true, force: true })\" && tsc -p tsconfig.test.json && node --test out-test/test/*.test.js",
+    "test:unit": "node -e \"for (const dir of ['out-test/src', 'out-test/test']) require('fs').rmSync(dir, { recursive: true, force: true })\" && tsc -p tsconfig.test.json && node --test out-test/test/*.test.js",
     "pretest:vscode": "node scripts/make-fixture.mjs && npm run compile && node -e \"require('fs').rmSync('out-test/integration', { recursive: true, force: true })\" && npm run compile:integration",
     "test:vscode": "vscode-test",
     "compile:smoke": "node -e \"require('fs').rmSync('out-test/smoke', { recursive: true, force: true })\" && tsc -p tsconfig.smoke.json",
@@ -426,7 +426,6 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "fast-xml-parser": "^5.11.2",
     "ignore": "^7.0.12"
   }
 }
