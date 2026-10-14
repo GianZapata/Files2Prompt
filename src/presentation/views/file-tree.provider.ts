@@ -8,6 +8,7 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
+import { IgnoreReason } from '../../domain/entities/ignore-reason.enum';
 import { repositoryLabel } from '../../domain/services/git-repos.service';
 import {
   checkboxForFolder,
@@ -40,6 +41,7 @@ export class FileTreeProvider
   private promptChanges: PromptChange[] = [];
   private ignoredExtensions: Set<string> = new Set();
   private excludePatterns: string[] = [];
+  private allowSensitive: string[] = [];
   private watcher: vscode.FileSystemWatcher;
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
   private disposables: vscode.Disposable[] = [];
@@ -63,6 +65,7 @@ export class FileTreeProvider
         if (
           event.affectsConfiguration('files2prompt.ignoredExtensions') ||
           event.affectsConfiguration('files2prompt.exclude') ||
+          event.affectsConfiguration('files2prompt.allowSensitive') ||
           event.affectsConfiguration('files2prompt.maxFileBytes')
         ) {
           this.reloadRules();
@@ -205,6 +208,7 @@ export class FileTreeProvider
     const preview = createIgnoreResolver({
       workspaceRoot: this.workspaceRoot,
       excludePatterns: [...this.excludePatterns],
+      allowSensitive: [...this.allowSensitive],
       ignoredExtensions: [...this.ignoredExtensions],
       forcedRoots: [...this.forcedRoots, root],
       savedPrompts: this.savedPrompts
@@ -383,12 +387,15 @@ export class FileTreeProvider
       const kind = isDirectory ? 'directory' : 'file';
       const decision = this.explain(relativePath, kind);
       const isGitIgnored = !decision.included;
+      const isSensitive =
+        !decision.included && decision.reason === IgnoreReason.Sensitive;
       const hideCheckbox =
-        isDirectory &&
-        checkboxForFolder({
-          included: decision.included,
-          reason: decision.reason
-        }) === 'hidden';
+        isSensitive ||
+        (isDirectory &&
+          checkboxForFolder({
+            included: decision.included,
+            reason: decision.reason
+          }) === 'hidden');
 
       const key = fullPath;
       const parentChecked =
@@ -420,7 +427,9 @@ export class FileTreeProvider
         hideCheckbox
       );
 
-      if (resolved.manual) {
+      if (isSensitive) {
+        item.description = vscode.l10n.t('sensitive · never included');
+      } else if (resolved.manual) {
         item.description = vscode.l10n.t('ignored · included manually');
       }
 
@@ -635,9 +644,11 @@ export class FileTreeProvider
     );
 
     this.excludePatterns = config.get<string[]>('exclude', []);
+    this.allowSensitive = config.get<string[]>('allowSensitive', []);
     this.resolver = createIgnoreResolver({
       workspaceRoot: this.workspaceRoot,
       excludePatterns: this.excludePatterns,
+      allowSensitive: this.allowSensitive,
       ignoredExtensions: [...this.ignoredExtensions],
       forcedRoots: this.forcedRoots,
       savedPrompts: this.savedPrompts

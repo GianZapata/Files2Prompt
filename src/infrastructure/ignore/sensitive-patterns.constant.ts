@@ -1,0 +1,19 @@
+export const sensitivePatterns = [
+  '.env',
+  '.env.*',
+  '!.env.example',
+  '!.env.sample',
+  '!.env.template',
+  '!.env.dist',
+  '*.pem',
+  '*.key',
+  '*.p12',
+  '*.pfx',
+  'id_rsa*',
+  'id_ed25519*',
+  'auth.json',
+  'credentials*.json',
+  '*.keystore',
+  '.npmrc',
+  '.pypirc'
+];

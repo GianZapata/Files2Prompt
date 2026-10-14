@@ -328,6 +328,14 @@
           "default": [],
           "description": "%files2prompt.exclude.description%"
         },
+        "files2prompt.allowSensitive": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "%files2prompt.allowSensitive.description%"
+        },
         "files2prompt.maxFileBytes": {
           "type": "number",
           "default": 1048576,

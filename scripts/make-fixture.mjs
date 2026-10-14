@@ -48,7 +48,6 @@ const commitAll = repository => {
 const createApi = () => {
   const api = initRepository('api');
 
-  write(api, '.gitignore', '.env\n');
   write(api, 'src/index.ts', 'export const version = 1;\n');
   commitAll(api);
 
@@ -57,6 +56,7 @@ const createApi = () => {
   git(api, 'add', 'src/index.ts', 'src/staged.ts');
   write(api, 'src/index.ts', 'export const version = 3;\n');
   write(api, '.env', 'API_TOKEN=super-secret-token\n');
+  write(api, 'certs/server.pem', 'PEM PRIVATE MATERIAL\n');
 };
 
 const createWeb = () => {

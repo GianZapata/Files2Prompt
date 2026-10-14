@@ -61,6 +61,17 @@ export const confirmExcluded = async (
     return false;
   }
 
+  if (decision.reason === 'sensitive') {
+    await vscode.window.showWarningMessage(
+      vscode.l10n.t(
+        '{0} looks like a secret (credentials or keys), so it never goes into the prompt.',
+        relativePath
+      )
+    );
+
+    return false;
+  }
+
   if (decision.reason === 'saved-prompt') {
     await vscode.window.showWarningMessage(
       vscode.l10n.t(

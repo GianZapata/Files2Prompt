@@ -80,10 +80,30 @@ test('new user-facing strings have a Spanish translation', () => {
     'Reveal in Finder',
     'Reveal in File Explorer',
     'Reveal in file manager',
-    '{0} was saved by Files2Prompt, so it stays out of the prompt.'
+    '{0} was saved by Files2Prompt, so it stays out of the prompt.',
+    'sensitive · never included',
+    '{0} looks like a secret (credentials or keys), so it never goes into the prompt.'
   ];
 
   for (const key of expected) {
     assert.equal(typeof bundle[key], 'string', `es is missing "${key}"`);
   }
+});
+
+test('allowSensitive is a list of patterns that starts empty', () => {
+  const properties = readJson<{
+    contributes: {
+      configuration: {
+        properties: Record<
+          string,
+          { type: string; items?: { type: string }; default: unknown }
+        >;
+      };
+    };
+  }>('package.json').contributes.configuration.properties;
+  const setting = properties['files2prompt.allowSensitive'];
+
+  assert.equal(setting.type, 'array');
+  assert.equal(setting.items?.type, 'string');
+  assert.deepEqual(setting.default, []);
 });

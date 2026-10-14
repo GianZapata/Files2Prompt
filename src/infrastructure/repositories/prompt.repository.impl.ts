@@ -46,16 +46,27 @@ export class PromptRepositoryImpl extends PromptRepository {
     const isCancelled = request.isCancelled ?? (() => false);
 
     const filePaths = diffMode === DiffMode.DiffOnly ? [] : request.filePaths;
-    const changes =
+    const requestedChanges =
       diffMode === DiffMode.FilesOnly
         ? []
         : (request.changes ?? this.resolver.promptChangeList?.() ?? []);
+    const changes = requestedChanges.filter(
+      change =>
+        this.resolver.resolvePath(change.path, 'file').reason !==
+        IgnoreReason.Sensitive
+    );
 
     const systemMessage =
       (request.includeSystemMessage ?? true) ? config.systemMessage : undefined;
 
     const included: PromptFile[] = [];
-    const omittedFiles: OmittedFile[] = [];
+    const omittedFiles: OmittedFile[] = requestedChanges
+      .filter(change => !changes.includes(change))
+      .map(change => ({
+        path: change.path,
+        reason: IgnoreReason.Sensitive,
+        pattern: this.resolver.resolvePath(change.path, 'file').pattern
+      }));
     const omittedFolders: string[] = [
       ...new Set(this.resolver.omittedFolders?.() ?? [])
     ].sort();
@@ -147,11 +158,13 @@ export class PromptRepositoryImpl extends PromptRepository {
       const decision = this.resolver.resolvePath(name, 'file');
 
       if (!decision.included) {
-        omittedFiles.push({
-          path: name,
-          reason: decision.reason ?? 'ignored',
-          pattern: decision.pattern
-        });
+        if (!omittedFiles.some(omitted => omitted.path === name)) {
+          omittedFiles.push({
+            path: name,
+            reason: decision.reason ?? 'ignored',
+            pattern: decision.pattern
+          });
+        }
 
         continue;
       }

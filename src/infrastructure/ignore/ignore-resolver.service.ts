@@ -16,6 +16,7 @@ import {
   binaryExtensions,
   builtInPatterns
 } from './built-in-patterns.constant';
+import { sensitivePatterns } from './sensitive-patterns.constant';
 
 export interface IgnoreResolverOptions {
   workspaceRoot: string;
@@ -23,6 +24,7 @@ export interface IgnoreResolverOptions {
   ignoredExtensions?: string[];
   maxFileBytes?: number;
   forcedRoots?: ForcedRoot[];
+  allowSensitive?: string[];
   savedPrompts?: Pick<SavedPromptRegistry, 'has'>;
 }
 
@@ -129,6 +131,40 @@ export const createIgnoreResolver = (
     return matcher;
   };
 
+  const sensitive = ignore();
+
+  for (const pattern of sensitivePatterns) {
+    sensitive.add({ pattern, mark: pattern });
+  }
+
+  for (const allowed of options.allowSensitive ?? []) {
+    if (allowed.trim()) {
+      sensitive.add({ pattern: `!${allowed.trim()}`, mark: allowed.trim() });
+    }
+  }
+
+  const sensitiveDecision = (
+    probe: string,
+    kind: AnyPathKind
+  ): IgnoreDecision | undefined => {
+    if (kind !== 'file') {
+      return undefined;
+    }
+
+    const result = sensitive.test(probe);
+
+    if (!result.ignored) {
+      return undefined;
+    }
+
+    return {
+      included: false,
+      reason: IgnoreReason.Sensitive,
+      pattern: result.rule?.pattern,
+      sourceFile: 'built-in'
+    };
+  };
+
   const isSavedPrompt = (probe: string, kind: AnyPathKind) =>
     kind === 'file' && options.savedPrompts?.has(probe) === true;
 
@@ -141,6 +177,12 @@ export const createIgnoreResolver = (
 
     if (isSavedPrompt(probe, kind)) {
       return { included: false, reason: IgnoreReason.SavedPrompt };
+    }
+
+    const secret = sensitiveDecision(probe, kind);
+
+    if (secret) {
+      return secret;
     }
 
     const directories = parentDirectories(probe);
@@ -196,6 +238,12 @@ export const createIgnoreResolver = (
 
     if (isSavedPrompt(probe, kind)) {
       return { included: false, reason: IgnoreReason.SavedPrompt };
+    }
+
+    const secret = sensitiveDecision(probe, kind);
+
+    if (secret) {
+      return secret;
     }
 
     const marked = ignore();

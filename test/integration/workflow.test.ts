@@ -92,6 +92,10 @@ suite('Files2Prompt with two git repositories', () => {
     assert.ok(xml.includes('path="api/src/staged.ts"'), 'staged diff missing');
     assert.ok(xml.includes('path="web/español.md"'), 'staged md diff missing');
     assert.ok(xml.includes('export const version = 3;'));
+    assert.equal(xml.includes('super-secret-token'), false);
+    assert.equal(xml.includes('PEM PRIVATE MATERIAL'), false);
+    assert.equal(xml.includes('api/.env'), false);
+    assert.equal(xml.includes('server.pem'), false);
     assert.ok(xml.includes('Texto con acentuación.'));
   });
 
@@ -230,6 +234,7 @@ suite('Files2Prompt with two git repositories', () => {
         [
           inWorkspace('web/src/app.ts'),
           inWorkspace('api/.env'),
+          inWorkspace('api/certs/server.pem'),
           inWorkspace('ext'),
           inWorkspace('ext/id_rsa')
         ]
@@ -240,6 +245,7 @@ suite('Files2Prompt with two git repositories', () => {
 
     assert.ok(xml.includes('<file name="web/src/app.ts">'));
     assert.equal(xml.includes('super-secret-token'), false);
+    assert.equal(xml.includes('PEM PRIVATE MATERIAL'), false);
     assert.equal(xml.includes('PRIVATE KEY MATERIAL'), false);
     assert.equal(xml.includes('id_rsa'), false);
   });
