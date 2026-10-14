@@ -23,3 +23,9 @@ jobs:
       - run: npm run format:check
       - run: npm test
       - run: npm run compile
+      - name: Integration tests
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:integration
+      - name: Integration tests
+        if: runner.os != 'Linux'
+        run: npm run test:integration

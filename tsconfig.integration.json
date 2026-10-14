@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "module": "Node16",
+    "target": "ES2022",
+    "outDir": "out-integration",
+    "rootDir": ".",
+    "lib": ["ES2022"],
+    "types": ["node", "mocha"],
+    "strict": true,
+    "sourceMap": true
+  },
+  "include": ["test-integration/**/*.ts"],
+  "exclude": ["out", "out-test", "out-integration", "node_modules"]
+}
