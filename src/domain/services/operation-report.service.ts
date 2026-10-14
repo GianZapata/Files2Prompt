@@ -45,6 +45,9 @@ export const formatOperationReport = (input: FormatOperationReportInput) => {
     `Pending: ${summary?.pending ?? 0}`,
     `Omitted files: ${summary?.omittedFiles.length ?? 0}`,
     `Omitted folders: ${summary?.omittedFolders.length ?? 0}`,
+    ...(summary?.systemMessageFromWorkspace
+      ? ['System message: from workspace settings (not your user settings)']
+      : []),
     ...(summary?.included.map(file => `Collected file: ${file.name}`) ?? []),
     ...(summary?.omittedFolders.map(folder => `${folder} — pruned-folder`) ??
       []),

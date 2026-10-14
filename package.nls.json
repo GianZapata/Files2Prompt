@@ -36,6 +36,7 @@
   "files2prompt.systemMessage.description": "Optional system message to include in the output.",
   "files2prompt.exclude.description": "Extra gitignore-style patterns excluded from copied context.",
   "files2prompt.allowSensitive.description": "Gitignore-style patterns for secret-looking files (such as .env, keys or .npmrc) that may go into the prompt. Everything else of that kind is always left out.",
+  "files2prompt.untrustedWorkspaces.description": "In an untrusted folder, the system message and the list of allowed secret-looking files come from your user settings only, never from the folder.",
   "files2prompt.maxFileBytes.description": "Skip a file larger than this many bytes.",
   "files2prompt.maxTotalBytes.description": "Stop copying when the serialized prompt would exceed this many UTF-8 bytes.",
   "files2prompt.ignoredExtensions.description": "Comma-separated list of file extensions to ignore during recursive selection. Example: 'png,jpg,jpeg,gif,svg'"

@@ -3,6 +3,7 @@ import type { OutputFormat } from '../entities/output-format.enum';
 
 export interface PromptSettings {
   systemMessage?: string;
+  systemMessageFromWorkspace?: boolean;
   outputFormat: OutputFormat;
   diffMode: DiffMode;
   maxFileBytes: number;

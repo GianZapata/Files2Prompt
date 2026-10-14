@@ -123,3 +123,19 @@ test('details name a secret left out and the rule that caught it', () => {
 
   assert.match(report, /api\/\.env — sensitive \(\.env\)/);
 });
+
+test('details say when the system message comes from the workspace', () => {
+  const fromWorkspace = formatOperationReport({
+    kind: 'copy',
+    wrote: true,
+    summary: { ...summary('A', 1), systemMessageFromWorkspace: true }
+  });
+  const fromUser = formatOperationReport({
+    kind: 'copy',
+    wrote: true,
+    summary: summary('A', 1)
+  });
+
+  assert.match(fromWorkspace, /System message: from workspace settings/);
+  assert.doesNotMatch(fromUser, /System message/);
+});

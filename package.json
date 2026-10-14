@@ -16,6 +16,16 @@
     "type": "git",
     "url": "https://github.com/GianZapata/Files2Prompt"
   },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "%files2prompt.untrustedWorkspaces.description%",
+      "restrictedConfigurations": [
+        "files2prompt.systemMessage",
+        "files2prompt.allowSensitive"
+      ]
+    }
+  },
   "engines": {
     "vscode": "^1.125.0"
   },

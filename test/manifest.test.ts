@@ -82,6 +82,7 @@ test('new user-facing strings have a Spanish translation', () => {
     'Reveal in file manager',
     '{0} was saved by Files2Prompt, so it stays out of the prompt.',
     'sensitive · never included',
+    'The system message in this prompt comes from the workspace settings, not from your user settings.',
     '{0} looks like a secret (credentials or keys), so it never goes into the prompt.'
   ];
 
@@ -106,4 +107,36 @@ test('allowSensitive is a list of patterns that starts empty', () => {
   assert.equal(setting.type, 'array');
   assert.equal(setting.items?.type, 'string');
   assert.deepEqual(setting.default, []);
+});
+
+test('the workspace cannot choose the system message in an untrusted folder', () => {
+  const capabilities = readJson<{
+    capabilities: {
+      untrustedWorkspaces: {
+        supported: string;
+        description: string;
+        restrictedConfigurations: string[];
+      };
+    };
+  }>('package.json').capabilities.untrustedWorkspaces;
+  const english = readJson<Record<string, string>>('package.nls.json');
+  const spanish = readJson<Record<string, string>>('package.nls.es.json');
+
+  assert.equal(capabilities.supported, 'limited');
+  assert.deepEqual(capabilities.restrictedConfigurations, [
+    'files2prompt.systemMessage',
+    'files2prompt.allowSensitive'
+  ]);
+  assert.equal(
+    capabilities.description,
+    '%files2prompt.untrustedWorkspaces.description%'
+  );
+  assert.equal(
+    typeof english['files2prompt.untrustedWorkspaces.description'],
+    'string'
+  );
+  assert.equal(
+    typeof spanish['files2prompt.untrustedWorkspaces.description'],
+    'string'
+  );
 });

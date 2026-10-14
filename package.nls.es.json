@@ -36,6 +36,7 @@
   "files2prompt.systemMessage.description": "Mensaje de sistema opcional para incluir en la salida.",
   "files2prompt.exclude.description": "Patrones extra estilo gitignore excluidos del contexto copiado.",
   "files2prompt.allowSensitive.description": "Patrones estilo gitignore de archivos que parecen secretos (como .env, claves o .npmrc) y que sí pueden ir al prompt. Todo lo demás de ese tipo se deja fuera siempre.",
+  "files2prompt.untrustedWorkspaces.description": "En una carpeta no confiable, el mensaje del sistema y la lista de archivos sensibles permitidos salen solo de tu configuración de usuario, nunca de la carpeta.",
   "files2prompt.maxFileBytes.description": "Omitir un archivo mayor que esta cantidad de bytes.",
   "files2prompt.maxTotalBytes.description": "Detener la copia cuando el prompt serializado supere esta cantidad de bytes UTF-8.",
   "files2prompt.ignoredExtensions.description": "Lista separada por comas de extensiones a ignorar en la selección recursiva. Ejemplo: 'png,jpg,jpeg,gif,svg'"

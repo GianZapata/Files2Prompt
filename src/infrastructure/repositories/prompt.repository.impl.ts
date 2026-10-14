@@ -88,7 +88,10 @@ export class PromptRepositoryImpl extends PromptRepository {
         omittedFiles,
         omittedFolders,
         pending,
-        byteLength: cancelled ? 0 : usedBytes
+        byteLength: cancelled ? 0 : usedBytes,
+        ...(systemMessage && config.systemMessageFromWorkspace
+          ? { systemMessageFromWorkspace: true }
+          : {})
       };
     };
 

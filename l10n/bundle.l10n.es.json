@@ -87,5 +87,6 @@
   "Reveal in file manager": "Mostrar en el administrador de archivos",
   "{0} was saved by Files2Prompt, so it stays out of the prompt.": "{0} lo guardó Files2Prompt, por eso queda fuera del prompt.",
   "sensitive · never included": "sensible · nunca se incluye",
-  "{0} looks like a secret (credentials or keys), so it never goes into the prompt.": "{0} parece un secreto (credenciales o claves), así que nunca entra al prompt."
+  "{0} looks like a secret (credentials or keys), so it never goes into the prompt.": "{0} parece un secreto (credenciales o claves), así que nunca entra al prompt.",
+  "The system message in this prompt comes from the workspace settings, not from your user settings.": "El mensaje del sistema de este prompt viene de la configuración del workspace, no de tu configuración de usuario."
 }

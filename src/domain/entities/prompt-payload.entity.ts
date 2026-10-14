@@ -38,4 +38,5 @@ export interface PromptBuild {
   omittedFolders: string[];
   pending: number;
   byteLength: number;
+  systemMessageFromWorkspace?: boolean;
 }

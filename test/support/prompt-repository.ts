@@ -38,7 +38,8 @@ export const repositoryFor = (
   workspace: string,
   limits: Partial<RepositoryLimits> = {},
   format: OutputFormat = OutputFormat.Xml,
-  systemMessage?: string
+  systemMessage?: string,
+  systemMessageFromWorkspace?: boolean
 ) =>
   new PromptRepositoryImpl(
     workspace,
@@ -47,6 +48,7 @@ export const repositoryFor = (
       promptSettings: () => ({
         outputFormat: format,
         systemMessage,
+        systemMessageFromWorkspace,
         diffMode: DiffMode.DiffAndFiles,
         ...defaultLimits,
         ...limits

@@ -600,6 +600,21 @@ export const registerPromptCommands = (
 
       const detailsLabel = vscode.l10n.t('Show details');
 
+      if (summary.systemMessageFromWorkspace) {
+        void vscode.window
+          .showWarningMessage(
+            vscode.l10n.t(
+              'The system message in this prompt comes from the workspace settings, not from your user settings.'
+            ),
+            detailsLabel
+          )
+          .then(choice => {
+            if (choice === detailsLabel) {
+              void openReport(report);
+            }
+          });
+      }
+
       vscode.window
         .showInformationMessage(
           vscode.l10n.t(previewNotice.message, ...previewNotice.args),

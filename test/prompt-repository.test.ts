@@ -219,3 +219,37 @@ for (const format of Object.values(OutputFormat)) {
     assert.equal(result.byteLength, Buffer.byteLength(result.output));
   });
 }
+
+test('flags a system message that comes from the workspace settings', async () => {
+  const workspace = temporaryFolder();
+  const files = writeFiles(workspace, ['a.ts']);
+  const repository = repositoryFor(
+    workspace,
+    {},
+    OutputFormat.Xml,
+    'Be brief',
+    true
+  );
+
+  const withMessage = await repository.build({ filePaths: files });
+  const withoutMessage = await repository.build({
+    filePaths: files,
+    includeSystemMessage: false
+  });
+
+  assert.equal(withMessage.systemMessageFromWorkspace, true);
+  assert.equal(withoutMessage.systemMessageFromWorkspace, undefined);
+});
+
+test('a system message from the user settings is not flagged', async () => {
+  const workspace = temporaryFolder();
+  const files = writeFiles(workspace, ['a.ts']);
+  const result = await repositoryFor(
+    workspace,
+    {},
+    OutputFormat.Xml,
+    'Be brief'
+  ).build({ filePaths: files });
+
+  assert.equal(result.systemMessageFromWorkspace, undefined);
+});
