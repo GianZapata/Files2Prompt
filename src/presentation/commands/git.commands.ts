@@ -57,6 +57,24 @@ export const gitScopeItems = () =>
         }
   );
 
+const wantedRepository = (
+  workspaceRoot: string,
+  target: { resourceUri?: vscode.Uri } | string | undefined
+) => {
+  if (typeof target === 'string') {
+    return target;
+  }
+
+  if (!target?.resourceUri) {
+    return undefined;
+  }
+
+  return path
+    .relative(workspaceRoot, target.resourceUri.fsPath)
+    .split(path.sep)
+    .join('/');
+};
+
 export const registerGitCommands = (
   deps: GitCommandDeps
 ): vscode.Disposable[] => {
@@ -133,7 +151,11 @@ export const registerGitCommands = (
 
     vscode.commands.registerCommand(
       'files2prompt.selectChanges',
-      async (target?: { resourceUri?: vscode.Uri }) => {
+      async (
+        target?: { resourceUri?: vscode.Uri } | string,
+        presetScope?: AnyGitScope,
+        presetBase?: string
+      ) => {
         if (!(await deps.gitRepository.isAvailable())) {
           await vscode.window.showInformationMessage(
             vscode.l10n.t(gitUnavailableMessage())
@@ -142,12 +164,8 @@ export const registerGitCommands = (
           return;
         }
 
-        const wanted = target?.resourceUri
-          ? path
-              .relative(deps.workspaceRoot, target.resourceUri.fsPath)
-              .split(path.sep)
-              .join('/')
-          : undefined;
+        const scripted = presetScope !== undefined;
+        const wanted = wantedRepository(deps.workspaceRoot, target);
 
         const repos = await deps.discoverRepositories.execute(wanted);
 
@@ -161,7 +179,7 @@ export const registerGitCommands = (
 
         let selectedRepos: DiscoveredRepository[] = [];
 
-        if (repos.length === 1) {
+        if (repos.length === 1 || scripted) {
           selectedRepos = repos;
         } else {
           const picked = await vscode.window.showQuickPick(
@@ -183,27 +201,35 @@ export const registerGitCommands = (
           selectedRepos = picked.map(item => item.repo);
         }
 
-        const scopePick = await vscode.window.showQuickPick(gitScopeItems(), {
-          placeHolder: vscode.l10n.t('Which changes should be selected?')
-        });
+        const scopePick = scripted
+          ? undefined
+          : await vscode.window.showQuickPick(gitScopeItems(), {
+              placeHolder: vscode.l10n.t('Which changes should be selected?')
+            });
 
         const scope =
-          scopePick && 'scope' in scopePick ? scopePick.scope : undefined;
+          presetScope ??
+          (scopePick && 'scope' in scopePick ? scopePick.scope : undefined);
 
         if (!scope) {
           return;
         }
 
-        const modePick = await vscode.window.showQuickPick(
-          [
-            { label: vscode.l10n.t('Add to selection'), id: 'add' as const },
-            {
-              label: vscode.l10n.t('Replace selection'),
-              id: 'replace' as const
-            }
-          ],
-          { placeHolder: vscode.l10n.t('How should this selection apply?') }
-        );
+        const modePick = scripted
+          ? { id: 'replace' as const }
+          : await vscode.window.showQuickPick(
+              [
+                {
+                  label: vscode.l10n.t('Add to selection'),
+                  id: 'add' as const
+                },
+                {
+                  label: vscode.l10n.t('Replace selection'),
+                  id: 'replace' as const
+                }
+              ],
+              { placeHolder: vscode.l10n.t('How should this selection apply?') }
+            );
 
         if (!modePick) {
           return;
@@ -214,13 +240,17 @@ export const registerGitCommands = (
         for (const repo of selectedRepos) {
           const collected = await deps.getGitChanges.execute({
             repoRelative: repo.relativePath,
-            scope
+            scope,
+            forcedBase: presetBase
           });
 
           changes.push(...collected);
         }
 
-        if (changes.some(change => change.status === 'submodule')) {
+        if (
+          !scripted &&
+          changes.some(change => change.status === 'submodule')
+        ) {
           const includeInner = vscode.l10n.t('Include');
           const choice = await vscode.window.showWarningMessage(
             vscode.l10n.t('Include the submodule diff?'),

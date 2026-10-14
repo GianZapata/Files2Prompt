@@ -614,7 +614,7 @@ export const registerPromptCommands = (
 
     vscode.commands.registerCommand(
       'files2prompt.savePromptAs',
-      async (formatOverride?: OutputFormat) => {
+      async (formatOverride?: OutputFormat, destinationUri?: vscode.Uri) => {
         const checkedFiles = deps.selection.getCheckedFiles();
 
         if (
@@ -628,11 +628,13 @@ export const registerPromptCommands = (
 
         const settingFormat = formatOverride ?? configuredFormat();
         const picker = deps.saveDestinationPicker ?? promptSaveDestination;
-        const chosen = await picker({
-          defaultUri: suggestedSaveUri(deps.state, settingFormat),
-          filters: fileFiltersForFormat(settingFormat),
-          title: vscode.l10n.t('Save prompt as…')
-        });
+        const chosen =
+          destinationUri ??
+          (await picker({
+            defaultUri: suggestedSaveUri(deps.state, settingFormat),
+            filters: fileFiltersForFormat(settingFormat),
+            title: vscode.l10n.t('Save prompt as…')
+          }));
 
         if (!chosen) {
           return;
