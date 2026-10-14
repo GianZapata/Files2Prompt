@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "module": "Node16",
+    "target": "ES2022",
+    "outDir": "out-test/smoke",
+    "rootDir": "test/smoke",
+    "lib": ["ES2022"],
+    "types": ["node", "mocha"],
+    "esModuleInterop": true,
+    "strict": true,
+    "sourceMap": true
+  },
+  "include": ["test/smoke/**/*.ts"],
+  "exclude": ["node_modules"]
+}

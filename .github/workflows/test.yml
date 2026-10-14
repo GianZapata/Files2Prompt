@@ -1,0 +1,87 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: 24.x
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }}, vscode ${{ matrix.vscode }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        vscode: [stable, minimum]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run compile
+      - run: npm run test:unit
+      - name: VS Code tests
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:vscode -- --label ${{ matrix.vscode }}
+      - name: VS Code tests
+        if: runner.os != 'Linux'
+        run: npm run test:vscode -- --label ${{ matrix.vscode }}
+
+  package:
+    name: Package VSIX
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: npm ci
+      - run: npx vsce package --out files2prompt.vsix
+      - name: Record SHA-256
+        run: sha256sum files2prompt.vsix | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: files2prompt-vsix
+          path: files2prompt.vsix
+          if-no-files-found: error
+
+  smoke:
+    name: Smoke (${{ matrix.os }})
+    needs: package
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: npm ci
+      - name: Download VSIX
+        uses: actions/download-artifact@v4
+        with:
+          name: files2prompt-vsix
+      - name: Smoke test the installed extension
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:smoke -- files2prompt.vsix
+      - name: Smoke test the installed extension
+        if: runner.os != 'Linux'
+        run: npm run test:smoke -- files2prompt.vsix
