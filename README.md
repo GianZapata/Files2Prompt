@@ -108,6 +108,18 @@ You can customize the keyboard shortcuts for refreshing and copying files:
 3. Enter your desired system message in the System Message field.
 4. If left empty, no system message will be included in the copied output.
 
+## Tokens and size
+
+Files2Prompt estimates the size of a prompt as characters divided by four. The figure is approximate, so it shows as `~12.3k tokens`, never as an exact count.
+
+- **Status bar.** Shows the file count and the estimated tokens of the current selection (calculated from file sizes). When `files2prompt.tokenBudget` is above 0 and the selection goes over it, the item turns to a warning color.
+- **Details.** After a copy, "Show details" reports the estimate for the full prompt (files, tree, diffs and wrapper) and lists the ten heaviest files.
+- **Tooltip.** Hover a file in the tree to see its size and estimated tokens.
+- **`files2prompt.tokenBudget`.** Warns before copying a prompt estimated above this many tokens. Default `0` (off). The warning offers "Copy anyway" and "Do not ask again in this workspace". If the selection also goes over `maxTotalBytes`, only the size warning shows.
+- **`files2prompt.includeGenerated`.** Lockfiles (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `composer.lock`, `Cargo.lock`, `go.sum` and similar) and `*.min.js`, `*.min.css` and `*.map` stay out when you select a folder, the whole project, an extension or Git changes. A file you check on its own is always included. Their diffs are replaced with a "diff omitted" mark. Default `false`.
+- **`files2prompt.includeTree`.** Adds the tree of the selected files before the diffs (`<tree>` in XML, `## Structure` in Markdown, `=== TREE ===` in plain text). It counts toward `maxTotalBytes` and the estimate. A file cut by that limit is not listed. Default `true`.
+- **`files2prompt.compactWhitespace`.** Converts CRLF to LF, strips trailing spaces and shrinks runs of three or more blank lines to one, in file contents only. Indentation and diffs are never touched. Markdown hard line breaks (two trailing spaces) are lost. Default `false`.
+
 ## Example Output
 
 ```xml
