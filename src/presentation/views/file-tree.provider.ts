@@ -12,7 +12,10 @@ import * as vscode from 'vscode';
 
 import { FolderSelectionOutcome } from '../../domain/entities/folder-selection-outcome.enum';
 import { IgnoreReason } from '../../domain/entities/ignore-reason.enum';
-import { toPosixRelative } from '../../domain/helpers/to-posix-relative';
+import {
+  type GeneratedLedger,
+  createGeneratedLedger
+} from '../../domain/services/generated-ledger.service';
 import { repositoryLabel } from '../../domain/services/git-repos.service';
 import {
   checkboxForFolder,
@@ -27,7 +30,6 @@ import {
 import {
   filesSelectedByFolder,
   filesSelectedByFolderAsync,
-  generatedFilesForSelection,
   omittedFoldersForSelection,
   selectionRoots
 } from '../../infrastructure/filesystem/select-files.walker';
@@ -53,7 +55,7 @@ export class FileTreeProvider
   private excludePatterns: string[] = [];
   private allowSensitive: string[] = [];
   private includeGenerated = false;
-  private bulkSkipped: Set<string> = new Set();
+  private readonly generatedLedger: GeneratedLedger;
   private watcher: vscode.FileSystemWatcher;
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
   private disposables: vscode.Disposable[] = [];
@@ -63,6 +65,7 @@ export class FileTreeProvider
     private readonly savedPrompts?: Pick<SavedPromptRegistry, 'has'>
   ) {
     this.workspaceRoot = workspaceRoot;
+    this.generatedLedger = createGeneratedLedger(workspaceRoot);
     this.reloadRules();
 
     // Create a file system watcher
@@ -131,7 +134,7 @@ export class FileTreeProvider
     this.forcedRoots = [];
     this.reloadRules();
     this.checkedItems.clear();
-    this.bulkSkipped.clear();
+    this.generatedLedger.clear();
     this.promptChanges = [];
     this.decorationEmitter.fire(undefined);
     this.refresh();
@@ -247,11 +250,13 @@ export class FileTreeProvider
     options: { isCancelled?: () => boolean } = {}
   ): Promise<AnyFolderSelectionOutcome> {
     const snapshot = new Map(this.checkedItems);
+    const generatedFiles: string[] = [];
+
     const result = await filesSelectedByFolderAsync(
       this.workspaceRoot,
       folderPath,
       this.resolver.resolveBulk,
-      options
+      { ...options, generatedFiles }
     );
 
     if (result.cancelled) {
@@ -262,6 +267,7 @@ export class FileTreeProvider
     }
 
     this.checkedItems.set(folderPath, vscode.TreeItemCheckboxState.Checked);
+    this.generatedLedger.recordFromFolder(generatedFiles);
 
     for (const filePath of result.files) {
       this.checkedItems.set(filePath, vscode.TreeItemCheckboxState.Checked);
@@ -447,6 +453,11 @@ export class FileTreeProvider
         kind === 'file' && this.resolver.isSkippedGenerated(relativePath);
 
       const allowed = !isGitIgnored && !isIgnoredExtension && !isGenerated;
+
+      if (parentChecked && isGenerated) {
+        this.generatedLedger.recordFromFolder([fullPath]);
+      }
+
       let checkboxState = this.checkedItems.get(key);
 
       if (hideCheckbox) {
@@ -497,11 +508,21 @@ export class FileTreeProvider
     this.checkedItems.set(key, state);
 
     if (item.isDirectory) {
+      const generatedFiles: string[] = [];
+
       const selected = filesSelectedByFolder(
         this.workspaceRoot,
         key,
-        this.resolver.resolveBulk
+        this.resolver.resolveBulk,
+        [],
+        generatedFiles
       );
+
+      if (state === vscode.TreeItemCheckboxState.Checked) {
+        this.generatedLedger.recordFromFolder(generatedFiles);
+      } else {
+        this.generatedLedger.forgetInside(key);
+      }
 
       for (const filePath of selected) {
         const nextState =
@@ -606,26 +627,16 @@ export class FileTreeProvider
   }
 
   skippedGenerated(): string[] {
-    const checked = new Set(this.getCheckedFiles());
-
-    const directories = [...this.checkedItems]
-      .filter(([, state]) => state === vscode.TreeItemCheckboxState.Checked)
-      .map(([key]) => key)
-      .filter(isDirectoryPath);
-
-    const fromFolders = generatedFilesForSelection(
-      this.workspaceRoot,
-      directories,
-      this.resolver.resolveBulk
-    );
-
-    const fromFiles = [...this.bulkSkipped].map(file =>
-      toPosixRelative(this.workspaceRoot, file)
-    );
-
-    return [...new Set([...fromFolders, ...fromFiles])]
-      .filter(relative => !checked.has(path.join(this.workspaceRoot, relative)))
-      .sort();
+    return this.generatedLedger.skipped({
+      isChecked: filePath =>
+        this.checkedItems.get(filePath) ===
+        vscode.TreeItemCheckboxState.Checked,
+      isFolderChecked: folderPath =>
+        this.checkedItems.get(folderPath) ===
+        vscode.TreeItemCheckboxState.Checked,
+      isStillGenerated: relativePath =>
+        this.resolver.isSkippedGenerated(relativePath)
+    });
   }
 
   getCheckedFiles(): string[] {
@@ -651,7 +662,7 @@ export class FileTreeProvider
       ? new Set(this.getCheckedFiles())
       : new Set<string>();
 
-    if (!options.bulk) this.bulkSkipped.clear();
+    if (!options.bulk) this.generatedLedger.clear();
 
     // Clear existing checks
     this.checkedItems.clear();
@@ -670,7 +681,7 @@ export class FileTreeProvider
           : this.resolver.resolve(relativePath, 'file');
 
       if (decision.reason === IgnoreReason.Generated) {
-        this.bulkSkipped.add(filePath);
+        this.generatedLedger.recordListed([filePath]);
       }
 
       if (!decision.included) {
@@ -751,14 +762,6 @@ interface SiblingState {
   checked: boolean;
   emptyFolder?: boolean;
 }
-
-const isDirectoryPath = (candidate: string) => {
-  try {
-    return fs.lstatSync(candidate).isDirectory();
-  } catch {
-    return false;
-  }
-};
 
 export class FileItem extends vscode.TreeItem {
   constructor(

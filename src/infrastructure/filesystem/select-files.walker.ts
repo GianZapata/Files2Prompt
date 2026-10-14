@@ -11,6 +11,7 @@ export interface SelectFilesAsyncOptions {
   isCancelled?: () => boolean;
   yieldEvery?: number;
   omittedFolders?: string[];
+  generatedFiles?: string[];
 }
 
 export interface SelectFilesAsyncResult {
@@ -21,8 +22,9 @@ export interface SelectFilesAsyncResult {
 export const filesSelectedByFolder = (
   workspaceRoot: string,
   folderPath: string,
-  resolve: (relativePath: string, kind: 'file' | 'directory') => IgnoreDecision,
-  omittedFolders: string[] = []
+  resolve: (relativePath: string, kind: AnyPathKind) => IgnoreDecision,
+  omittedFolders: string[] = [],
+  generatedFiles: string[] = []
 ): string[] => {
   const selected: string[] = [];
   const visit = (directory: string) => {
@@ -51,8 +53,12 @@ export const filesSelectedByFolder = (
         continue;
       }
 
-      if (resolve(relativePath, 'file').included) {
+      const decision = resolve(relativePath, 'file');
+
+      if (decision.included) {
         selected.push(fullPath);
+      } else if (decision.reason === IgnoreReason.Generated) {
+        generatedFiles.push(fullPath);
       }
     }
   };
@@ -65,11 +71,12 @@ export const filesSelectedByFolder = (
 export const filesSelectedByFolderAsync = async (
   workspaceRoot: string,
   folderPath: string,
-  resolve: (relativePath: string, kind: 'file' | 'directory') => IgnoreDecision,
+  resolve: (relativePath: string, kind: AnyPathKind) => IgnoreDecision,
   options: SelectFilesAsyncOptions = {}
 ): Promise<SelectFilesAsyncResult> => {
   const selected: string[] = [];
   const omittedFolders = options.omittedFolders ?? [];
+  const generatedFiles = options.generatedFiles ?? [];
   const yieldEvery = options.yieldEvery ?? 64;
   let seen = 0;
 
@@ -121,8 +128,12 @@ export const filesSelectedByFolderAsync = async (
         continue;
       }
 
-      if (resolve(relativePath, 'file').included) {
+      const decision = resolve(relativePath, 'file');
+
+      if (decision.included) {
         selected.push(fullPath);
+      } else if (decision.reason === IgnoreReason.Generated) {
+        generatedFiles.push(fullPath);
       }
     }
 
@@ -203,49 +214,6 @@ export const omittedFoldersForSelection = (
     for (const folder of discovered) {
       found.add(folder);
     }
-  }
-
-  return [...found].sort();
-};
-
-export const generatedFilesForSelection = (
-  workspaceRoot: string,
-  checkedDirectories: string[],
-  resolve: (relativePath: string, kind: AnyPathKind) => IgnoreDecision
-): string[] => {
-  const found = new Set<string>();
-
-  const visit = (directory: string) => {
-    const relativeDirectory = path.relative(workspaceRoot, directory);
-
-    if (
-      relativeDirectory !== '' &&
-      !resolve(relativeDirectory, 'directory').included
-    ) {
-      return;
-    }
-
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-      if (entry.isSymbolicLink()) continue;
-
-      const fullPath = path.join(directory, entry.name);
-
-      if (entry.isDirectory()) {
-        visit(fullPath);
-
-        continue;
-      }
-
-      const relativePath = path.relative(workspaceRoot, fullPath);
-
-      if (resolve(relativePath, 'file').reason === IgnoreReason.Generated) {
-        found.add(relativePath.split(path.sep).join('/'));
-      }
-    }
-  };
-
-  for (const directory of outermostDirectories(checkedDirectories)) {
-    visit(directory);
   }
 
   return [...found].sort();

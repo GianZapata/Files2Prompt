@@ -10,7 +10,7 @@ import { OutputFormat } from '../src/domain/entities/output-format.enum';
 import { renderPrompt } from '../src/domain/services/prompt-formats.service';
 import {
   filesSelectedByFolder,
-  generatedFilesForSelection
+  filesSelectedByFolderAsync
 } from '../src/infrastructure/filesystem/select-files.walker';
 import { generatedPatterns } from '../src/infrastructure/ignore/generated-patterns.constant';
 import { createIgnoreResolver } from '../src/infrastructure/ignore/ignore-resolver.service';
@@ -158,7 +158,10 @@ test('other reasons still win over generated in a bulk decision', () => {
   );
 });
 
-test('selecting a folder skips lockfiles and lists them as generated', () => {
+const relativeTo = (root: string, files: string[]) =>
+  files.map(file => path.relative(root, file).split(path.sep).join('/'));
+
+test('one walk skips lockfiles and reports them as generated', () => {
   const root = makeRoot();
 
   write(root, 'package.json');
@@ -168,46 +171,44 @@ test('selecting a folder skips lockfiles and lists them as generated', () => {
   write(root, 'public/app.min.js');
 
   const resolver = createIgnoreResolver({ workspaceRoot: root });
-  const selected = filesSelectedByFolder(root, root, resolver.resolveBulk).map(
-    file => path.relative(root, file).split(path.sep).join('/')
+  const generated: string[] = [];
+
+  const selected = filesSelectedByFolder(
+    root,
+    root,
+    resolver.resolveBulk,
+    [],
+    generated
   );
 
-  assert.deepEqual(selected, ['package.json', 'src/app.ts']);
-  assert.deepEqual(
-    generatedFilesForSelection(root, [root], resolver.resolveBulk),
-    ['package-lock.json', 'packages/web/yarn.lock', 'public/app.min.js']
-  );
+  assert.deepEqual(relativeTo(root, selected), ['package.json', 'src/app.ts']);
+
+  assert.deepEqual(relativeTo(root, generated.sort()), [
+    'package-lock.json',
+    'packages/web/yarn.lock',
+    'public/app.min.js'
+  ]);
 });
 
-test('generated files under a pruned folder are not reported', () => {
+test('the async walk reports generated files and ignores pruned folders', async () => {
   const root = makeRoot();
 
   write(root, 'node_modules/pkg/yarn.lock');
+  write(root, 'api/composer.lock');
   write(root, 'src/app.ts');
 
   const resolver = createIgnoreResolver({ workspaceRoot: root });
+  const generatedFiles: string[] = [];
 
-  assert.deepEqual(
-    generatedFilesForSelection(root, [root], resolver.resolveBulk),
-    []
+  const result = await filesSelectedByFolderAsync(
+    root,
+    root,
+    resolver.resolveBulk,
+    { generatedFiles }
   );
-});
 
-test('nested checked folders are walked once', () => {
-  const root = makeRoot();
-
-  write(root, 'api/composer.lock');
-
-  const resolver = createIgnoreResolver({ workspaceRoot: root });
-
-  assert.deepEqual(
-    generatedFilesForSelection(
-      root,
-      [path.join(root, 'api'), root],
-      resolver.resolveBulk
-    ),
-    ['api/composer.lock']
-  );
+  assert.deepEqual(relativeTo(root, result.files), ['src/app.ts']);
+  assert.deepEqual(relativeTo(root, generatedFiles), ['api/composer.lock']);
 });
 
 test('the build lists the skipped files it was given without recomputing them', async () => {
