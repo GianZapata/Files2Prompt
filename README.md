@@ -247,6 +247,24 @@ Copy the selected files into the LLM, then edit the project yourself from the re
 4. Apply the reply in the editor.
 5. Repeat.
 
+## Contributing
+
+### Release
+
+Pushing a tag that starts with `v` runs `.github/workflows/publish.yml`. It checks that the tag matches the `version` in `package.json`, packages one VSIX, and publishes that same file to both registries. Set these repository secrets first:
+
+- `VSCE_PAT`: a Personal Access Token for the Visual Studio Marketplace publisher `gianzapata`.
+- `OVSX_PAT`: an access token for Open VSX.
+
+If a secret is missing, that registry is skipped with a warning and the job still passes.
+
+To release, bump `version` in `package.json`, update `CHANGELOG.md`, commit, then tag:
+
+```sh
+git tag v2.0.0
+git push origin v2.0.0
+```
+
 ## Credits
 
 Promptfold is based on [Files2Prompt](https://github.com/Thomas-McKanna/Files2Prompt) by Thomas McKanna, released under the MIT license. See [LICENSE.md](LICENSE.md).
