@@ -6,22 +6,27 @@ Original project: [Thomas-McKanna/Files2Prompt](https://github.com/Thomas-McKann
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/GianZapata/Files2Prompt)
 
-Copy file contents in XML format for LLM prompts effortlessly.
+Copy files and Git changes as XML, Markdown or plain text for LLM prompts, with an estimate of the tokens they use.
 
 ![Demo](demo.gif)
 
 ## Features
 
-- **Visual File Tree**: Browse and select files within your workspace using an intuitive tree view.
-- **Selective Copying**: Easily choose which files to include in the copy operation with checkboxes.
-- **XML Formatting**: Copies the content of selected files wrapped in XML `<file>` elements, ready for use in LLM prompts or other applications.
-- **Custom System Message**: Optionally include a system message in your copied output, encapsulated within a `<systemMessage>` XML element.
-- **Configurable Shortcuts**: Quickly refresh the file tree or copy files using customizable keyboard shortcuts.
-- **Git Ignore Support**: Automatically ignores files and directories specified in your .gitignore.
-- **Prompt Ignore**: `.promptignore` controls what is copied into an LLM prompt. It does not replace `.gitignore`. A `!` rule cannot bring back a file while its parent directory stays excluded.
-- **Selection History**: Quickly switch between sets of previously selected files.
-- **Save Prompt as File**: Save the prompt directly into a file (`.xml`, `.md`, or `.txt`) with a standard save dialog.
-- **Clean Architecture**: Decoupled domain, infrastructure, and presentation layers following datasource/repository and use case patterns.
+- **Output formats**: XML, Markdown or plain text, with the format switchable from the view.
+- **Copy and save**: copy to the clipboard, Save as…, Copy as File…, Preview and Show details.
+- **Flexible selection**: the whole project, by extension, open files, or a folder or file from Explorer.
+- **Git changes**: uncommitted, staged, one commit, or the current branch against a base, as a diff before the files.
+- **Several repositories**: a launcher folder with many repositories and submodules, each with its branch.
+- **Ignored folders on demand**: check a folder from `.gitignore` to include it, after one confirmation.
+- **Secret protection**: credentials and keys are never included, `allowSensitive` is the explicit way around it, and links that leave the workspace are skipped.
+- **Generated files**: lockfiles and minified files stay out of bulk selection.
+- **Token estimate**: status bar, tooltips and details, with an optional `tokenBudget` warning.
+- **Structure tree**: the selected files laid out as a tree at the top of the prompt.
+- **Whitespace compaction**: optional trimming of file contents.
+- **Selection history**: move back and forth between previous selections.
+- **Ignore rules**: `.gitignore` plus `.promptignore`, which controls only what goes into a prompt. A `!` rule cannot bring back a file while its parent directory stays excluded.
+- **System message**: an optional message at the top of the prompt.
+- **Shortcuts**: refresh, copy and clear selection, all remappable.
 
 ## Installation
 
@@ -85,7 +90,7 @@ Install this fork from a local VSIX only. Do not install `thomas-mckanna.files2p
 1. Go to Settings (`Ctrl+,` or `Cmd+,` on macOS).
 2. Navigate to Extensions > Files2Prompt.
 3. Enter your custom system message in the System Message field.
-4. When you copy files, this message will be included at the top of the XML output.
+4. When you copy files, this message will be included at the top of the output.
 
 See recommended system message above.
 
@@ -122,25 +127,74 @@ Files2Prompt estimates the size of a prompt as characters divided by four. The f
 
 ## Example Output
 
+Both examples come from `npm run compile && node scripts/readme-example.mjs <xml|markdown>`, run over the test fixture with the tree on and one Git change.
+
+XML:
+
 ```xml
-<files>
-  <systemMessage>
-  <![CDATA[
-  This is a custom system message for LLM prompts.
-  ]]>
-  </systemMessage>
-  <file name="src/extension.ts">
-    <![CDATA[
-    // File content here
-    ]]>
-  </file>
-  <file name="README.md">
-    <![CDATA[
-    # Readme content here
-    ]]>
-  </file>
-</files>
+<files><systemMessage><![CDATA[Review these changes and suggest fixes.]]></systemMessage><tree><![CDATA[web/
+  docs/
+    mi archivo.md
+  src/
+    app.ts]]></tree><changes repo="web" scope="uncommitted"><change path="web/docs/mi archivo.md" status="modified"><![CDATA[diff --git a/docs/mi archivo.md b/docs/mi archivo.md
+index 4387e04..467b83a 100644
+--- a/docs/mi archivo.md
++++ b/docs/mi archivo.md
+@@ -1,3 +1,3 @@
+ # Guía
+
+-Primera versión.
++Segunda versión con acción.]]></change></changes><file name="web/docs/mi archivo.md"><![CDATA[# Guía
+
+Segunda versión con acción.
+]]></file><file name="web/src/app.ts"><![CDATA[export const app = 'web';
+]]></file></files>
 ```
+
+Markdown:
+
+````markdown
+Review these changes and suggest fixes.
+
+## Structure
+
+```text
+web/
+  docs/
+    mi archivo.md
+  src/
+    app.ts
+```
+
+## Git changes — web (uncommitted, — → HEAD)
+
+### web/docs/mi archivo.md (modified)
+```diff
+diff --git a/docs/mi archivo.md b/docs/mi archivo.md
+index 4387e04..467b83a 100644
+--- a/docs/mi archivo.md
++++ b/docs/mi archivo.md
+@@ -1,3 +1,3 @@
+ # Guía
+
+-Primera versión.
++Segunda versión con acción.
+```
+
+### web/docs/mi archivo.md
+```markdown
+# Guía
+
+Segunda versión con acción.
+
+```
+
+### web/src/app.ts
+```ts
+export const app = 'web';
+
+```
+````
 
 ## Git changes and multiple repositories
 
@@ -173,19 +227,19 @@ With more than one repository, pick which ones to include. Then add to the selec
 A submodule pointer change uses `status="submodule"` with `from` and `to`.
 
 ## Architecture
- 
- The extension follows Clean Architecture principles:
- 
- - **Domain (`src/domain/`)**: Pure business logic with zero VS Code API dependencies.
-   - `entities/`: Domain models and enums (`OutputFormat`, `GitChange`, `CopyStop`, etc.).
-   - `datasources/`: Contracts for abstract data sources (`SettingsDataSource`, `WorkspaceFilesDataSource`, `GitDataSource`, `PromptOutputDataSource`, `StateDataSource`).
-   - `repositories/`: Repository interfaces (`PromptRepository`, `GitChangesRepository`).
-   - `use-cases/`: Encapsulated application use cases (`GeneratePrompt`, `DeliverPrompt`, `GetGitChanges`, `DiscoverGitRepositories`, `RecordSelection`).
-   - `services/`: Pure business calculations and formatting rules (`SavedPromptFileService`, `PromptFormatsService`, `SelectionBudgetService`, etc.).
- - **Infrastructure (`src/infrastructure/`)**: Datasource and repository implementations interacting with VS Code, Node filesystem, git, and workspace state.
- - **Presentation (`src/presentation/`)**: VS Code UI elements, tree view providers, status bar items, menus, commands, and dialogs.
- 
- ## Recommended Workflow
+
+The extension follows Clean Architecture:
+
+- **Domain (`src/domain/`)**: Pure business logic with zero VS Code API dependencies.
+  - `entities/`: Domain models and enums (`OutputFormat`, `GitChange`, `CopyStop`, etc.).
+  - `datasources/`: Contracts for abstract data sources (`SettingsDataSource`, `WorkspaceFilesDataSource`, `GitDataSource`, `PromptOutputDataSource`, `StateDataSource`).
+  - `repositories/`: Repository interfaces (`PromptRepository`, `GitChangesRepository`).
+  - `use-cases/`: Encapsulated application use cases (`GeneratePrompt`, `DeliverPrompt`, `GetGitChanges`, `DiscoverGitRepositories`, `RecordSelection`).
+  - `services/`: Pure business calculations and formatting rules (`PromptFormatsService`, `SelectionBudgetService`, `TokenEstimateService`, etc.).
+- **Infrastructure (`src/infrastructure/`)**: Datasource and repository implementations interacting with VS Code, Node filesystem, git, and workspace state.
+- **Presentation (`src/presentation/`)**: VS Code UI elements, tree view providers, status bar items, menus, commands, and dialogs.
+
+## Recommended Workflow
 
 Copy the selected files into the LLM, then edit the project yourself from the reply.
 
