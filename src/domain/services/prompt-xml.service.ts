@@ -57,12 +57,13 @@ export const serializeChanges = (changes: PromptChangeEntry[]) => {
             `status="${escapeAttribute(change.status.toLowerCase())}"`,
             change.from ? `from="${escapeAttribute(change.from)}"` : '',
             change.to ? `to="${escapeAttribute(change.to)}"` : '',
-            change.binary ? 'binary="true"' : ''
+            change.binary ? 'binary="true"' : '',
+            change.generated ? 'generated="true"' : ''
           ]
             .filter(Boolean)
             .join(' ');
 
-          if (change.binary || !change.diff) {
+          if (change.binary || change.generated || !change.diff) {
             return `<change ${changeAttrs}/>`;
           }
 

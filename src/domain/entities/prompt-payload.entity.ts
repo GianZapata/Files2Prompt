@@ -15,6 +15,7 @@ export interface PromptChangeEntry {
   from?: string;
   to?: string;
   binary?: boolean;
+  generated?: boolean;
   diff?: string;
 }
 

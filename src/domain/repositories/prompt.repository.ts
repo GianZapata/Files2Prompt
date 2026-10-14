@@ -7,6 +7,7 @@ import type {
 export interface PromptRequest {
   filePaths: string[];
   changes?: PromptChangeEntry[];
+  skippedGenerated?: string[];
   includeSystemMessage?: boolean;
   format?: OutputFormat;
   isCancelled?: () => boolean;

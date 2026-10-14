@@ -1,5 +1,7 @@
+import type { AnyFolderSelectionOutcome } from '../../domain/entities/folder-selection-outcome.enum';
 import type { PromptChange } from '../../domain/entities/git-change.entity';
 import type { ForcedRoot } from '../../domain/entities/ignore-reason.enum';
+import type { AnyPathKind } from '../../domain/entities/path-kind.enum';
 import type { DiscoveredRepository } from '../../domain/services/git-repos.service';
 import type { SavedPromptRegistry } from '../../domain/services/saved-prompt-registry.service';
 
@@ -8,7 +10,9 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
+import { FolderSelectionOutcome } from '../../domain/entities/folder-selection-outcome.enum';
 import { IgnoreReason } from '../../domain/entities/ignore-reason.enum';
+import { toPosixRelative } from '../../domain/helpers/to-posix-relative';
 import { repositoryLabel } from '../../domain/services/git-repos.service';
 import {
   checkboxForFolder,
@@ -23,6 +27,7 @@ import {
 import {
   filesSelectedByFolder,
   filesSelectedByFolderAsync,
+  generatedFilesForSelection,
   omittedFoldersForSelection,
   selectionRoots
 } from '../../infrastructure/filesystem/select-files.walker';
@@ -47,6 +52,8 @@ export class FileTreeProvider
   private ignoredExtensions: Set<string> = new Set();
   private excludePatterns: string[] = [];
   private allowSensitive: string[] = [];
+  private includeGenerated = false;
+  private bulkSkipped: Set<string> = new Set();
   private watcher: vscode.FileSystemWatcher;
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
   private disposables: vscode.Disposable[] = [];
@@ -71,6 +78,7 @@ export class FileTreeProvider
           event.affectsConfiguration('files2prompt.ignoredExtensions') ||
           event.affectsConfiguration('files2prompt.exclude') ||
           event.affectsConfiguration('files2prompt.allowSensitive') ||
+          event.affectsConfiguration('files2prompt.includeGenerated') ||
           event.affectsConfiguration('files2prompt.maxFileBytes')
         ) {
           this.reloadRules();
@@ -123,6 +131,7 @@ export class FileTreeProvider
     this.forcedRoots = [];
     this.reloadRules();
     this.checkedItems.clear();
+    this.bulkSkipped.clear();
     this.promptChanges = [];
     this.decorationEmitter.fire(undefined);
     this.refresh();
@@ -160,6 +169,10 @@ export class FileTreeProvider
 
   explain(relativePath: string, kind: 'file' | 'directory') {
     return this.resolver.explain(relativePath, kind);
+  }
+
+  isSkippedGenerated(relativePath: string) {
+    return this.resolver.isSkippedGenerated(relativePath);
   }
 
   forcedRootList(): ForcedRoot[] {
@@ -214,6 +227,7 @@ export class FileTreeProvider
       workspaceRoot: this.workspaceRoot,
       excludePatterns: [...this.excludePatterns],
       allowSensitive: [...this.allowSensitive],
+      includeGenerated: this.includeGenerated,
       ignoredExtensions: [...this.ignoredExtensions],
       forcedRoots: [...this.forcedRoots, root],
       savedPrompts: this.savedPrompts
@@ -222,7 +236,7 @@ export class FileTreeProvider
     const result = await filesSelectedByFolderAsync(
       this.workspaceRoot,
       folderPath,
-      preview.resolve
+      preview.resolveBulk
     );
 
     return result.files.length;
@@ -231,12 +245,12 @@ export class FileTreeProvider
   async selectFolder(
     folderPath: string,
     options: { isCancelled?: () => boolean } = {}
-  ): Promise<'applied' | 'cancelled'> {
+  ): Promise<AnyFolderSelectionOutcome> {
     const snapshot = new Map(this.checkedItems);
     const result = await filesSelectedByFolderAsync(
       this.workspaceRoot,
       folderPath,
-      this.resolver.resolve,
+      this.resolver.resolveBulk,
       options
     );
 
@@ -244,7 +258,7 @@ export class FileTreeProvider
       this.checkedItems = snapshot;
       this.refresh();
 
-      return 'cancelled';
+      return FolderSelectionOutcome.Cancelled;
     }
 
     this.checkedItems.set(folderPath, vscode.TreeItemCheckboxState.Checked);
@@ -270,9 +284,10 @@ export class FileTreeProvider
       await this.updateParentState(dirPath);
       dirPath = path.dirname(dirPath);
     }
+
     this.refresh();
 
-    return 'applied';
+    return FolderSelectionOutcome.Applied;
   }
 
   async selectionStats(): Promise<{ count: number; bytes: number }> {
@@ -374,6 +389,7 @@ export class FileTreeProvider
       if (aIsDir && !bIsDir) {
         return -1;
       }
+
       if (!aIsDir && bIsDir) {
         return 1;
       }
@@ -413,6 +429,7 @@ export class FileTreeProvider
       const isGitIgnored = !decision.included;
       const isSensitive =
         !decision.included && decision.reason === IgnoreReason.Sensitive;
+
       const hideCheckbox =
         isSensitive ||
         (isDirectory &&
@@ -425,7 +442,11 @@ export class FileTreeProvider
       const parentChecked =
         this.checkedItems.get(path.dirname(fullPath)) ===
         vscode.TreeItemCheckboxState.Checked;
-      const allowed = !isGitIgnored && !isIgnoredExtension;
+
+      const isGenerated =
+        kind === 'file' && this.resolver.isSkippedGenerated(relativePath);
+
+      const allowed = !isGitIgnored && !isIgnoredExtension && !isGenerated;
       let checkboxState = this.checkedItems.get(key);
 
       if (hideCheckbox) {
@@ -455,6 +476,10 @@ export class FileTreeProvider
         item.description = vscode.l10n.t('sensitive · never included');
       } else if (resolved.manual) {
         item.description = vscode.l10n.t('ignored · included manually');
+      } else if (isGenerated) {
+        item.description = vscode.l10n.t(
+          'generated · left out of bulk selection'
+        );
       }
 
       items.push(this.withRepositoryLabel(relativePath, item));
@@ -475,7 +500,7 @@ export class FileTreeProvider
       const selected = filesSelectedByFolder(
         this.workspaceRoot,
         key,
-        this.resolver.resolve
+        this.resolver.resolveBulk
       );
 
       for (const filePath of selected) {
@@ -492,6 +517,7 @@ export class FileTreeProvider
           if (parent === key) {
             break;
           }
+
           parent = path.dirname(parent);
         }
       }
@@ -517,11 +543,7 @@ export class FileTreeProvider
       withFileTypes: true
     });
 
-    const visible: Array<{
-      excluded: boolean;
-      checked: boolean;
-      emptyFolder?: boolean;
-    }> = [];
+    const visible: SiblingState[] = [];
 
     for (const entry of dirEntries) {
       const siblingPath = path.join(dirPath, entry.name);
@@ -547,7 +569,7 @@ export class FileTreeProvider
         filesSelectedByFolder(
           this.workspaceRoot,
           siblingPath,
-          this.resolver.resolve
+          this.resolver.resolveBulk
         ).length === 0;
 
       visible.push({
@@ -575,8 +597,35 @@ export class FileTreeProvider
     );
   }
 
-  resolvePath(relativePath: string, kind: 'file' | 'directory') {
+  resolvePath(relativePath: string, kind: AnyPathKind) {
     return this.resolver.resolve(relativePath, kind);
+  }
+
+  resolveBulk(relativePath: string, kind: AnyPathKind) {
+    return this.resolver.resolveBulk(relativePath, kind);
+  }
+
+  skippedGenerated(): string[] {
+    const checked = new Set(this.getCheckedFiles());
+
+    const directories = [...this.checkedItems]
+      .filter(([, state]) => state === vscode.TreeItemCheckboxState.Checked)
+      .map(([key]) => key)
+      .filter(isDirectoryPath);
+
+    const fromFolders = generatedFilesForSelection(
+      this.workspaceRoot,
+      directories,
+      this.resolver.resolveBulk
+    );
+
+    const fromFiles = [...this.bulkSkipped].map(file =>
+      toPosixRelative(this.workspaceRoot, file)
+    );
+
+    return [...new Set([...fromFolders, ...fromFiles])]
+      .filter(relative => !checked.has(path.join(this.workspaceRoot, relative)))
+      .sort();
   }
 
   getCheckedFiles(): string[] {
@@ -594,7 +643,16 @@ export class FileTreeProvider
       .map(([filePath]) => filePath);
   }
 
-  public async setCheckedFiles(filePaths: string[]): Promise<void> {
+  public async setCheckedFiles(
+    filePaths: string[],
+    options: { bulk?: boolean } = {}
+  ): Promise<void> {
+    const previous = options.bulk
+      ? new Set(this.getCheckedFiles())
+      : new Set<string>();
+
+    if (!options.bulk) this.bulkSkipped.clear();
+
     // Clear existing checks
     this.checkedItems.clear();
 
@@ -606,7 +664,16 @@ export class FileTreeProvider
 
       const relativePath = path.relative(this.workspaceRoot, filePath);
 
-      if (!this.resolver.resolve(relativePath, 'file').included) {
+      const decision =
+        options.bulk && !previous.has(filePath)
+          ? this.resolver.resolveBulk(relativePath, 'file')
+          : this.resolver.resolve(relativePath, 'file');
+
+      if (decision.reason === IgnoreReason.Generated) {
+        this.bulkSkipped.add(filePath);
+      }
+
+      if (!decision.included) {
         continue;
       }
 
@@ -641,11 +708,8 @@ export class FileTreeProvider
     return item;
   }
 
-  private isExcluded(
-    relativePath: string,
-    kind: 'file' | 'directory'
-  ): boolean {
-    return !this.resolver.resolve(relativePath, kind).included;
+  private isExcluded(relativePath: string, kind: AnyPathKind): boolean {
+    return !this.resolver.resolveBulk(relativePath, kind).included;
   }
 
   private clearDescendantChecks(dirPath: string): void {
@@ -669,16 +733,32 @@ export class FileTreeProvider
 
     this.excludePatterns = config.get<string[]>('exclude', []);
     this.allowSensitive = config.get<string[]>('allowSensitive', []);
+    this.includeGenerated = config.get<boolean>('includeGenerated', false);
     this.resolver = createIgnoreResolver({
       workspaceRoot: this.workspaceRoot,
       excludePatterns: this.excludePatterns,
       allowSensitive: this.allowSensitive,
+      includeGenerated: this.includeGenerated,
       ignoredExtensions: [...this.ignoredExtensions],
       forcedRoots: this.forcedRoots,
       savedPrompts: this.savedPrompts
     });
   }
 }
+
+interface SiblingState {
+  excluded: boolean;
+  checked: boolean;
+  emptyFolder?: boolean;
+}
+
+const isDirectoryPath = (candidate: string) => {
+  try {
+    return fs.lstatSync(candidate).isDirectory();
+  } catch {
+    return false;
+  }
+};
 
 export class FileItem extends vscode.TreeItem {
   constructor(

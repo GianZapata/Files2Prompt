@@ -26,6 +26,7 @@ export interface PromptPathResolver {
     kind: PathKind | 'file' | 'directory'
   ) => IgnoreDecision;
   omittedFolders?: () => string[];
+  isSkippedGenerated?: (relativePath: string) => boolean;
   promptChangeList?: () => PromptChangeEntry[];
 }
 
@@ -50,10 +51,17 @@ export class PromptRepositoryImpl extends PromptRepository {
       diffMode === DiffMode.FilesOnly
         ? []
         : (request.changes ?? this.resolver.promptChangeList?.() ?? []);
-    const changes = requestedChanges.filter(
+
+    const kept = requestedChanges.filter(
       change =>
         this.resolver.resolvePath(change.path, 'file').reason !==
         IgnoreReason.Sensitive
+    );
+
+    const changes = kept.map(change =>
+      this.resolver.isSkippedGenerated?.(change.path)
+        ? { ...change, generated: true, diff: undefined }
+        : change
     );
 
     const systemMessage =
@@ -61,12 +69,17 @@ export class PromptRepositoryImpl extends PromptRepository {
 
     const included: PromptFile[] = [];
     const omittedFiles: OmittedFile[] = requestedChanges
-      .filter(change => !changes.includes(change))
+      .filter(change => !kept.includes(change))
       .map(change => ({
         path: change.path,
         reason: IgnoreReason.Sensitive,
         pattern: this.resolver.resolvePath(change.path, 'file').pattern
       }));
+
+    for (const skipped of request.skippedGenerated ?? []) {
+      omittedFiles.push({ path: skipped, reason: IgnoreReason.Generated });
+    }
+
     const omittedFolders: string[] = [
       ...new Set(this.resolver.omittedFolders?.() ?? [])
     ].sort();

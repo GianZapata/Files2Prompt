@@ -27,7 +27,10 @@ import {
 
 export interface GitFileSelectionPort {
   getCheckedFiles: () => string[];
-  setCheckedFiles: (files: string[]) => Promise<void>;
+  setCheckedFiles: (
+    files: string[],
+    options?: { bulk?: boolean }
+  ) => Promise<void>;
   clearChecks: () => void;
   promptChangeList: () => PromptChange[];
 }
@@ -102,7 +105,7 @@ export const registerGitCommands = (
         .map(change => path.join(deps.workspaceRoot, change.path))
     ].filter((filePath, index, all) => all.indexOf(filePath) === index);
 
-    await deps.fileSelection.setCheckedFiles(updatedFiles);
+    await deps.fileSelection.setCheckedFiles(updatedFiles, { bulk: true });
   };
 
   return [
@@ -284,7 +287,8 @@ export const registerGitCommands = (
         }
 
         await deps.fileSelection.setCheckedFiles(
-          next.map(filePath => path.join(deps.workspaceRoot, filePath))
+          next.map(filePath => path.join(deps.workspaceRoot, filePath)),
+          { bulk: true }
         );
 
         deps.publishChanges(

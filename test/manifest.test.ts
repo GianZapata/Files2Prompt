@@ -87,7 +87,8 @@ test('new user-facing strings have a Spanish translation', () => {
     'This selection is about {0} tokens, {1} over the budget of {2}. Change files2prompt.tokenBudget, copy anyway, or cancel.',
     'Copy anyway',
     'Do not ask again in this workspace',
-    'This preview is about {0} tokens, over the budget of {1}.'
+    'This preview is about {0} tokens, over the budget of {1}.',
+    'generated · left out of bulk selection'
   ];
 
   for (const key of expected) {
@@ -139,6 +140,31 @@ test('the token budget is off by default and described in both languages', () =>
 
   assert.equal(
     typeof spanish['files2prompt.tokenBudget.description'],
+    'string'
+  );
+});
+
+test('generated files stay out of bulk selection unless the setting says so', () => {
+  const properties = readJson<{
+    contributes: {
+      configuration: { properties: Record<string, SettingShape> };
+    };
+  }>('package.json').contributes.configuration.properties;
+
+  const setting = properties['files2prompt.includeGenerated'];
+  const english = readJson<Record<string, string>>('package.nls.json');
+  const spanish = readJson<Record<string, string>>('package.nls.es.json');
+
+  assert.equal(setting.type, 'boolean');
+  assert.equal(setting.default, false);
+
+  assert.equal(
+    typeof english['files2prompt.includeGenerated.description'],
+    'string'
+  );
+
+  assert.equal(
+    typeof spanish['files2prompt.includeGenerated.description'],
     'string'
   );
 });

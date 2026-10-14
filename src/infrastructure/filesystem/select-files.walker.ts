@@ -4,6 +4,7 @@ import type { AnyPathKind } from '../../domain/entities/path-kind.enum';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { IgnoreReason } from '../../domain/entities/ignore-reason.enum';
 import { isSameOrInside } from '../../domain/helpers/path-containment';
 
 export interface SelectFilesAsyncOptions {
@@ -174,25 +175,27 @@ export const selectionRoots = (
   return [common];
 };
 
-export const omittedFoldersForSelection = (
-  workspaceRoot: string,
-  checkedDirectories: string[],
-  resolve: (relativePath: string, kind: AnyPathKind) => IgnoreDecision
-): string[] => {
+const outermostDirectories = (checkedDirectories: string[]): string[] => {
   const normalized = [
     ...new Set(checkedDirectories.map(directory => path.resolve(directory)))
   ];
 
-  const roots = normalized.filter(
+  return normalized.filter(
     directory =>
       !normalized.some(
         other => other !== directory && isSameOrInside(other, directory)
       )
   );
+};
 
+export const omittedFoldersForSelection = (
+  workspaceRoot: string,
+  checkedDirectories: string[],
+  resolve: (relativePath: string, kind: AnyPathKind) => IgnoreDecision
+): string[] => {
   const found = new Set<string>();
 
-  for (const directory of roots) {
+  for (const directory of outermostDirectories(checkedDirectories)) {
     const discovered: string[] = [];
 
     filesSelectedByFolder(workspaceRoot, directory, resolve, discovered);
@@ -200,6 +203,49 @@ export const omittedFoldersForSelection = (
     for (const folder of discovered) {
       found.add(folder);
     }
+  }
+
+  return [...found].sort();
+};
+
+export const generatedFilesForSelection = (
+  workspaceRoot: string,
+  checkedDirectories: string[],
+  resolve: (relativePath: string, kind: AnyPathKind) => IgnoreDecision
+): string[] => {
+  const found = new Set<string>();
+
+  const visit = (directory: string) => {
+    const relativeDirectory = path.relative(workspaceRoot, directory);
+
+    if (
+      relativeDirectory !== '' &&
+      !resolve(relativeDirectory, 'directory').included
+    ) {
+      return;
+    }
+
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      if (entry.isSymbolicLink()) continue;
+
+      const fullPath = path.join(directory, entry.name);
+
+      if (entry.isDirectory()) {
+        visit(fullPath);
+
+        continue;
+      }
+
+      const relativePath = path.relative(workspaceRoot, fullPath);
+
+      if (resolve(relativePath, 'file').reason === IgnoreReason.Generated) {
+        found.add(relativePath.split(path.sep).join('/'));
+      }
+    }
+  };
+
+  for (const directory of outermostDirectories(checkedDirectories)) {
+    visit(directory);
   }
 
   return [...found].sort();

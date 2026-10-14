@@ -8,7 +8,8 @@ export enum IgnoreReason {
   FileSize = 'file-size',
   Symlink = 'symlink',
   SavedPrompt = 'saved-prompt',
-  Sensitive = 'sensitive'
+  Sensitive = 'sensitive',
+  Generated = 'generated'
 }
 
 export interface ForcedRoot {

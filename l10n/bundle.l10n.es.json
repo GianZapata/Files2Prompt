@@ -92,5 +92,6 @@
   "This selection is about {0} tokens, {1} over the budget of {2}. Change files2prompt.tokenBudget, copy anyway, or cancel.": "Esta selección pesa unos {0} tokens, {1} sobre el presupuesto de {2}. Cambia files2prompt.tokenBudget, copia de todos modos o cancela.",
   "Copy anyway": "Copiar de todos modos",
   "Do not ask again in this workspace": "No volver a preguntar en este workspace",
-  "This preview is about {0} tokens, over the budget of {1}.": "Esta vista previa pesa unos {0} tokens, sobre el presupuesto de {1}."
+  "This preview is about {0} tokens, over the budget of {1}.": "Esta vista previa pesa unos {0} tokens, sobre el presupuesto de {1}.",
+  "generated \u00b7 left out of bulk selection": "generado · fuera de la selección masiva"
 }

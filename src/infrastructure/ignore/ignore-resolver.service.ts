@@ -16,6 +16,7 @@ import {
   binaryExtensions,
   builtInPatterns
 } from './built-in-patterns.constant';
+import { generatedPatterns } from './generated-patterns.constant';
 import { sensitivePatterns } from './sensitive-patterns.constant';
 
 export interface IgnoreResolverOptions {
@@ -25,11 +26,14 @@ export interface IgnoreResolverOptions {
   maxFileBytes?: number;
   forcedRoots?: ForcedRoot[];
   allowSensitive?: string[];
+  includeGenerated?: boolean;
   savedPrompts?: Pick<SavedPromptRegistry, 'has'>;
 }
 
 export interface IgnoreResolver {
   resolve: (relativePath: string, kind: AnyPathKind) => IgnoreDecision;
+  resolveBulk: (relativePath: string, kind: AnyPathKind) => IgnoreDecision;
+  isSkippedGenerated: (relativePath: string) => boolean;
   invalidate: (filePath?: string) => void;
   explain: (relativePath: string, kind: AnyPathKind) => IgnoreDecision;
 }
@@ -165,6 +169,8 @@ export const createIgnoreResolver = (
     };
   };
 
+  const generated = ignore().add(generatedPatterns.join('\n'));
+
   const isSavedPrompt = (probe: string, kind: AnyPathKind) =>
     kind === 'file' && options.savedPrompts?.has(probe) === true;
 
@@ -227,6 +233,31 @@ export const createIgnoreResolver = (
     }
 
     return { included: true };
+  };
+
+  const isSkippedGenerated = (relativePath: string) => {
+    const probe = probeFor(relativePath, 'file');
+
+    return (
+      !options.includeGenerated && probe !== '' && generated.ignores(probe)
+    );
+  };
+
+  const resolveBulk = (
+    relativePath: string,
+    kind: AnyPathKind
+  ): IgnoreDecision => {
+    const decision = resolve(relativePath, kind);
+
+    if (!decision.included || kind !== 'file') return decision;
+
+    if (!isSkippedGenerated(relativePath)) return decision;
+
+    return {
+      included: false,
+      reason: IgnoreReason.Generated,
+      sourceFile: 'built-in'
+    };
   };
 
   const explain = (relativePath: string, kind: AnyPathKind): IgnoreDecision => {
@@ -312,7 +343,7 @@ export const createIgnoreResolver = (
     };
   };
 
-  return { resolve, invalidate, explain };
+  return { resolve, resolveBulk, isSkippedGenerated, invalidate, explain };
 };
 
 const parentDirectories = (probe: string) => {

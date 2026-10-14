@@ -207,10 +207,13 @@ export const registerSelectionCommands = (
         deps.fileTreeProvider.clearChecks();
       }
 
-      await deps.fileTreeProvider.setCheckedFiles([
-        ...(mode.id === 'add' ? deps.fileTreeProvider.getCheckedFiles() : []),
-        ...matched
-      ]);
+      await deps.fileTreeProvider.setCheckedFiles(
+        [
+          ...(mode.id === 'add' ? deps.fileTreeProvider.getCheckedFiles() : []),
+          ...matched
+        ],
+        { bulk: true }
+      );
 
       await deps.recordSelection.execute({ snapshot: deps.currentSnapshot() });
     }
@@ -322,7 +325,8 @@ export const registerSelectionCommands = (
     }
 
     await deps.fileTreeProvider.setCheckedFiles(
-      selected.map(filePath => path.join(deps.workspaceRoot, filePath))
+      selected.map(filePath => path.join(deps.workspaceRoot, filePath)),
+      { bulk: true }
     );
 
     deps.extensions.setFiles(available, selected);

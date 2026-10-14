@@ -367,6 +367,11 @@
           "minimum": 0,
           "description": "%files2prompt.tokenBudget.description%"
         },
+        "files2prompt.includeGenerated": {
+          "type": "boolean",
+          "default": false,
+          "description": "%files2prompt.includeGenerated.description%"
+        },
         "files2prompt.confirmIgnoredFolders": {
           "type": "boolean",
           "default": true,

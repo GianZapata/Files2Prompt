@@ -1,0 +1,20 @@
+export const generatedPatterns = [
+  'package-lock.json',
+  'npm-shrinkwrap.json',
+  'pnpm-lock.yaml',
+  'yarn.lock',
+  'composer.lock',
+  'Cargo.lock',
+  'poetry.lock',
+  'Gemfile.lock',
+  'bun.lock',
+  'deno.lock',
+  'uv.lock',
+  'Pipfile.lock',
+  'go.sum',
+  'pubspec.lock',
+  'packages.lock.json',
+  '*.min.js',
+  '*.min.css',
+  '*.map'
+];

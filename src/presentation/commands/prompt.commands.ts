@@ -21,6 +21,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { CopyNoticeKind } from '../../domain/entities/copy-notice-kind.enum';
+import { IgnoreReason } from '../../domain/entities/ignore-reason.enum';
 import { OperationKind } from '../../domain/entities/operation-kind.enum';
 import { OutputFormat } from '../../domain/entities/output-format.enum';
 import { PathKind } from '../../domain/entities/path-kind.enum';
@@ -79,6 +80,8 @@ export interface PromptSelectionPort {
   forcedRootFor: (path: string) => PromptForcedRoot | undefined;
   explain: (relativePath: string, kind: PathKind) => IgnoreDecision;
   resolvePath: (relativePath: string, kind: PathKind) => IgnoreDecision;
+  resolveBulk: (relativePath: string, kind: PathKind) => IgnoreDecision;
+  skippedGenerated: () => string[];
 }
 
 export interface PromptHistoryPort {
@@ -123,6 +126,7 @@ export interface DeliverCollectedOptions {
   format?: OutputFormat;
   destinationUri?: vscode.Uri;
   revealOnWrite?: boolean;
+  skippedGenerated?: string[];
 }
 
 const configuredFormat = (): OutputFormat =>
@@ -340,6 +344,7 @@ export const registerPromptCommands = (
         const deliverResult = await deps.deliverPrompt.execute(
           {
             filePaths,
+            skippedGenerated: options.skippedGenerated,
             includeSystemMessage,
             format,
             isCancelled: () => token.isCancellationRequested
@@ -479,11 +484,13 @@ export const registerPromptCommands = (
   const copyCollected = async (
     filePaths: string[],
     includeSystemMessage = true,
-    format?: OutputFormat
+    format?: OutputFormat,
+    skippedGenerated?: string[]
   ) =>
     deliverCollected(filePaths, deps.clipboard, {
       includeSystemMessage,
-      format
+      format,
+      skippedGenerated
     });
 
   return [
@@ -492,14 +499,20 @@ export const registerPromptCommands = (
 
       deps.history.record(deps.currentSnapshot());
       await deps.saveHistory();
-      await copyCollected(checkedFiles);
+      await copyCollected(
+        checkedFiles,
+        true,
+        undefined,
+        deps.selection.skippedGenerated()
+      );
     }),
 
     vscode.commands.registerCommand('files2prompt.copyAsXml', async () => {
       await copyCollected(
         deps.selection.getCheckedFiles(),
         true,
-        OutputFormat.Xml
+        OutputFormat.Xml,
+        deps.selection.skippedGenerated()
       );
     }),
 
@@ -507,7 +520,8 @@ export const registerPromptCommands = (
       await copyCollected(
         deps.selection.getCheckedFiles(),
         true,
-        OutputFormat.Markdown
+        OutputFormat.Markdown,
+        deps.selection.skippedGenerated()
       );
     }),
 
@@ -515,7 +529,8 @@ export const registerPromptCommands = (
       await copyCollected(
         deps.selection.getCheckedFiles(),
         true,
-        OutputFormat.Plain
+        OutputFormat.Plain,
+        deps.selection.skippedGenerated()
       );
     }),
 
@@ -541,6 +556,7 @@ export const registerPromptCommands = (
       async (_commandUri: vscode.Uri | undefined, selected: vscode.Uri[]) => {
         const uris = resolveCommandUris(_commandUri, selected);
         const collected: string[] = [];
+        const skippedGenerated: string[] = [];
 
         for (const uri of uris) {
           const filePath = uri.fsPath;
@@ -587,14 +603,29 @@ export const registerPromptCommands = (
           const result = await filesSelectedByFolderAsync(
             deps.workspaceRoot,
             filePath,
-            (relative, kind) =>
-              deps.selection.resolvePath(relative, kind as PathKind)
+            (relative, kind) => {
+              const bulk = deps.selection.resolveBulk(
+                relative,
+                kind as PathKind
+              );
+
+              if (bulk.reason === IgnoreReason.Generated) {
+                skippedGenerated.push(relative.split(path.sep).join('/'));
+              }
+
+              return bulk;
+            }
           );
 
           collected.push(...result.files);
         }
 
-        await copyCollected(dedupeResolved(collected));
+        await copyCollected(
+          dedupeResolved(collected),
+          true,
+          undefined,
+          skippedGenerated
+        );
       }
     ),
 
@@ -617,6 +648,7 @@ export const registerPromptCommands = (
       const format = configuredFormat();
       const summary = await deps.generatePrompt.execute({
         filePaths: deps.selection.getCheckedFiles(),
+        skippedGenerated: deps.selection.skippedGenerated(),
         format
       });
 
@@ -732,7 +764,8 @@ export const registerPromptCommands = (
         await deliverCollected(checkedFiles, outputFor(destination), {
           includeSystemMessage: true,
           format: target.format,
-          destinationUri: destination
+          destinationUri: destination,
+          skippedGenerated: deps.selection.skippedGenerated()
         });
       }
     ),
@@ -753,7 +786,8 @@ export const registerPromptCommands = (
           includeSystemMessage: true,
           format,
           destinationUri: destination,
-          revealOnWrite: true
+          revealOnWrite: true,
+          skippedGenerated: deps.selection.skippedGenerated()
         }
       );
     })

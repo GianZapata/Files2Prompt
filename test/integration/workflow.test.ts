@@ -81,6 +81,12 @@ const copyWarnings = (limits: Record<string, number>) =>
     })
   );
 
+const detailsText = async () => {
+  await vscode.commands.executeCommand('files2prompt.showDetails');
+
+  return vscode.window.activeTextEditor?.document.getText() ?? '';
+};
+
 const savePromptTo = (format: string, target: vscode.Uri) =>
   withStubs({}, async recording => {
     await vscode.commands.executeCommand(
@@ -341,5 +347,53 @@ suite('Files2Prompt with two git repositories', () => {
     const warnings = await copyWarnings({ tokenBudget: 100000000 });
 
     assert.equal(warnings.length, 0);
+  });
+
+  test('selecting the whole project leaves a lockfile out and says so', async () => {
+    await vscode.commands.executeCommand('files2prompt.clearChecks');
+    await vscode.commands.executeCommand('files2prompt.selectAll');
+
+    const xml = await copyWith('files2prompt.copyAsXml');
+
+    assert.ok(xml.includes('<file name="web/src/app.ts">'));
+    assert.equal(xml.includes('GENERATED-LOCK-MARKER'), false);
+    assert.equal(xml.includes('web/package-lock.json'), false);
+    assert.match(await detailsText(), /web\/package-lock\.json — generated/);
+  });
+
+  test('a lockfile checked on its own goes into the prompt', async () => {
+    const lock = inWorkspace('web/package-lock.json');
+
+    await vscode.env.clipboard.writeText('');
+    await withStubs({}, () =>
+      vscode.commands.executeCommand(
+        'files2prompt.copyExplorerSelection',
+        lock,
+        [lock]
+      )
+    );
+
+    const xml = await vscode.env.clipboard.readText();
+
+    assert.ok(xml.includes('GENERATED-LOCK-MARKER'));
+  });
+
+  test('copying a folder from the Explorer skips the lockfile inside it', async () => {
+    const folder = inWorkspace('web');
+
+    await vscode.env.clipboard.writeText('');
+    await withStubs({}, () =>
+      vscode.commands.executeCommand(
+        'files2prompt.copyExplorerSelection',
+        folder,
+        [folder]
+      )
+    );
+
+    const xml = await vscode.env.clipboard.readText();
+
+    assert.ok(xml.includes('<file name="web/src/app.ts">'));
+    assert.equal(xml.includes('GENERATED-LOCK-MARKER'), false);
+    assert.match(await detailsText(), /web\/package-lock\.json — generated/);
   });
 });

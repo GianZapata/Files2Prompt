@@ -65,6 +65,7 @@ const createWeb = () => {
   write(web, 'docs/mi archivo.md', '# Guía\n\nPrimera versión.\n');
   write(web, 'español.md', '# Español\n\nTexto original.\n');
   write(web, 'src/app.ts', "export const app = 'web';\n");
+  write(web, 'package-lock.json', '{ "marker": "GENERATED-LOCK-MARKER" }\n');
   commitAll(web);
 
   write(web, 'docs/mi archivo.md', '# Guía\n\nSegunda versión con acción.\n');

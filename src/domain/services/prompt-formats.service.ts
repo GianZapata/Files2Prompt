@@ -77,6 +77,10 @@ const markdownChange = (change: PromptChangeEntry) => {
     return `${heading}\n_Binary file, no diff._`;
   }
 
+  if (change.generated) {
+    return `${heading}\n_Generated file, diff omitted._`;
+  }
+
   if (!hasDiff(change.diff)) {
     return `${heading}\n_No diff._`;
   }
@@ -91,6 +95,10 @@ const plainChange = (change: PromptChangeEntry) => {
 
   if (change.binary) {
     return `=== DIFF ${change.path} (${status}, binary) ===`;
+  }
+
+  if (change.generated) {
+    return `=== DIFF ${change.path} (${status}, generated, diff omitted) ===`;
   }
 
   const heading = `=== DIFF ${change.path} (${status}) ===`;
