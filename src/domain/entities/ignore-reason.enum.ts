@@ -6,7 +6,8 @@ export enum IgnoreReason {
   IgnoredExtension = 'ignored-extension',
   Binary = 'binary',
   FileSize = 'file-size',
-  Symlink = 'symlink'
+  Symlink = 'symlink',
+  SavedPrompt = 'saved-prompt'
 }
 
 export interface ForcedRoot {

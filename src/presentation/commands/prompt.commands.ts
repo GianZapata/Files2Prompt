@@ -1,4 +1,5 @@
 import type { PromptOutputDataSource } from '../../domain/datasources/prompt-output.datasource';
+import type { StateDataSource } from '../../domain/datasources/state.datasource';
 import type { IgnoreDecision } from '../../domain/entities/ignore-reason.enum';
 import type {
   PromptBuild,
@@ -14,6 +15,7 @@ import type {
 } from '../views/prompt-preview.source';
 
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 import * as vscode from 'vscode';
@@ -27,8 +29,12 @@ import {
   type createDetailBook
 } from '../../domain/services/operation-report.service';
 import {
-  defaultPromptFileName,
-  fileFiltersForFormat
+  LAST_SAVE_FOLDER_KEY,
+  defaultSaveFolder,
+  fileFiltersForFormat,
+  resolveSaveTarget,
+  revealLabelFor,
+  timestampedPromptFileName
 } from '../../domain/services/saved-prompt-file.service';
 import {
   overLimitNotice,
@@ -82,6 +88,8 @@ export interface PromptCommandDeps {
   deliverPrompt: DeliverPromptUseCase;
   clipboard: PromptOutputDataSource;
   selection: PromptSelectionPort;
+  state: StateDataSource;
+  registerSavedPrompt: (filePath: string) => Promise<void>;
   history: PromptHistoryPort;
   saveHistory: () => Thenable<void> | void;
   currentSnapshot: () => SelectionSnapshot;
@@ -111,6 +119,27 @@ const configuredFormat = (): OutputFormat =>
   vscode.workspace
     .getConfiguration('files2prompt')
     .get<OutputFormat>('outputFormat', OutputFormat.Xml);
+
+const isDirectory = (folder: string) => {
+  try {
+    return fs.statSync(folder).isDirectory();
+  } catch {
+    return false;
+  }
+};
+
+const suggestedSaveUri = (state: StateDataSource, format: OutputFormat) => {
+  const folder = defaultSaveFolder({
+    lastFolder: state.get<string>(LAST_SAVE_FOLDER_KEY),
+    downloads: path.join(os.homedir(), 'Downloads'),
+    home: os.homedir(),
+    exists: isDirectory
+  });
+
+  return vscode.Uri.file(
+    path.join(folder, timestampedPromptFileName(format, new Date()))
+  );
+};
 
 const resolveCommandUris = (
   commandUri: vscode.Uri | undefined,
@@ -288,6 +317,10 @@ export const registerPromptCommands = (
       return;
     }
 
+    if (destinationUri && result.wrote) {
+      await deps.registerSavedPrompt(destinationUri.fsPath);
+    }
+
     const summary = currentBuild;
 
     if (!summary) {
@@ -340,16 +373,26 @@ export const registerPromptCommands = (
       });
 
       const message = vscode.l10n.t(status.message, ...status.args);
-      const openLabel = vscode.l10n.t('Open file');
+      const openLabel = vscode.l10n.t('Open');
+      const revealLabel = vscode.l10n.t(revealLabelFor(process.platform));
+      const actions =
+        vscode.env.remoteName === undefined
+          ? [openLabel, revealLabel, detailsLabel]
+          : [openLabel, detailsLabel];
 
       vscode.window
-        .showInformationMessage(message, openLabel, detailsLabel)
+        .showInformationMessage(message, ...actions)
         .then(async choice => {
           if (choice === openLabel) {
             const document =
               await vscode.workspace.openTextDocument(destinationUri);
 
             await vscode.window.showTextDocument(document);
+          } else if (choice === revealLabel) {
+            await vscode.commands.executeCommand(
+              'revealFileInOS',
+              destinationUri
+            );
           } else if (choice === detailsLabel) {
             void openReport(report);
           }
@@ -565,25 +608,28 @@ export const registerPromptCommands = (
           return;
         }
 
-        const format = formatOverride ?? configuredFormat();
-
-        const fileName = defaultPromptFileName(format);
-        const defaultUri = vscode.Uri.file(
-          path.join(deps.workspaceRoot, fileName)
-        );
-
-        const filters = fileFiltersForFormat(format);
-
+        const settingFormat = formatOverride ?? configuredFormat();
         const picker = deps.saveDestinationPicker ?? promptSaveDestination;
-        const destination = await picker({
-          defaultUri,
-          filters,
+        const chosen = await picker({
+          defaultUri: suggestedSaveUri(deps.state, settingFormat),
+          filters: fileFiltersForFormat(settingFormat),
           title: vscode.l10n.t('Save prompt as…')
         });
 
-        if (!destination) {
+        if (!chosen) {
           return;
         }
+
+        const target = resolveSaveTarget(chosen.path, settingFormat);
+        const destination =
+          target.filePath === chosen.path
+            ? chosen
+            : chosen.with({ path: target.filePath });
+
+        await deps.state.update(
+          LAST_SAVE_FOLDER_KEY,
+          path.dirname(destination.fsPath)
+        );
 
         deps.history.record(deps.currentSnapshot());
         await deps.saveHistory();
@@ -594,7 +640,7 @@ export const registerPromptCommands = (
 
         await deliverCollected(checkedFiles, fileOutput, {
           includeSystemMessage: true,
-          format,
+          format: target.format,
           destinationUri: destination
         });
       }

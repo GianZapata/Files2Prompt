@@ -81,5 +81,9 @@
   "Save prompt as…": "Guardar prompt como…",
   "Saving prompt": "Guardando prompt",
   "Saved {0} files to {1}. Omitted {2} files and {3} folders.": "Se guardaron {0} archivos en {1}. Se omitieron {2} archivos y {3} carpetas.",
-  "Open file": "Abrir archivo"
+  "Open": "Abrir",
+  "Reveal in Finder": "Mostrar en Finder",
+  "Reveal in File Explorer": "Mostrar en el Explorador",
+  "Reveal in file manager": "Mostrar en el administrador de archivos",
+  "{0} was saved by Files2Prompt, so it stays out of the prompt.": "{0} lo guardó Files2Prompt, por eso queda fuera del prompt."
 }

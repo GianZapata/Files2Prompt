@@ -97,3 +97,16 @@ test('empty selection does not start a copy and the next copy can start', async 
   assert.equal(next.wrote, true);
   assert.deepEqual(writes, ['next']);
 });
+
+test('details name a saved prompt left out of the selection', () => {
+  const report = formatOperationReport({
+    kind: 'copy',
+    wrote: true,
+    summary: {
+      ...summary('A', 1),
+      omittedFiles: [{ path: 'out/prompt.md', reason: 'saved-prompt' }]
+    }
+  });
+
+  assert.match(report, /out\/prompt\.md — saved-prompt/);
+});

@@ -4,7 +4,9 @@ import test from 'node:test';
 import os from 'os';
 import path from 'path';
 
+import { IgnoreReason } from '../src/domain/entities/ignore-reason.enum';
 import { checkboxForFolder } from '../src/domain/services/parent-check.service';
+import { createSavedPromptRegistry } from '../src/domain/services/saved-prompt-registry.service';
 import { filesSelectedByFolder } from '../src/infrastructure/filesystem/select-files.walker';
 import { createIgnoreResolver } from '../src/infrastructure/ignore/ignore-resolver.service';
 
@@ -269,4 +271,58 @@ test('CRLF gitignore and promptignore files keep clean patterns and sources', ()
   assert.equal(nested.included, false);
   assert.equal(nested.pattern?.includes('\r'), false);
   assert.equal(resolver.resolve('src/app.ts', 'file').included, true);
+});
+
+test('a prompt saved by the extension is excluded from selections', () => {
+  const root = makeRoot();
+  const registry = createSavedPromptRegistry(['out/prompt-2026-10-14-0805.md']);
+
+  write(root, 'out/prompt-2026-10-14-0805.md');
+  write(root, 'out/notes.md');
+  const resolver = createIgnoreResolver({
+    workspaceRoot: root,
+    savedPrompts: registry
+  });
+
+  const saved = resolver.explain('out/prompt-2026-10-14-0805.md', 'file');
+
+  assert.equal(saved.included, false);
+  assert.equal(saved.reason, IgnoreReason.SavedPrompt);
+  assert.equal(
+    resolver.resolve('out/prompt-2026-10-14-0805.md', 'file').included,
+    false
+  );
+
+  assert.equal(resolver.resolve('out/notes.md', 'file').included, true);
+  assert.equal(resolver.resolve('out', 'directory').included, true);
+});
+
+test('a prompt registered after the resolver was created is excluded too', () => {
+  const root = makeRoot();
+  const registry = createSavedPromptRegistry();
+  const resolver = createIgnoreResolver({
+    workspaceRoot: root,
+    savedPrompts: registry
+  });
+
+  assert.equal(resolver.resolve('p.md', 'file').included, true);
+  registry.register('p.md');
+  assert.equal(resolver.resolve('p.md', 'file').reason, 'saved-prompt');
+});
+
+test('a saved prompt is left out of a folder selection', () => {
+  const root = makeRoot();
+  const registry = createSavedPromptRegistry(['out/p.md']);
+
+  write(root, 'out/p.md');
+  const keep = write(root, 'out/keep.ts');
+  const resolver = createIgnoreResolver({
+    workspaceRoot: root,
+    savedPrompts: registry
+  });
+
+  assert.deepEqual(
+    filesSelectedByFolder(root, path.join(root, 'out'), resolver.resolve),
+    [keep]
+  );
 });

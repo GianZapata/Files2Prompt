@@ -2,6 +2,8 @@ import type {
   ForcedRoot,
   IgnoreDecision
 } from '../../domain/entities/ignore-reason.enum';
+import type { AnyPathKind } from '../../domain/entities/path-kind.enum';
+import type { SavedPromptRegistry } from '../../domain/services/saved-prompt-registry.service';
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -21,12 +23,13 @@ export interface IgnoreResolverOptions {
   ignoredExtensions?: string[];
   maxFileBytes?: number;
   forcedRoots?: ForcedRoot[];
+  savedPrompts?: Pick<SavedPromptRegistry, 'has'>;
 }
 
 export interface IgnoreResolver {
-  resolve: (relativePath: string, kind: 'file' | 'directory') => IgnoreDecision;
+  resolve: (relativePath: string, kind: AnyPathKind) => IgnoreDecision;
   invalidate: (filePath?: string) => void;
-  explain: (relativePath: string, kind: 'file' | 'directory') => IgnoreDecision;
+  explain: (relativePath: string, kind: AnyPathKind) => IgnoreDecision;
 }
 
 const toPosix = (value: string) => value.split(path.sep).join('/');
@@ -34,7 +37,7 @@ const toPosix = (value: string) => value.split(path.sep).join('/');
 const readIfExists = (filePath: string) =>
   fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
 
-const probeFor = (relativePath: string, kind: 'file' | 'directory') => {
+const probeFor = (relativePath: string, kind: AnyPathKind) => {
   const normalized = toPosix(relativePath)
     .replace(/^\.\//, '')
     .replace(/\/$/, '');
@@ -53,6 +56,7 @@ export const createIgnoreResolver = (
     .filter(Boolean)
     .map(extension => `*.${extension.replace(/^\./, '')}`)
     .join('\n');
+
   const binary = ignore().add(
     binaryExtensions.map(extension => `*.${extension}`).join('\n')
   );
@@ -72,6 +76,7 @@ export const createIgnoreResolver = (
 
     return content;
   };
+
   const invalidate = (filePath?: string) => {
     matchers.clear();
 
@@ -83,6 +88,7 @@ export const createIgnoreResolver = (
 
     cache.delete(filePath);
   };
+
   const matcherFor = (directories: string[], includeExclude: boolean) => {
     const key = `${includeExclude ? 'all' : 'inner'}\0${directories.join('\0')}`;
     const cached = matchers.get(key);
@@ -122,14 +128,19 @@ export const createIgnoreResolver = (
 
     return matcher;
   };
-  const resolve = (
-    relativePath: string,
-    kind: 'file' | 'directory'
-  ): IgnoreDecision => {
+
+  const isSavedPrompt = (probe: string, kind: AnyPathKind) =>
+    kind === 'file' && options.savedPrompts?.has(probe) === true;
+
+  const resolve = (relativePath: string, kind: AnyPathKind): IgnoreDecision => {
     const probe = probeFor(relativePath, kind);
 
     if (probe === '') {
       return { included: true };
+    }
+
+    if (isSavedPrompt(probe, kind)) {
+      return { included: false, reason: IgnoreReason.SavedPrompt };
     }
 
     const directories = parentDirectories(probe);
@@ -150,6 +161,7 @@ export const createIgnoreResolver = (
             directory.startsWith(`${forced.relativePath}/`)
         )
       : directories;
+
     const matcher = matcherFor(activeDirectories, !forced);
 
     if (matcher.ignores(probe)) {
@@ -175,14 +187,15 @@ export const createIgnoreResolver = (
     return { included: true };
   };
 
-  const explain = (
-    relativePath: string,
-    kind: 'file' | 'directory'
-  ): IgnoreDecision => {
+  const explain = (relativePath: string, kind: AnyPathKind): IgnoreDecision => {
     const probe = probeFor(relativePath, kind);
 
     if (probe === '') {
       return { included: true };
+    }
+
+    if (isSavedPrompt(probe, kind)) {
+      return { included: false, reason: IgnoreReason.SavedPrompt };
     }
 
     const marked = ignore();
@@ -202,6 +215,7 @@ export const createIgnoreResolver = (
         '.gitignore',
         readCached
       );
+
       addMarkedFile(
         marked,
         options.workspaceRoot,

@@ -61,6 +61,17 @@ export const confirmExcluded = async (
     return false;
   }
 
+  if (decision.reason === 'saved-prompt') {
+    await vscode.window.showWarningMessage(
+      vscode.l10n.t(
+        '{0} was saved by Files2Prompt, so it stays out of the prompt.',
+        relativePath
+      )
+    );
+
+    return false;
+  }
+
   if (
     decision.reason !== 'gitignore' &&
     decision.reason !== 'workspace-exclude'

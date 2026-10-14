@@ -10,6 +10,11 @@ import * as vscode from 'vscode';
 
 import { createCopyGate } from './domain/services/copy-gate.service';
 import { createDetailBook } from './domain/services/operation-report.service';
+import {
+  SAVED_PROMPTS_KEY,
+  createSavedPromptRegistry,
+  savedPromptRelativePath
+} from './domain/services/saved-prompt-registry.service';
 import { shouldConfirmIgnored } from './domain/services/selection-budget.service';
 import { createSelectionHistory } from './domain/services/selection-history.service';
 import { DiscoverGitRepositories } from './domain/use-cases/git/discover-git-repositories.use-case';
@@ -50,14 +55,18 @@ export function activate(context: vscode.ExtensionContext) {
   }
 
   const workspaceRoot = workspaceFolders[0].uri.fsPath;
-  const fileTreeProvider = new FileTreeProvider(workspaceRoot);
+  const stateDataSource = new WorkspaceStateDataSource(context.workspaceState);
+  const savedPrompts = createSavedPromptRegistry(
+    stateDataSource.get<string[]>(SAVED_PROMPTS_KEY) ?? []
+  );
+
+  const fileTreeProvider = new FileTreeProvider(workspaceRoot, savedPrompts);
   const copyGate = createCopyGate();
   const details = vscode.window.createOutputChannel('Files2Prompt');
   const detailBook = createDetailBook();
 
   const filesDataSource = new NodeWorkspaceFilesDataSource();
   const settingsDataSource = new VscodeSettingsDataSource();
-  const stateDataSource = new WorkspaceStateDataSource(context.workspaceState);
   const gitDataSource = new VscodeGitDataSource();
   const clipboardOutput = new ClipboardOutputDataSource();
 
@@ -137,6 +146,18 @@ export function activate(context: vscode.ExtensionContext) {
     });
   };
 
+  const registerSavedPrompt = async (filePath: string) => {
+    const relative = savedPromptRelativePath(workspaceRoot, filePath);
+
+    if (relative === undefined) {
+      return;
+    }
+
+    savedPrompts.register(relative);
+    await stateDataSource.update(SAVED_PROMPTS_KEY, savedPrompts.list());
+    fileTreeProvider.refresh();
+  };
+
   let extensionTimer: ReturnType<typeof setTimeout> | undefined;
 
   const refreshExtensions = () => {
@@ -205,6 +226,8 @@ export function activate(context: vscode.ExtensionContext) {
       deliverPrompt,
       clipboard: clipboardOutput,
       selection: fileTreeProvider,
+      state: stateDataSource,
+      registerSavedPrompt,
       history,
       saveHistory,
       currentSnapshot,

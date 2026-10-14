@@ -1,6 +1,7 @@
 import type { PromptChange } from '../../domain/entities/git-change.entity';
 import type { ForcedRoot } from '../../domain/entities/ignore-reason.enum';
 import type { DiscoveredRepository } from '../../domain/services/git-repos.service';
+import type { SavedPromptRegistry } from '../../domain/services/saved-prompt-registry.service';
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -43,7 +44,10 @@ export class FileTreeProvider
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
   private disposables: vscode.Disposable[] = [];
 
-  constructor(workspaceRoot: string) {
+  constructor(
+    workspaceRoot: string,
+    private readonly savedPrompts?: Pick<SavedPromptRegistry, 'has'>
+  ) {
     this.workspaceRoot = workspaceRoot;
     this.reloadRules();
 
@@ -202,8 +206,10 @@ export class FileTreeProvider
       workspaceRoot: this.workspaceRoot,
       excludePatterns: [...this.excludePatterns],
       ignoredExtensions: [...this.ignoredExtensions],
-      forcedRoots: [...this.forcedRoots, root]
+      forcedRoots: [...this.forcedRoots, root],
+      savedPrompts: this.savedPrompts
     });
+
     const result = await filesSelectedByFolderAsync(
       this.workspaceRoot,
       folderPath,
@@ -627,12 +633,14 @@ export class FileTreeProvider
     this.ignoredExtensions = new Set(
       extensionsString.split(',').map(ext => ext.trim().toLowerCase())
     );
+
     this.excludePatterns = config.get<string[]>('exclude', []);
     this.resolver = createIgnoreResolver({
       workspaceRoot: this.workspaceRoot,
       excludePatterns: this.excludePatterns,
       ignoredExtensions: [...this.ignoredExtensions],
-      forcedRoots: this.forcedRoots
+      forcedRoots: this.forcedRoots,
+      savedPrompts: this.savedPrompts
     });
   }
 }
