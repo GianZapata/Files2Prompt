@@ -140,3 +140,25 @@ test('the workspace cannot choose the system message in an untrusted folder', ()
     'string'
   );
 });
+
+test('the package ships only the dependency it uses', () => {
+  const { dependencies } = readJson<{ dependencies: Record<string, string> }>(
+    'package.json'
+  );
+  const ignored = fs.readFileSync(
+    path.join(__dirname, '../../.vscodeignore'),
+    'utf8'
+  );
+
+  assert.deepEqual(Object.keys(dependencies), ['ignore']);
+  assert.equal(ignored.includes('fast-xml-parser'), false);
+});
+
+test('the test workflow also runs on pushes to integration branches', () => {
+  const workflow = fs.readFileSync(
+    path.join(__dirname, '../../.github/workflows/test.yml'),
+    'utf8'
+  );
+
+  assert.match(workflow, /branches: \[main, 'integration\/\*\*'\]/);
+});
