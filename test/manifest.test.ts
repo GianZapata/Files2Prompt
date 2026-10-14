@@ -83,7 +83,11 @@ test('new user-facing strings have a Spanish translation', () => {
     '{0} was saved by Files2Prompt, so it stays out of the prompt.',
     'sensitive · never included',
     'The system message in this prompt comes from the workspace settings, not from your user settings.',
-    '{0} looks like a secret (credentials or keys), so it never goes into the prompt.'
+    '{0} looks like a secret (credentials or keys), so it never goes into the prompt.',
+    'This selection is about {0} tokens, {1} over the budget of {2}. Change files2prompt.tokenBudget, copy anyway, or cancel.',
+    'Copy anyway',
+    'Do not ask again in this workspace',
+    'This preview is about {0} tokens, over the budget of {1}.'
   ];
 
   for (const key of expected) {
@@ -107,6 +111,36 @@ test('allowSensitive is a list of patterns that starts empty', () => {
   assert.equal(setting.type, 'array');
   assert.equal(setting.items?.type, 'string');
   assert.deepEqual(setting.default, []);
+});
+
+interface SettingShape {
+  type: string;
+  default: unknown;
+}
+
+test('the token budget is off by default and described in both languages', () => {
+  const properties = readJson<{
+    contributes: {
+      configuration: { properties: Record<string, SettingShape> };
+    };
+  }>('package.json').contributes.configuration.properties;
+
+  const setting = properties['files2prompt.tokenBudget'];
+  const english = readJson<Record<string, string>>('package.nls.json');
+  const spanish = readJson<Record<string, string>>('package.nls.es.json');
+
+  assert.equal(setting.type, 'number');
+  assert.equal(setting.default, 0);
+
+  assert.equal(
+    typeof english['files2prompt.tokenBudget.description'],
+    'string'
+  );
+
+  assert.equal(
+    typeof spanish['files2prompt.tokenBudget.description'],
+    'string'
+  );
 });
 
 test('the workspace cannot choose the system message in an untrusted folder', () => {

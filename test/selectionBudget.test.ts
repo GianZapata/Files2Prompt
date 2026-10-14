@@ -14,12 +14,14 @@ test('status text includes git changes and a readable breakdown', () => {
   const status = selectionStatus({
     fileCount: 12,
     byteLabel: '4.2 KB',
+    tokens: 1100,
+    tokenBudget: 0,
     changeCount: 3,
     repositoryCount: 2,
     format: 'markdown'
   });
 
-  assert.match(status.text, /12 files · 4\.2 KB · Markdown/);
+  assert.match(status.text, /12 files · ~1\.1k tokens · Markdown/);
   assert.match(status.tooltip, /2 repositories/);
   assert.match(status.tooltip, /Markdown/);
   assert.match(status.accessibility, /Choose the output format/);
@@ -29,12 +31,14 @@ test('an empty selection still names the output format', () => {
   const status = selectionStatus({
     fileCount: 0,
     byteLabel: '0 B',
+    tokens: 0,
+    tokenBudget: 0,
     changeCount: 0,
     repositoryCount: 0,
     format: 'xml'
   });
 
-  assert.match(status.text, /0 files · 0 B · XML/);
+  assert.match(status.text, /0 files · ~0 tokens · XML/);
   assert.match(status.tooltip, /XML/);
   assert.match(status.accessibility, /Choose the output format/);
 });

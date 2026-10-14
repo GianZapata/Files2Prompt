@@ -20,6 +20,7 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
+import { CopyNoticeKind } from '../../domain/entities/copy-notice-kind.enum';
 import { OperationKind } from '../../domain/entities/operation-kind.enum';
 import { OutputFormat } from '../../domain/entities/output-format.enum';
 import { PathKind } from '../../domain/entities/path-kind.enum';
@@ -38,9 +39,16 @@ import {
   timestampedPromptFileName
 } from '../../domain/services/saved-prompt-file.service';
 import {
-  overLimitNotice,
-  type LimitNotice
+  SKIP_TOKEN_NOTICE_KEY,
+  copyNotice,
+  type CopyNotice
 } from '../../domain/services/selection-budget.service';
+import {
+  compactTokenCount,
+  estimateTokens,
+  estimateTokensFromBytes,
+  tokenBudgetNotice
+} from '../../domain/services/token-estimate.service';
 import { FileOutputDataSource } from '../../infrastructure/datasources/file-output.datasource';
 import {
   dedupeResolved,
@@ -235,6 +243,41 @@ export const registerPromptCommands = (
     return deps.detailBook.save(report);
   };
 
+  const confirmNotice = async (notice: CopyNotice) => {
+    const message = vscode.l10n.t(notice.message, ...notice.args);
+    const cancel = vscode.l10n.t('Cancel');
+
+    if (notice.kind !== CopyNoticeKind.Tokens) {
+      const copyFits = vscode.l10n.t('Copy what fits');
+      const choice = await vscode.window.showWarningMessage(
+        message,
+        { modal: true },
+        copyFits,
+        cancel
+      );
+
+      return choice === copyFits;
+    }
+
+    if (deps.state.get<boolean>(SKIP_TOKEN_NOTICE_KEY) === true) return true;
+
+    const copyAnyway = vscode.l10n.t('Copy anyway');
+    const remember = vscode.l10n.t('Do not ask again in this workspace');
+    const choice = await vscode.window.showWarningMessage(
+      message,
+      { modal: true },
+      copyAnyway,
+      remember,
+      cancel
+    );
+
+    if (choice === remember) {
+      await deps.state.update(SKIP_TOKEN_NOTICE_KEY, true);
+    }
+
+    return choice === copyAnyway || choice === remember;
+  };
+
   const deliverCollected = async (
     filePaths: string[],
     output: PromptOutputDataSource,
@@ -264,26 +307,23 @@ export const registerPromptCommands = (
       }
     }
 
-    const notice: LimitNotice = overLimitNotice({
+    const diffBytes = deps.selection
+      .promptChangeList()
+      .reduce(
+        (total, change) => total + Buffer.byteLength(change.diff ?? ''),
+        0
+      );
+
+    const notice = copyNotice({
       fileCount: filePaths.length,
       byteCount,
       maxFiles: limits.get<number>('maxFiles', 5000),
-      maxTotalBytes: limits.get<number>('maxTotalBytes', 8388608)
+      maxTotalBytes: limits.get<number>('maxTotalBytes', 8388608),
+      tokens: estimateTokensFromBytes(byteCount + diffBytes),
+      tokenBudget: limits.get<number>('tokenBudget', 0)
     });
 
-    if (notice.over) {
-      const copyFits = vscode.l10n.t('Copy what fits');
-      const choice = await vscode.window.showWarningMessage(
-        vscode.l10n.t(notice.message, ...notice.args),
-        { modal: true },
-        copyFits,
-        vscode.l10n.t('Cancel')
-      );
-
-      if (choice !== copyFits) {
-        return;
-      }
-    }
+    if (notice.over && !(await confirmNotice(notice))) return;
 
     let currentBuild: PromptBuild | undefined;
     const progressTitle = destinationUri
@@ -588,6 +628,26 @@ export const registerPromptCommands = (
       const document = await vscode.workspace.openTextDocument(previewUri);
 
       await vscode.window.showTextDocument(document, { preview: true });
+
+      const previewBudget = tokenBudgetNotice({
+        tokens: estimateTokens(summary.output),
+        budget: vscode.workspace
+          .getConfiguration('files2prompt')
+          .get<number>('tokenBudget', 0)
+      });
+
+      if (
+        previewBudget.over &&
+        deps.state.get<boolean>(SKIP_TOKEN_NOTICE_KEY) !== true
+      ) {
+        void vscode.window.showWarningMessage(
+          vscode.l10n.t(
+            'This preview is about {0} tokens, over the budget of {1}.',
+            compactTokenCount(estimateTokens(summary.output)),
+            previewBudget.args[2]
+          )
+        );
+      }
 
       const reportId = rememberReport(OperationKind.Preview, summary, false);
       const report = deps.detailBook.open(reportId) ?? '';

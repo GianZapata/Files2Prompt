@@ -1,4 +1,7 @@
+import { CopyNoticeKind } from '../entities/copy-notice-kind.enum';
 import { OutputFormat } from '../entities/output-format.enum';
+
+import { formatTokenCount, tokenBudgetNotice } from './token-estimate.service';
 
 export const nextOutputFormat = (current: string, picked?: string) => ({
   format: picked ?? current,
@@ -27,6 +30,8 @@ export const outputFormatLabel = (format: string) => {
 export interface SelectionStatusInput {
   fileCount: number;
   byteLabel: string;
+  tokens: number;
+  tokenBudget: number;
   changeCount: number;
   repositoryCount: number;
   format: string;
@@ -34,12 +39,17 @@ export interface SelectionStatusInput {
 
 export const selectionStatus = (input: SelectionStatusInput) => {
   const formatLabel = outputFormatLabel(input.format);
-  const tooltip = `${input.fileCount} selected files, ${input.byteLabel}. ${input.changeCount} Git changes in ${input.repositoryCount} repositories. Output format: ${formatLabel}.`;
+  const tokenLabel = formatTokenCount(input.tokens);
+  const tooltip = `${input.fileCount} selected files, ${input.byteLabel}, ${tokenLabel} (estimated from file sizes). ${input.changeCount} Git changes in ${input.repositoryCount} repositories. Output format: ${formatLabel}.`;
 
   return {
-    text: `$(files) ${input.fileCount} files · ${input.byteLabel} · ${formatLabel}`,
+    text: `$(files) ${input.fileCount} files · ${tokenLabel} · ${formatLabel}`,
     tooltip,
-    accessibility: `${tooltip} Choose the output format.`
+    accessibility: `${tooltip} Choose the output format.`,
+    overBudget: tokenBudgetNotice({
+      tokens: input.tokens,
+      budget: input.tokenBudget
+    }).over
   };
 };
 
@@ -100,4 +110,30 @@ export const overLimitNotice = (input: OverLimitNoticeInput): LimitNotice => {
   }
 
   return { over: false, message: '', args: [] };
+};
+
+export const SKIP_TOKEN_NOTICE_KEY = 'files2prompt.skipTokenBudgetNotice';
+
+export interface CopyNotice extends LimitNotice {
+  kind?: CopyNoticeKind;
+}
+
+export interface CopyNoticeInput extends OverLimitNoticeInput {
+  tokens: number;
+  tokenBudget: number;
+}
+
+export const copyNotice = (input: CopyNoticeInput): CopyNotice => {
+  const limit = overLimitNotice(input);
+
+  if (limit.over) return { ...limit, kind: CopyNoticeKind.Limit };
+
+  const budget = tokenBudgetNotice({
+    tokens: input.tokens,
+    budget: input.tokenBudget
+  });
+
+  if (budget.over) return { ...budget, kind: CopyNoticeKind.Tokens };
+
+  return limit;
 };

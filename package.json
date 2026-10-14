@@ -361,6 +361,12 @@
           "default": 8388608,
           "description": "%files2prompt.maxTotalBytes.description%"
         },
+        "files2prompt.tokenBudget": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "description": "%files2prompt.tokenBudget.description%"
+        },
         "files2prompt.confirmIgnoredFolders": {
           "type": "boolean",
           "default": true,

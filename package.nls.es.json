@@ -28,6 +28,7 @@
   "files2prompt.selectChanges.title": "Cambios de Git",
   "files2prompt.clearGitChanges.title": "Quitar los cambios de Git",
   "files2prompt.maxFiles.description": "Preguntar antes de copiar más archivos que este límite. Copiar lo que cabe se detiene igual en este límite.",
+  "files2prompt.tokenBudget.description": "Avisa antes de copiar un prompt que se estima por encima de esta cantidad de tokens (caracteres / 4, aproximado). La barra de estado toma un color de advertencia. 0 lo desactiva.",
   "files2prompt.confirmIgnoredFolders.description": "Preguntar antes de incluir una carpeta que está en .gitignore o en files2prompt.exclude.",
   "files2prompt.outputFormat.description": "Formato usado al copiar el prompt. XML es el predeterminado.",
   "files2prompt.diffMode.description": "Cómo aparecen los cambios de Git en el prompt: diff y archivos, solo diff, o solo archivos.",

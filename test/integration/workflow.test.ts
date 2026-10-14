@@ -44,6 +44,43 @@ const copyWith = async (command: string) => {
   return vscode.env.clipboard.readText();
 };
 
+const withSettings = async <T>(
+  values: Record<string, number>,
+  work: () => PromiseLike<T>
+) => {
+  const target = vscode.ConfigurationTarget.Workspace;
+
+  for (const [key, value] of Object.entries(values)) {
+    await vscode.workspace
+      .getConfiguration('files2prompt')
+      .update(key, value, target);
+  }
+
+  try {
+    return await work();
+  } finally {
+    for (const key of Object.keys(values)) {
+      await vscode.workspace
+        .getConfiguration('files2prompt')
+        .update(key, undefined, target);
+    }
+  }
+};
+
+const copyWarnings = (limits: Record<string, number>) =>
+  withSettings(limits, () =>
+    withStubs({}, async recording => {
+      await vscode.env.clipboard.writeText('');
+      await vscode.commands.executeCommand('files2prompt.copyFiles');
+
+      return recording.messages.filter(
+        entry =>
+          entry.actions.includes('Copy what fits') ||
+          entry.actions.includes('Copy anyway')
+      );
+    })
+  );
+
 const savePromptTo = (format: string, target: vscode.Uri) =>
   withStubs({}, async recording => {
     await vscode.commands.executeCommand(
@@ -278,5 +315,31 @@ suite('Files2Prompt with two git repositories', () => {
 
     await vscode.commands.executeCommand('workbench.action.files.revert');
     await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+  });
+
+  test('over both the byte limit and the token budget asks once, about bytes', async () => {
+    const warnings = await copyWarnings({ maxTotalBytes: 10, tokenBudget: 1 });
+
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0].message, /files2prompt\.maxTotalBytes/);
+    assert.deepEqual(warnings[0].actions, ['Copy what fits', 'Cancel']);
+  });
+
+  test('over only the token budget asks once and can be silenced for the workspace', async () => {
+    const warnings = await copyWarnings({ tokenBudget: 1 });
+
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0].message, /files2prompt\.tokenBudget/);
+    assert.deepEqual(warnings[0].actions, [
+      'Copy anyway',
+      'Do not ask again in this workspace',
+      'Cancel'
+    ]);
+  });
+
+  test('stays quiet while the selection fits the token budget', async () => {
+    const warnings = await copyWarnings({ tokenBudget: 100000000 });
+
+    assert.equal(warnings.length, 0);
   });
 });

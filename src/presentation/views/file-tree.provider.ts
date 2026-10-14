@@ -15,6 +15,11 @@ import {
   parentCheckbox,
   watcherShouldRefresh
 } from '../../domain/services/parent-check.service';
+import { formatByteSize } from '../../domain/services/selection-budget.service';
+import {
+  estimateTokensFromBytes,
+  formatTokenCount
+} from '../../domain/services/token-estimate.service';
 import {
   filesSelectedByFolder,
   filesSelectedByFolderAsync,
@@ -304,6 +309,25 @@ export class FileTreeProvider
     element.checkboxState = checkboxState;
 
     return element;
+  }
+
+  async resolveTreeItem(
+    item: vscode.TreeItem,
+    element: FileItem
+  ): Promise<vscode.TreeItem> {
+    if (element.isDirectory) return item;
+
+    const filePath = element.resourceUri.fsPath;
+    const stats = await fs.promises.stat(filePath).catch(() => undefined);
+
+    if (!stats) return item;
+
+    item.tooltip = [
+      filePath,
+      `${formatByteSize(stats.size)} · ${formatTokenCount(estimateTokensFromBytes(stats.size))}`
+    ].join('\n');
+
+    return item;
   }
 
   async getChildren(element?: FileItem): Promise<FileItem[]> {
@@ -669,7 +693,8 @@ export class FileItem extends vscode.TreeItem {
   ) {
     super(label, collapsibleState);
 
-    this.tooltip = this.resourceUri.fsPath;
+    if (isDirectory) this.tooltip = this.resourceUri.fsPath;
+
     this.iconPath = new vscode.ThemeIcon(this.isDirectory ? 'folder' : 'file');
     this.checkboxState = checkboxState;
     this.contextValue = isDirectory ? 'folder' : 'file';

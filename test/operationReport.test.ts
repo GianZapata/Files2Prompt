@@ -124,6 +124,41 @@ test('details name a secret left out and the rule that caught it', () => {
   assert.match(report, /api\/\.env — sensitive \(\.env\)/);
 });
 
+test('details total the tokens of the whole prompt and rank the heaviest files', () => {
+  const report = formatOperationReport({
+    kind: 'copy',
+    wrote: true,
+    summary: {
+      ...summary('A', 1),
+      output: 'x'.repeat(400),
+      included: [
+        { name: 'light.ts', content: 'x'.repeat(8) },
+        { name: 'heavy.ts', content: 'x'.repeat(800) }
+      ]
+    }
+  });
+
+  assert.match(
+    report,
+    /Tokens: ~100 tokens \(full prompt: files, tree, diffs and wrapper\)/
+  );
+
+  assert.match(
+    report,
+    /Heaviest files:\n {2}1\. heavy\.ts — ~200 tokens\n {2}2\. light\.ts — ~2 tokens/
+  );
+});
+
+test('details keep only the ten heaviest files', () => {
+  const report = formatOperationReport({
+    kind: 'copy',
+    wrote: true,
+    summary: summary('B', 12)
+  });
+
+  assert.equal(report.match(/^ {2}\d+\. /gm)?.length, 10);
+});
+
 test('details say when the system message comes from the workspace', () => {
   const fromWorkspace = formatOperationReport({
     kind: 'copy',

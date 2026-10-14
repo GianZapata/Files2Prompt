@@ -9,6 +9,10 @@ import {
   selectionStatus,
   shouldRefreshSummary
 } from '../../domain/services/selection-budget.service';
+import {
+  estimateTokensFromBytes,
+  formatTokenCount
+} from '../../domain/services/token-estimate.service';
 
 export interface SelectionStatusBarOptions {
   fileTreeProvider: FileTreeProvider;
@@ -40,29 +44,36 @@ export const createSelectionStatusBar = (
 
     descriptionTimer = setTimeout(() => {
       void options.fileTreeProvider.selectionStats().then(stats => {
-        const byteLabel = formatByteSize(stats.bytes);
+        const config = vscode.workspace.getConfiguration('files2prompt');
+        const tokens = estimateTokensFromBytes(stats.bytes);
         const changes = options.fileTreeProvider.promptChangeList();
         const status = selectionStatus({
           fileCount: stats.count,
-          byteLabel,
+          byteLabel: formatByteSize(stats.bytes),
+          tokens,
+          tokenBudget: config.get<number>('tokenBudget', 0),
           changeCount: changes.length,
           repositoryCount: new Set(changes.map(change => change.repo)).size,
-          format: vscode.workspace
-            .getConfiguration('files2prompt')
-            .get<string>('outputFormat', 'xml')
+          format: config.get<string>('outputFormat', 'xml')
         });
 
         options.treeView.description = vscode.l10n.t(
           '{0} files · {1}',
           stats.count,
-          byteLabel
+          formatTokenCount(tokens)
         );
+
         selectionItem.text = status.text;
+        selectionItem.backgroundColor = status.overBudget
+          ? new vscode.ThemeColor('statusBarItem.warningBackground')
+          : undefined;
+
         selectionItem.tooltip = status.tooltip;
         selectionItem.accessibilityInformation = {
           label: status.accessibility,
           role: 'button'
         };
+
         selectionItem.show();
       });
     }, 200);
@@ -74,6 +85,7 @@ export const createSelectionStatusBar = (
       const current = vscode.workspace
         .getConfiguration('files2prompt')
         .get<string>('outputFormat', 'xml');
+
       const picked = await vscode.window.showQuickPick(
         (['xml', 'markdown', 'plain'] as const).map(format => ({
           label: vscode.l10n.t(outputFormatLabel(format)),
@@ -85,6 +97,7 @@ export const createSelectionStatusBar = (
           placeHolder: vscode.l10n.t('Choose the output format')
         }
       );
+
       const next = nextOutputFormat(current, picked?.format);
 
       if (!next.changed || next.wroteClipboard) {
@@ -98,6 +111,7 @@ export const createSelectionStatusBar = (
           next.format,
           vscode.ConfigurationTarget.Workspace
         );
+
       scheduleDescription();
     }
   );
@@ -105,7 +119,10 @@ export const createSelectionStatusBar = (
   const configListener = vscode.workspace.onDidChangeConfiguration(event => {
     const section = 'files2prompt.outputFormat';
 
-    if (event.affectsConfiguration(section) && shouldRefreshSummary(section)) {
+    if (
+      event.affectsConfiguration('files2prompt.tokenBudget') ||
+      (event.affectsConfiguration(section) && shouldRefreshSummary(section))
+    ) {
       scheduleDescription();
     }
   });

@@ -5,6 +5,12 @@ import {
   type AnyOperationKind
 } from '../entities/operation-kind.enum';
 
+import {
+  estimateTokens,
+  formatTokenCount,
+  heaviestFiles
+} from './token-estimate.service';
+
 export { OperationKind, type AnyOperationKind };
 
 export interface OperationReportManualInclude {
@@ -34,6 +40,7 @@ export const formatOperationReport = (input: FormatOperationReportInput) => {
   const summary = input.summary;
   const collected = summary?.included.length ?? 0;
   const copied = input.wrote ? collected : 0;
+  const heaviest = heaviestFiles(summary?.included ?? []);
 
   return [
     `Operation: ${input.kind}`,
@@ -42,11 +49,21 @@ export const formatOperationReport = (input: FormatOperationReportInput) => {
     `Copied: ${copied}`,
     `Clipboard write: ${input.wrote ? 'yes' : 'no'}`,
     `Bytes: ${summary?.byteLength ?? 0}`,
+    `Tokens: ${formatTokenCount(estimateTokens(summary?.output ?? ''))} (full prompt: files, tree, diffs and wrapper)`,
     `Pending: ${summary?.pending ?? 0}`,
     `Omitted files: ${summary?.omittedFiles.length ?? 0}`,
     `Omitted folders: ${summary?.omittedFolders.length ?? 0}`,
     ...(summary?.systemMessageFromWorkspace
       ? ['System message: from workspace settings (not your user settings)']
+      : []),
+    ...(heaviest.length > 0
+      ? [
+          'Heaviest files:',
+          ...heaviest.map(
+            (file, index) =>
+              `  ${index + 1}. ${file.name} — ${formatTokenCount(file.tokens)}`
+          )
+        ]
       : []),
     ...(summary?.included.map(file => `Collected file: ${file.name}`) ?? []),
     ...(summary?.omittedFolders.map(folder => `${folder} — pruned-folder`) ??
