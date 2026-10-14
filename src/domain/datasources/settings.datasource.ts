@@ -9,6 +9,7 @@ export interface PromptSettings {
   maxFileBytes: number;
   maxTotalBytes: number;
   maxFiles: number;
+  includeTree: boolean;
 }
 
 export abstract class SettingsDataSource {

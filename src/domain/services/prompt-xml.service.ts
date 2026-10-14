@@ -21,6 +21,8 @@ const cdata = (value: string) => `<![CDATA[${escapeCdata(value)}]]>`;
 export const serializedSystemMessage = (message: string) =>
   `<systemMessage>${cdata(message)}</systemMessage>`;
 
+export const serializedTree = (tree: string) => `<tree>${cdata(tree)}</tree>`;
+
 export const serializedFile = (file: PromptFile) =>
   `<file name="${escapeAttribute(file.name)}">${cdata(file.content)}</file>`;
 

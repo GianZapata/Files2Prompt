@@ -23,7 +23,8 @@ export class VscodeSettingsDataSource extends SettingsDataSource {
       diffMode: config.get<DiffMode>('diffMode', DiffMode.DiffAndFiles),
       maxFileBytes: config.get<number>('maxFileBytes', 1048576),
       maxTotalBytes: config.get<number>('maxTotalBytes', 8388608),
-      maxFiles: config.get<number>('maxFiles', 5000)
+      maxFiles: config.get<number>('maxFiles', 5000),
+      includeTree: config.get<boolean>('includeTree', true)
     };
   };
 }

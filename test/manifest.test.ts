@@ -169,6 +169,30 @@ test('generated files stay out of bulk selection unless the setting says so', ()
   );
 });
 
+test('the tree of selected files is on by default and documented', () => {
+  const properties = readJson<{
+    contributes: {
+      configuration: { properties: Record<string, SettingShape> };
+    };
+  }>('package.json').contributes.configuration.properties;
+
+  const setting = properties['files2prompt.includeTree'];
+  const english = readJson<Record<string, string>>('package.nls.json');
+  const spanish = readJson<Record<string, string>>('package.nls.es.json');
+
+  assert.equal(setting.type, 'boolean');
+  assert.equal(setting.default, true);
+  assert.equal(
+    typeof english['files2prompt.includeTree.description'],
+    'string'
+  );
+
+  assert.equal(
+    typeof spanish['files2prompt.includeTree.description'],
+    'string'
+  );
+});
+
 test('the workspace cannot choose the system message in an untrusted folder', () => {
   const capabilities = readJson<{
     capabilities: {

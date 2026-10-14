@@ -19,6 +19,7 @@ import {
   type PromptRequest
 } from '../../domain/repositories/prompt.repository';
 import { promptLayout } from '../../domain/services/prompt-formats.service';
+import { createTreeAccumulator } from '../../domain/services/prompt-tree.service';
 
 export interface PromptPathResolver {
   resolvePath: (
@@ -88,27 +89,37 @@ export class PromptRepositoryImpl extends PromptRepository {
     const realRoot = await this.files.realPathOf(this.workspaceRoot);
 
     const layout = promptLayout(format, { systemMessage, changes });
+    const tree = createTreeAccumulator();
     const pieces: string[] = [];
-    let usedBytes = layout.emptyBytes;
+    let pieceBytes = 0;
+    let treeBytes = 0;
+
+    const sizeNow = () => ({
+      pieceBytes,
+      pieceCount: pieces.length,
+      treeBytes
+    });
 
     const finish = (stop: CopyStop, pending: number): PromptBuild => {
       const cancelled = stop === CopyStop.UserCancelled;
 
       return {
         stop,
-        output: cancelled ? '' : layout.assemble(pieces),
+        output: cancelled
+          ? ''
+          : layout.assemble(pieces, config.includeTree ? tree.render() : ''),
         included,
         omittedFiles,
         omittedFolders,
         pending,
-        byteLength: cancelled ? 0 : usedBytes,
+        byteLength: cancelled ? 0 : layout.bytes(sizeNow()),
         ...(systemMessage && config.systemMessageFromWorkspace
           ? { systemMessageFromWorkspace: true }
           : {})
       };
     };
 
-    if (layout.emptyBytes > config.maxTotalBytes) {
+    if (layout.bytes(sizeNow()) > config.maxTotalBytes) {
       return finish(CopyStop.TotalBytes, 0);
     }
 
@@ -185,16 +196,27 @@ export class PromptRepositoryImpl extends PromptRepository {
 
       const content = await this.files.readText(normalized);
       const piece = layout.piece({ name, content });
-      const nextBytes =
-        usedBytes + layout.bytesToAdd(Buffer.byteLength(piece), pieces.length);
+      const pieceSize = Buffer.byteLength(piece);
+      const treeGrowth = config.includeTree ? tree.measure(name) : 0;
+
+      const nextBytes = layout.bytes({
+        pieceBytes: pieceBytes + pieceSize,
+        pieceCount: pieces.length + 1,
+        treeBytes: treeBytes + treeGrowth
+      });
 
       if (nextBytes > config.maxTotalBytes) {
         return finish(CopyStop.TotalBytes, pending);
       }
 
+      if (config.includeTree) {
+        tree.add(name);
+      }
+
       pieces.push(piece);
       included.push({ name, content });
-      usedBytes = nextBytes;
+      pieceBytes += pieceSize;
+      treeBytes += treeGrowth;
     }
 
     return finish(CopyStop.Completed, 0);

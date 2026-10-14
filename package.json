@@ -372,6 +372,11 @@
           "default": false,
           "description": "%files2prompt.includeGenerated.description%"
         },
+        "files2prompt.includeTree": {
+          "type": "boolean",
+          "default": true,
+          "description": "%files2prompt.includeTree.description%"
+        },
         "files2prompt.confirmIgnoredFolders": {
           "type": "boolean",
           "default": true,
