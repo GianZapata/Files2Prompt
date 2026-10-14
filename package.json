@@ -19,6 +19,9 @@
   "engines": {
     "vscode": "^1.125.0"
   },
+  "extensionKind": [
+    "workspace"
+  ],
   "categories": [
     "Other"
   ],
@@ -88,6 +91,10 @@
         "command": "files2prompt.savePromptAs",
         "title": "%files2prompt.savePromptAs.title%",
         "icon": "$(save-as)"
+      },
+      {
+        "command": "files2prompt.copyAsFile",
+        "title": "%files2prompt.copyAsFile.title%"
       },
       {
         "command": "files2prompt.clearChecks",
@@ -240,6 +247,11 @@
           "command": "files2prompt.savePromptAs",
           "when": "view == files2PromptView",
           "group": "1_overflow@4"
+        },
+        {
+          "command": "files2prompt.copyAsFile",
+          "when": "view == files2PromptView",
+          "group": "1_overflow@5"
         }
       ],
       "files2prompt.select": [
@@ -290,6 +302,7 @@
         "command": "files2prompt.copyOpenFiles",
         "key": "ctrl+shift+c",
         "mac": "cmd+shift+c",
+        "when": "focusedView == 'files2PromptView'",
         "title": "%files2prompt.copyOpenFiles.title%"
       }
     ],

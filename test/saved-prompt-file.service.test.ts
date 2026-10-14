@@ -11,6 +11,7 @@ import {
   formatFromExtension,
   resolveSaveTarget,
   revealLabelFor,
+  tempPromptFilePath,
   timestampedPromptFileName
 } from '../src/domain/services/saved-prompt-file.service';
 
@@ -154,4 +155,23 @@ test('saved-prompt-file: reveal label depends on the platform', () => {
   assert.equal(revealLabelFor('darwin'), 'Reveal in Finder');
   assert.equal(revealLabelFor('win32'), 'Reveal in File Explorer');
   assert.equal(revealLabelFor('linux'), 'Reveal in file manager');
+});
+
+test('saved-prompt-file: copy as file lands in a files2prompt folder of the temp dir', () => {
+  const moment = new Date(2026, 9, 14, 8, 5);
+
+  assert.equal(
+    tempPromptFilePath('/tmp', OutputFormat.Markdown, moment, path.posix),
+    '/tmp/files2prompt/prompt-2026-10-14-0805.md'
+  );
+
+  assert.equal(
+    tempPromptFilePath(
+      'C:\\Users\\ana\\AppData\\Local\\Temp',
+      OutputFormat.Xml,
+      moment,
+      path.win32
+    ),
+    'C:\\Users\\ana\\AppData\\Local\\Temp\\files2prompt\\prompt-2026-10-14-0805.xml'
+  );
 });

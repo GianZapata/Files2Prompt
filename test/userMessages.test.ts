@@ -14,6 +14,8 @@ import {
   createPreviewSource
 } from '../src/presentation/views/prompt-preview.source';
 
+import { readManifest } from './support/manifest';
+
 test('copy notices do not show internal stop codes', () => {
   const copy = copyStatusMessage({
     stop: 'file-budget',
@@ -55,22 +57,8 @@ test('a partial preview says how many files were left out', () => {
 });
 
 test('the view title keeps four codicon actions and a select submenu', () => {
-  const manifest = JSON.parse(
-    fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8')
-  ) as {
-    contributes: {
-      commands: Array<{ command: string; icon?: string | { light?: string } }>;
-      submenus?: Array<{ id: string; icon?: string }>;
-      menus: {
-        'view/title': Array<{
-          command?: string;
-          submenu?: string;
-          group?: string;
-        }>;
-        [key: string]: Array<{ command?: string; group?: string }>;
-      };
-    };
-  };
+  const manifest = readManifest();
+
   const title = manifest.contributes.menus['view/title'];
   const navigation = title.filter(item => item.group?.startsWith('navigation'));
 
@@ -84,12 +72,14 @@ test('the view title keeps four codicon actions and a select submenu', () => {
       'files2prompt.selectChanges'
     ]
   );
+
   assert.equal(
     manifest.contributes.submenus?.find(
       item => item.id === 'files2prompt.select'
     )?.icon,
     '$(checklist)'
   );
+
   assert.deepEqual(
     manifest.contributes.menus['files2prompt.select'].map(item => item.command),
     [
@@ -98,16 +88,19 @@ test('the view title keeps four codicon actions and a select submenu', () => {
       'files2prompt.clearChecks'
     ]
   );
+
   assert.equal(
     title.some(item => item.submenu === 'files2prompt.copyAs'),
     false
   );
+
   assert.equal(
     manifest.contributes.submenus?.some(
       item => item.id === 'files2prompt.copyAs'
     ),
     false
   );
+
   assert.equal(
     navigation.some(item => item.command === 'files2prompt.selectChanges'),
     true
@@ -117,6 +110,7 @@ test('the view title keeps four codicon actions and a select submenu', () => {
     title.some(item => item.command === 'files2prompt.pasteXml'),
     false
   );
+
   assert.deepEqual(
     title
       .filter(item => item.group?.startsWith('1_overflow'))
@@ -125,9 +119,11 @@ test('the view title keeps four codicon actions and a select submenu', () => {
       'files2prompt.copyOpenFiles',
       'files2prompt.refresh',
       'files2prompt.showDetails',
-      'files2prompt.savePromptAs'
+      'files2prompt.savePromptAs',
+      'files2prompt.copyAsFile'
     ]
   );
+
   assert.equal(
     title.some(
       item =>
@@ -136,28 +132,33 @@ test('the view title keeps four codicon actions and a select submenu', () => {
     ),
     false
   );
+
   assert.equal(
     manifest.contributes.commands.some(
       item => item.command === 'files2prompt.goBack'
     ),
     true
   );
+
   assert.equal(
     manifest.contributes.commands.some(
       item => item.command === 'files2prompt.savePromptAs'
     ),
     true
   );
+
   assert.equal(
     manifest.contributes.commands.some(
       item => item.command === 'files2prompt.changeOutputFormat'
     ),
     true
   );
+
   assert.equal(
     title.some(item => item.command === 'files2prompt.changeOutputFormat'),
     false
   );
+
   assert.equal(
     manifest.contributes.commands.some(
       item => item.command === 'files2prompt.copyAsMarkdown'

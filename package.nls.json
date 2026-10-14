@@ -14,6 +14,7 @@
   "files2prompt.copyAsMarkdown.title": "Markdown",
   "files2prompt.copyAsPlain.title": "Plain text",
   "files2prompt.savePromptAs.title": "Save as…",
+  "files2prompt.copyAsFile.title": "Copy as File…",
   "files2prompt.clearChecks.title": "Clear selection",
   "files2prompt.goBack.title": "Previous selection",
   "files2prompt.goForward.title": "Next selection",

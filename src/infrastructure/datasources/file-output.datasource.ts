@@ -12,6 +12,10 @@ export class FileOutputDataSource extends PromptOutputDataSource {
   write = async (text: string, _payload?: PromptPayload): Promise<void> => {
     const encoded = Buffer.from(text, 'utf8');
 
+    await vscode.workspace.fs.createDirectory(
+      vscode.Uri.joinPath(this.targetUri, '..')
+    );
+
     await vscode.workspace.fs.writeFile(this.targetUri, encoded);
   };
 }

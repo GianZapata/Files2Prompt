@@ -34,6 +34,7 @@ import {
   fileFiltersForFormat,
   resolveSaveTarget,
   revealLabelFor,
+  tempPromptFilePath,
   timestampedPromptFileName
 } from '../../domain/services/saved-prompt-file.service';
 import {
@@ -113,12 +114,15 @@ export interface DeliverCollectedOptions {
   includeSystemMessage?: boolean;
   format?: OutputFormat;
   destinationUri?: vscode.Uri;
+  revealOnWrite?: boolean;
 }
 
 const configuredFormat = (): OutputFormat =>
   vscode.workspace
     .getConfiguration('files2prompt')
     .get<OutputFormat>('outputFormat', OutputFormat.Xml);
+
+const canRevealInOS = () => vscode.env.remoteName === undefined;
 
 const isDirectory = (folder: string) => {
   try {
@@ -321,6 +325,15 @@ export const registerPromptCommands = (
       await deps.registerSavedPrompt(destinationUri.fsPath);
     }
 
+    if (
+      destinationUri &&
+      result.wrote &&
+      options.revealOnWrite &&
+      canRevealInOS()
+    ) {
+      await vscode.commands.executeCommand('revealFileInOS', destinationUri);
+    }
+
     const summary = currentBuild;
 
     if (!summary) {
@@ -376,7 +389,7 @@ export const registerPromptCommands = (
       const openLabel = vscode.l10n.t('Open');
       const revealLabel = vscode.l10n.t(revealLabelFor(process.platform));
       const actions =
-        vscode.env.remoteName === undefined
+        canRevealInOS() && !options.revealOnWrite
           ? [openLabel, revealLabel, detailsLabel]
           : [openLabel, detailsLabel];
 
@@ -417,6 +430,11 @@ export const registerPromptCommands = (
       }
     });
   };
+
+  const outputFor = (destination: vscode.Uri) =>
+    deps.createFileOutput
+      ? deps.createFileOutput(destination)
+      : new FileOutputDataSource(destination);
 
   const copyCollected = async (
     filePaths: string[],
@@ -634,16 +652,33 @@ export const registerPromptCommands = (
         deps.history.record(deps.currentSnapshot());
         await deps.saveHistory();
 
-        const fileOutput = deps.createFileOutput
-          ? deps.createFileOutput(destination)
-          : new FileOutputDataSource(destination);
-
-        await deliverCollected(checkedFiles, fileOutput, {
+        await deliverCollected(checkedFiles, outputFor(destination), {
           includeSystemMessage: true,
           format: target.format,
           destinationUri: destination
         });
       }
-    )
+    ),
+
+    vscode.commands.registerCommand('files2prompt.copyAsFile', async () => {
+      const format = configuredFormat();
+      const destination = vscode.Uri.file(
+        tempPromptFilePath(os.tmpdir(), format, new Date())
+      );
+
+      deps.history.record(deps.currentSnapshot());
+      await deps.saveHistory();
+
+      await deliverCollected(
+        deps.selection.getCheckedFiles(),
+        outputFor(destination),
+        {
+          includeSystemMessage: true,
+          format,
+          destinationUri: destination,
+          revealOnWrite: true
+        }
+      );
+    })
   ];
 };

@@ -1,3 +1,5 @@
+import * as path from 'path';
+
 import { OutputFormat } from '../entities/output-format.enum';
 
 export const LAST_SAVE_FOLDER_KEY = 'files2prompt.lastSaveFolder';
@@ -61,6 +63,18 @@ export const timestampedPromptFileName = (
 
   return defaultPromptFileName(format, `prompt-${date}-${time}`);
 };
+
+export const tempPromptFilePath = (
+  tmpDir: string,
+  format: OutputFormat | string,
+  moment: Date,
+  flavor: path.PlatformPath = path
+): string =>
+  flavor.join(
+    tmpDir,
+    'files2prompt',
+    timestampedPromptFileName(format, moment)
+  );
 
 export const formatFromExtension = (
   filePath: string
