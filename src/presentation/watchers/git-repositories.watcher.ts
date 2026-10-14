@@ -10,7 +10,8 @@ import {
   discoverRepositories,
   gitUnavailableMessage,
   noRepositoriesMessage,
-  recordsFromGitApi
+  recordsFromGitApi,
+  trackRepositories
 } from '../../domain/services/git-repos.service';
 
 export const watchGitRepositories = (
@@ -31,7 +32,8 @@ export const watchGitRepositories = (
 
   let timer: ReturnType<typeof setTimeout> | undefined;
   let reportedEmpty = false;
-  const subscriptions: vscode.Disposable[] = [];
+  let tracker: { dispose: () => void } | undefined;
+  let disposed = false;
 
   const refresh = (api: GitApiLike) => {
     if (timer) {
@@ -61,26 +63,23 @@ export const watchGitRepositories = (
   };
 
   void gitExtension.activate().then(exports => {
+    if (disposed) {
+      return;
+    }
+
     const api = (exports as { getAPI: (version: 1) => GitApiLike }).getAPI(1);
 
     refresh(api);
-    subscriptions.push(
-      api.onDidOpenRepository(() => refresh(api)),
-      api.onDidCloseRepository(() => refresh(api))
-    );
-
-    for (const repository of api.repositories) {
-      subscriptions.push(repository.state.onDidChange(() => refresh(api)));
-    }
+    tracker = trackRepositories(api, () => refresh(api));
   });
 
   return new vscode.Disposable(() => {
+    disposed = true;
+
     if (timer) {
       clearTimeout(timer);
     }
 
-    for (const item of subscriptions) {
-      item.dispose();
-    }
+    tracker?.dispose();
   });
 };

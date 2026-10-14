@@ -112,6 +112,46 @@ export interface GitApiLike {
   };
 }
 
+export const trackRepositories = (
+  api: GitApiLike,
+  onChange: () => void
+): { dispose: () => void } => {
+  const watched = new Map<GitApiRepository, { dispose: () => void }>();
+
+  const watch = (repository: GitApiRepository) => {
+    if (!watched.has(repository)) {
+      watched.set(repository, repository.state.onDidChange(onChange));
+    }
+  };
+
+  for (const repository of api.repositories) {
+    watch(repository);
+  }
+
+  const opened = api.onDidOpenRepository(repository => {
+    watch(repository);
+    onChange();
+  });
+  const closed = api.onDidCloseRepository(repository => {
+    watched.get(repository)?.dispose();
+    watched.delete(repository);
+    onChange();
+  });
+
+  return {
+    dispose: () => {
+      opened.dispose();
+      closed.dispose();
+
+      for (const subscription of watched.values()) {
+        subscription.dispose();
+      }
+
+      watched.clear();
+    }
+  };
+};
+
 export const recordsFromGitApi = (api: GitApiLike): GitRepositoryRecord[] =>
   api.repositories.map(repository => ({
     rootPath: repository.rootUri.fsPath,
