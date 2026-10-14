@@ -20,6 +20,8 @@ Copy file contents in XML format for LLM prompts effortlessly.
 - **Git Ignore Support**: Automatically ignores files and directories specified in your .gitignore.
 - **Prompt Ignore**: `.promptignore` controls what is copied into an LLM prompt. It does not replace `.gitignore`. A `!` rule cannot bring back a file while its parent directory stays excluded.
 - **Selection History**: Quickly switch between sets of previously selected files.
+- **Save Prompt as File**: Save the prompt directly into a file (`.xml`, `.md`, or `.txt`) with a standard save dialog.
+- **Clean Architecture**: Decoupled domain, infrastructure, and presentation layers following datasource/repository and use case patterns.
 
 ## Installation
 
@@ -59,6 +61,12 @@ Install this fork from a local VSIX only. Do not install `thomas-mckanna.files2p
 - Click the Copy Files button in the view's title bar or use the keyboard shortcut:
   - Windows/Linux: `Ctrl+C`
   - macOS: `Cmd+C`
+
+### Save Prompt As:
+
+- Click **Save as…** in the view's title bar or the Command Palette (`Files2Prompt: Save as…`).
+- Select the destination file path and format (`.xml`, `.md`, or `.txt`).
+- Once saved, open the resulting file directly from the completion notification.
 
 ### Refresh File Tree:
 
@@ -152,7 +160,20 @@ With more than one repository, pick which ones to include. Then add to the selec
 
 A submodule pointer change uses `status="submodule"` with `from` and `to`.
 
-## Recommended Workflow
+## Architecture
+ 
+ The extension follows Clean Architecture principles:
+ 
+ - **Domain (`src/domain/`)**: Pure business logic with zero VS Code API dependencies.
+   - `entities/`: Domain models and enums (`OutputFormat`, `GitChange`, `CopyStop`, etc.).
+   - `datasources/`: Contracts for abstract data sources (`SettingsDataSource`, `WorkspaceFilesDataSource`, `GitDataSource`, `PromptOutputDataSource`, `StateDataSource`).
+   - `repositories/`: Repository interfaces (`PromptRepository`, `GitChangesRepository`).
+   - `use-cases/`: Encapsulated application use cases (`GeneratePrompt`, `DeliverPrompt`, `GetGitChanges`, `DiscoverGitRepositories`, `RecordSelection`).
+   - `services/`: Pure business calculations and formatting rules (`SavedPromptFileService`, `PromptFormatsService`, `SelectionBudgetService`, etc.).
+ - **Infrastructure (`src/infrastructure/`)**: Datasource and repository implementations interacting with VS Code, Node filesystem, git, and workspace state.
+ - **Presentation (`src/presentation/`)**: VS Code UI elements, tree view providers, status bar items, menus, commands, and dialogs.
+ 
+ ## Recommended Workflow
 
 Copy the selected files into the LLM, then edit the project yourself from the reply.
 
