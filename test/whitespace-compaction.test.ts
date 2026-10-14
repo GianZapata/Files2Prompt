@@ -15,9 +15,9 @@ test('line endings become LF and trailing spaces disappear', () => {
   );
 });
 
-test('three or more blank lines shrink to one, fewer stay as they are', () => {
-  assert.equal(compactWhitespace('a\n\n\n\n\nb'), 'a\n\n\nb');
-  assert.equal(compactWhitespace('a\n\n\nb'), 'a\n\n\nb');
+test('two or more blank lines shrink to one, a single one stays', () => {
+  assert.equal(compactWhitespace('a\n\n\n\n\nb'), 'a\n\nb');
+  assert.equal(compactWhitespace('a\n\n\nb'), 'a\n\nb');
   assert.equal(compactWhitespace('a\n\nb'), 'a\n\nb');
 });
 
@@ -33,7 +33,7 @@ test('leading indentation survives', () => {
 test('blank lines inside a block of YAML keep their indentation context', () => {
   const yaml = 'a:\n  b: 1\n\n\n\n\n  c: 2\n';
 
-  assert.equal(compactWhitespace(yaml), 'a:\n  b: 1\n\n\n  c: 2\n');
+  assert.equal(compactWhitespace(yaml), 'a:\n  b: 1\n\n  c: 2\n');
 });
 
 const workspaceWithFile = () => {
@@ -54,7 +54,7 @@ test('the setting compacts file content but not diffs', async () => {
     changes: [{ repo: 'api', path: 'a.py', status: 'MODIFIED', diff }]
   });
 
-  assert.equal(result.included[0].content, 'x = 1\n\n\n    y = 2\n');
+  assert.equal(result.included[0].content, 'x = 1\n\n    y = 2\n');
   assert.ok(result.output.includes(diff));
 });
 

@@ -31,7 +31,7 @@
   "files2prompt.tokenBudget.description": "Avisa antes de copiar un prompt que se estima por encima de esta cantidad de tokens (caracteres / 4, aproximado). La barra de estado toma un color de advertencia. 0 lo desactiva.",
   "files2prompt.includeGenerated.description": "Incluye lockfiles y archivos minificados o de mapa (package-lock.json, yarn.lock, *.min.js, *.map y similares) al seleccionar una carpeta, todo el proyecto, una extensión o cambios de Git. Un archivo que marcas solo siempre se incluye.",
   "files2prompt.includeTree.description": "Añade un árbol de los archivos seleccionados antes de los diffs, para que el modelo vea cómo están organizados. Cuenta para el límite de tamaño y la estimación de tokens.",
-  "files2prompt.compactWhitespace.description": "Limpia el contenido de los archivos al copiar: CRLF pasa a LF, se quitan los espacios al final de línea y las rachas de tres o más líneas en blanco se reducen a una. Nunca toca la indentación ni los diffs. Se pierden los saltos de línea duros de Markdown (dos espacios al final).",
+  "files2prompt.compactWhitespace.description": "Limpia el contenido de los archivos al copiar: CRLF pasa a LF, se quitan los espacios al final de línea y las rachas de dos o más líneas en blanco se reducen a una. Nunca toca la indentación ni los diffs. Se pierden los saltos de línea duros de Markdown (dos espacios al final).",
   "files2prompt.confirmIgnoredFolders.description": "Preguntar antes de incluir una carpeta que está en .gitignore o en files2prompt.exclude.",
   "files2prompt.outputFormat.description": "Formato usado al copiar el prompt. XML es el predeterminado.",
   "files2prompt.diffMode.description": "Cómo aparecen los cambios de Git en el prompt: diff y archivos, solo diff, o solo archivos.",
