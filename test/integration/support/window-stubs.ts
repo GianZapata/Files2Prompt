@@ -9,6 +9,7 @@ export interface WindowScript {
     items: readonly vscode.QuickPickItem[]
   ) => QuickPickAnswer;
   saveUri?: vscode.Uri;
+  warningChoice?: (message: string, actions: string[]) => string | undefined;
 }
 
 export interface RecordedMessage {
@@ -50,12 +51,13 @@ export const stubWindow = (script: WindowScript): WindowRecording => {
   };
 
   const record = (message: string, rest: unknown[]) => {
-    recording.messages.push({
-      message,
-      actions: rest.filter((item): item is string => typeof item === 'string')
-    });
+    const actions = rest.filter(
+      (item): item is string => typeof item === 'string'
+    );
 
-    return Promise.resolve(undefined);
+    recording.messages.push({ message, actions });
+
+    return Promise.resolve(script.warningChoice?.(message, actions));
   };
 
   const showQuickPick = async (

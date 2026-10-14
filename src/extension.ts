@@ -16,6 +16,7 @@ import {
   savedPromptRelativePath
 } from './domain/services/saved-prompt-registry.service';
 import { shouldConfirmIgnored } from './domain/services/selection-budget.service';
+import { SKIP_TOKEN_NOTICE_KEY } from './domain/services/selection-budget.service';
 import { createSelectionHistory } from './domain/services/selection-history.service';
 import { DiscoverGitRepositories } from './domain/use-cases/git/discover-git-repositories.use-case';
 import { GetGitChanges } from './domain/use-cases/git/get-git-changes.use-case';
@@ -207,6 +208,11 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration(event => {
+      if (event.affectsConfiguration('files2prompt.tokenBudget')) {
+        void stateDataSource.update(SKIP_TOKEN_NOTICE_KEY, undefined);
+      }
+    }),
     fileTreeProvider,
     treeView,
     gitChangesView,

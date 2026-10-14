@@ -343,6 +343,34 @@ suite('Files2Prompt with two git repositories', () => {
     ]);
   });
 
+  test('changing the token budget brings the silenced notice back', async () => {
+    const silence = (message: string, actions: string[]) =>
+      actions.find(action => action.startsWith('Do not ask again'));
+
+    const tokenNotices = () =>
+      withStubs({}, async recording => {
+        await vscode.commands.executeCommand('files2prompt.copyFiles');
+
+        return recording.messages.filter(entry =>
+          entry.actions.includes('Copy anyway')
+        );
+      });
+
+    await withSettings({ tokenBudget: 1 }, async () => {
+      await withStubs({ warningChoice: silence }, () =>
+        vscode.commands.executeCommand('files2prompt.copyFiles')
+      );
+
+      assert.equal((await tokenNotices()).length, 0);
+
+      await vscode.workspace
+        .getConfiguration('files2prompt')
+        .update('tokenBudget', 2, vscode.ConfigurationTarget.Workspace);
+
+      assert.equal((await tokenNotices()).length, 1);
+    });
+  });
+
   test('stays quiet while the selection fits the token budget', async () => {
     const warnings = await copyWarnings({ tokenBudget: 100000000 });
 
