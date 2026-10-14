@@ -247,3 +247,26 @@ test('reincluding the parent then the file includes it', () => {
 
   assert.equal(resolver.resolve('secrets/keep.txt', 'file').included, true);
 });
+
+test('CRLF gitignore and promptignore files keep clean patterns and sources', () => {
+  const root = makeRoot();
+
+  write(root, '.gitignore', '# comment\r\nsecret.txt\r\n\r\nbuild-out/\r\n');
+  write(root, '.promptignore', 'notes.md\r\n');
+  write(root, 'pkg/.gitignore', 'tmp.log\r\n');
+  const resolver = createIgnoreResolver({ workspaceRoot: root });
+  const secret = resolver.explain('secret.txt', 'file');
+  const notes = resolver.explain('notes.md', 'file');
+  const nested = resolver.explain('pkg/deep/tmp.log', 'file');
+
+  assert.equal(secret.included, false);
+  assert.equal(secret.pattern, 'secret.txt');
+  assert.equal(secret.sourceFile, '.gitignore');
+  assert.equal(resolver.resolve('build-out', 'directory').included, false);
+  assert.equal(notes.included, false);
+  assert.equal(notes.pattern, 'notes.md');
+  assert.equal(notes.sourceFile, '.promptignore');
+  assert.equal(nested.included, false);
+  assert.equal(nested.pattern?.includes('\r'), false);
+  assert.equal(resolver.resolve('src/app.ts', 'file').included, true);
+});

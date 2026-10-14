@@ -1,7 +1,10 @@
 import type { IgnoreDecision } from '../../domain/entities/ignore-reason.enum';
+import type { AnyPathKind } from '../../domain/entities/path-kind.enum';
 
 import * as fs from 'fs';
 import * as path from 'path';
+
+import { isSameOrInside } from '../../domain/helpers/path-containment';
 
 export interface SelectFilesAsyncOptions {
   isCancelled?: () => boolean;
@@ -149,10 +152,11 @@ export const selectionRoots = (
   const parents = filePaths.map(filePath =>
     path.dirname(path.resolve(filePath))
   );
+
   let common = parents[0];
 
   for (const parent of parents.slice(1)) {
-    while (parent !== common && !parent.startsWith(`${common}${path.sep}`)) {
+    while (!isSameOrInside(common, parent)) {
       const next = path.dirname(common);
 
       if (next === common) {
@@ -163,7 +167,7 @@ export const selectionRoots = (
     }
   }
 
-  if (!common.startsWith(workspaceRoot)) {
+  if (!isSameOrInside(workspaceRoot, common)) {
     return [workspaceRoot];
   }
 
@@ -173,18 +177,19 @@ export const selectionRoots = (
 export const omittedFoldersForSelection = (
   workspaceRoot: string,
   checkedDirectories: string[],
-  resolve: (relativePath: string, kind: 'file' | 'directory') => IgnoreDecision
+  resolve: (relativePath: string, kind: AnyPathKind) => IgnoreDecision
 ): string[] => {
   const normalized = [
     ...new Set(checkedDirectories.map(directory => path.resolve(directory)))
   ];
+
   const roots = normalized.filter(
     directory =>
       !normalized.some(
-        other =>
-          other !== directory && directory.startsWith(`${other}${path.sep}`)
+        other => other !== directory && isSameOrInside(other, directory)
       )
   );
+
   const found = new Set<string>();
 
   for (const directory of roots) {

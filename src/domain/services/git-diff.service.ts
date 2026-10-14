@@ -3,6 +3,8 @@ import { GitScope, type AnyGitScope } from '../entities/git-scope.enum';
 
 export const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 
+const LINE_BREAK = /\r?\n/;
+
 export const branchRangeBase = (
   mergeBase: string | undefined,
   baseName: string
@@ -199,7 +201,7 @@ const quotedBPath = (line: string) => {
 };
 
 export const pathsFromPatch = (patch: string): ListedCommitChange[] => {
-  const lines = patch.split('\n');
+  const lines = patch.split(LINE_BREAK);
   const listed: ListedCommitChange[] = [];
 
   for (let index = 0; index < lines.length; index += 1) {
@@ -265,7 +267,7 @@ export const fillChangeDiff = async (
   }
 
   if (scope === GitScope.Staged) {
-    return { diff: await reader.diffIndexWithHEAD(change.path) };
+    return { diff: withLf(await reader.diffIndexWithHEAD(change.path)) };
   }
 
   if (scope === GitScope.Uncommitted) {
@@ -278,7 +280,7 @@ export const fillChangeDiff = async (
       return { diff: newFileDiff(change.path, content) };
     }
 
-    return { diff: await reader.diffWith?.('HEAD', change.path) };
+    return { diff: withLf(await reader.diffWith?.('HEAD', change.path)) };
   }
 
   if (scope === GitScope.Commit) {
@@ -286,7 +288,9 @@ export const fillChangeDiff = async (
     const parent = await reader.parentOf?.(hash);
 
     if (parent) {
-      return { diff: await reader.diffBetween(parent, hash, change.path) };
+      return {
+        diff: withLf(await reader.diffBetween(parent, hash, change.path))
+      };
     }
 
     const content = (await reader.show?.(hash, change.path)) ?? '';
@@ -300,11 +304,15 @@ export const fillChangeDiff = async (
     return { diff: '' };
   }
 
-  return { diff: await reader.diffBetween(from, 'HEAD', change.path) };
+  return {
+    diff: withLf(await reader.diffBetween(from, 'HEAD', change.path))
+  };
 };
 
+const withLf = (text: string | undefined) => text?.replace(/\r\n/g, '\n');
+
 const newFileDiff = (filePath: string, content: string) => {
-  const lines = content.length === 0 ? [] : content.split('\n');
+  const lines = content.length === 0 ? [] : content.split(LINE_BREAK);
   const body = lines.map(line => `+${line}`).join('\n');
 
   return [

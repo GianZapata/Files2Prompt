@@ -259,3 +259,76 @@ test('four scopes produce a non-empty diff', async () => {
   assert.equal(binary.binary, true);
   assert.equal(api.calls.includes('index:logo.png'), false);
 });
+
+test('diffs from git with CRLF line endings reach the prompt without carriage returns', async () => {
+  const api = {
+    ...reader(),
+    diffWith: async () =>
+      'diff --git a/a.ts b/a.ts\r\n@@ -1 +1 @@\r\n-old\r\n+new\r\n',
+    diffIndexWithHEAD: async () => '@@ -1 +1 @@\r\n-a\r\n+b\r\n',
+    diffBetween: async () => '@@ -1 +1 @@\r\n-c\r\n+d\r\n'
+  };
+
+  const working = await fillChangeDiff(
+    api,
+    { path: 'a.ts', status: 'modified' },
+    'uncommitted'
+  );
+
+  const staged = await fillChangeDiff(
+    api,
+    { path: 'a.ts', status: 'modified' },
+    'staged'
+  );
+
+  const branch = await fillChangeDiff(
+    api,
+    { path: 'a.ts', status: 'modified' },
+    'branch',
+    { base: 'dev' }
+  );
+
+  assert.equal(working.diff?.includes('\r'), false);
+  assert.equal(staged.diff?.includes('\r'), false);
+  assert.equal(branch.diff?.includes('\r'), false);
+  assert.match(working.diff ?? '', /-old\n\+new\n/);
+});
+
+test('a new file with CRLF content produces the same diff as with LF', async () => {
+  const withEol = (eol: string) => ({
+    ...reader(),
+    readFile: async () => `one${eol}two${eol}`
+  });
+
+  const crlf = await fillChangeDiff(
+    withEol('\r\n'),
+    { path: 'n.ts', status: 'untracked' },
+    'uncommitted'
+  );
+
+  const lf = await fillChangeDiff(
+    withEol('\n'),
+    { path: 'n.ts', status: 'untracked' },
+    'uncommitted'
+  );
+
+  assert.equal(crlf.diff?.includes('\r'), false);
+  assert.equal(crlf.diff, lf.diff);
+});
+
+test('paths read from a CRLF patch carry no carriage return', () => {
+  const patch = [
+    'diff --git a/con espacio.txt b/con espacio.txt',
+    '--- /dev/null',
+    '+++ b/con espacio.txt',
+    'diff --git a/a.ts b/a.ts',
+    '--- /dev/null',
+    '+++ b/a.ts',
+    ''
+  ].join('\r\n');
+
+  assert.deepEqual(
+    pathsFromPatch(patch).map(item => item.path),
+    ['con espacio.txt', 'a.ts']
+  );
+});

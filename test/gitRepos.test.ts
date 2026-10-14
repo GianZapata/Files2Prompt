@@ -1,10 +1,30 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import path from 'path';
 
 import {
   discoverRepositories,
   repositoryLabel
 } from '../src/domain/services/git-repos.service';
+
+test('discovery on win32 matches the workspace ignoring drive letter case', () => {
+  const found = discoverRepositories(
+    'C:\\ws\\launcher',
+    [
+      { rootPath: 'c:\\ws\\launcher\\api', branch: 'main' },
+      { rootPath: 'c:\\ws\\launcher', branch: 'trunk' },
+      { rootPath: 'c:\\ws\\launcher-other\\web', branch: 'main' },
+      { rootPath: 'D:\\ws\\launcher\\docs', branch: 'main' }
+    ],
+    () => true,
+    path.win32
+  );
+
+  assert.deepEqual(
+    found.map(repo => repo.relativePath),
+    ['api', '']
+  );
+});
 
 test('discovery keeps repositories and submodules, and skips an excluded worktree', () => {
   const found = discoverRepositories(

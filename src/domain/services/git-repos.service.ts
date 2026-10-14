@@ -4,10 +4,13 @@ import type {
   GitSubmoduleRecord
 } from '../entities/git-change.entity';
 
+import * as path from 'path';
+
 import {
   RepositoryKind,
   type AnyRepositoryKind
 } from '../entities/repository-kind.enum';
+import { isSameOrInside } from '../helpers/path-containment';
 
 export type { DiscoveredRepository, GitRepositoryRecord, GitSubmoduleRecord };
 
@@ -33,12 +36,17 @@ export const repositoryLabel = (repo: RepositoryLabelTarget) => {
 export const discoverRepositories = (
   workspaceRoot: string,
   records: GitRepositoryRecord[],
-  included: (relativeDirectory: string) => boolean
+  included: (relativeDirectory: string) => boolean,
+  flavor: path.PlatformPath = path
 ) => {
   const found: DiscoveredRepository[] = [];
 
   for (const record of records) {
-    const relative = relativeToWorkspace(workspaceRoot, record.rootPath);
+    const relative = relativeToWorkspace(
+      workspaceRoot,
+      record.rootPath,
+      flavor
+    );
 
     if (relative === undefined) {
       continue;
@@ -134,19 +142,16 @@ export const gitUnavailableMessage = () =>
 export const noRepositoriesMessage = () =>
   'No Git repositories in this workspace.';
 
-const relativeToWorkspace = (workspaceRoot: string, rootPath: string) => {
-  const root = workspaceRoot.replace(/\\/g, '/').replace(/\/$/, '');
-  const target = rootPath.replace(/\\/g, '/').replace(/\/$/, '');
-
-  if (target === root) {
-    return '';
-  }
-
-  if (!target.startsWith(`${root}/`)) {
+const relativeToWorkspace = (
+  workspaceRoot: string,
+  rootPath: string,
+  flavor: path.PlatformPath
+) => {
+  if (!isSameOrInside(workspaceRoot, rootPath, flavor)) {
     return undefined;
   }
 
-  return target.slice(root.length + 1);
+  return flavor.relative(workspaceRoot, rootPath).split(flavor.sep).join('/');
 };
 
 const joinPosix = (parent: string, child: string) => {
