@@ -97,5 +97,30 @@ export default [
       'prettier/prettier': 'warn'
     }
   },
+  {
+    files: ['src/domain/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            'vscode',
+            'fs',
+            'fs/promises',
+            'node:fs',
+            'node:fs/promises',
+            'child_process'
+          ],
+          patterns: ['**/infrastructure/**', '**/presentation/**']
+        }
+      ]
+    }
+  },
+  {
+    files: ['src/infrastructure/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: ['**/presentation/**'] }]
+    }
+  },
   eslintConfigPrettier
 ];
