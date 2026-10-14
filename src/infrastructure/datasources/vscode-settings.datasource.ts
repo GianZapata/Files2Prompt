@@ -24,7 +24,8 @@ export class VscodeSettingsDataSource extends SettingsDataSource {
       maxFileBytes: config.get<number>('maxFileBytes', 1048576),
       maxTotalBytes: config.get<number>('maxTotalBytes', 8388608),
       maxFiles: config.get<number>('maxFiles', 5000),
-      includeTree: config.get<boolean>('includeTree', true)
+      includeTree: config.get<boolean>('includeTree', true),
+      compactWhitespace: config.get<boolean>('compactWhitespace', false)
     };
   };
 }

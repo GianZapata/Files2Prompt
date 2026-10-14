@@ -20,6 +20,7 @@ import {
 } from '../../domain/repositories/prompt.repository';
 import { promptLayout } from '../../domain/services/prompt-formats.service';
 import { createTreeAccumulator } from '../../domain/services/prompt-tree.service';
+import { compactWhitespace } from '../../domain/services/whitespace-compaction.service';
 
 export interface PromptPathResolver {
   resolvePath: (
@@ -194,7 +195,12 @@ export class PromptRepositoryImpl extends PromptRepository {
         continue;
       }
 
-      const content = await this.files.readText(normalized);
+      const rawContent = await this.files.readText(normalized);
+
+      const content = config.compactWhitespace
+        ? compactWhitespace(rawContent)
+        : rawContent;
+
       const piece = layout.piece({ name, content });
       const pieceSize = Buffer.byteLength(piece);
       const treeGrowth = config.includeTree ? tree.measure(name) : 0;

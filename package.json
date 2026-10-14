@@ -377,6 +377,11 @@
           "default": true,
           "description": "%files2prompt.includeTree.description%"
         },
+        "files2prompt.compactWhitespace": {
+          "type": "boolean",
+          "default": false,
+          "description": "%files2prompt.compactWhitespace.description%"
+        },
         "files2prompt.confirmIgnoredFolders": {
           "type": "boolean",
           "default": true,

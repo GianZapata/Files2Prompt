@@ -10,13 +10,15 @@ export interface RepositoryLimits {
   maxTotalBytes: number;
   maxFiles: number;
   includeTree: boolean;
+  compactWhitespace: boolean;
 }
 
 export const defaultLimits: RepositoryLimits = {
   maxFileBytes: 1048576,
   maxTotalBytes: 8388608,
   maxFiles: 5000,
-  includeTree: true
+  includeTree: true,
+  compactWhitespace: false
 };
 
 export class DiskFilesDataSource extends WorkspaceFilesDataSource {

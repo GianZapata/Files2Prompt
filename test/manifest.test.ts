@@ -193,6 +193,31 @@ test('the tree of selected files is on by default and documented', () => {
   );
 });
 
+test('whitespace compaction is opt-in and documented', () => {
+  const properties = readJson<{
+    contributes: {
+      configuration: { properties: Record<string, SettingShape> };
+    };
+  }>('package.json').contributes.configuration.properties;
+
+  const setting = properties['files2prompt.compactWhitespace'];
+  const english = readJson<Record<string, string>>('package.nls.json');
+  const spanish = readJson<Record<string, string>>('package.nls.es.json');
+
+  assert.equal(setting.type, 'boolean');
+  assert.equal(setting.default, false);
+
+  assert.equal(
+    typeof english['files2prompt.compactWhitespace.description'],
+    'string'
+  );
+
+  assert.equal(
+    typeof spanish['files2prompt.compactWhitespace.description'],
+    'string'
+  );
+});
+
 test('the workspace cannot choose the system message in an untrusted folder', () => {
   const capabilities = readJson<{
     capabilities: {

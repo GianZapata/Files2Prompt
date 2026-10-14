@@ -31,6 +31,7 @@
   "files2prompt.tokenBudget.description": "Warn before copying a prompt estimated above this many tokens (characters / 4, approximate). The status bar turns to a warning color. 0 turns it off.",
   "files2prompt.includeGenerated.description": "Include lockfiles and minified or map files (package-lock.json, yarn.lock, *.min.js, *.map and similar) when you select a folder, the whole project, an extension or Git changes. A file you check on its own is always included.",
   "files2prompt.includeTree.description": "Add a tree of the selected files before the diffs, so the model sees how they are laid out. It counts toward the size limit and the token estimate.",
+  "files2prompt.compactWhitespace.description": "Trim the contents of files before copying: CRLF becomes LF, trailing spaces are removed and runs of three or more blank lines shrink to one. Indentation and diffs are never touched. Markdown hard line breaks (two trailing spaces) are lost.",
   "files2prompt.confirmIgnoredFolders.description": "Ask before including a folder that is listed in .gitignore or files2prompt.exclude.",
   "files2prompt.outputFormat.description": "Format used when copying the prompt. XML is the default.",
   "files2prompt.diffMode.description": "How Git changes appear in the prompt: diff and files, diff only, or files only.",

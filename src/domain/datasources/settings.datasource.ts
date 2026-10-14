@@ -10,6 +10,7 @@ export interface PromptSettings {
   maxTotalBytes: number;
   maxFiles: number;
   includeTree: boolean;
+  compactWhitespace: boolean;
 }
 
 export abstract class SettingsDataSource {
