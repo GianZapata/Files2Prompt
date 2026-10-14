@@ -45,6 +45,19 @@ test('copy as file sits in the overflow menu of the view', () => {
   assert.match(entry?.group ?? '', /^1_overflow@/);
 });
 
+test('clear selection is one click away in the view toolbar', () => {
+  const entry = manifest.contributes.menus['view/title'].find(
+    item => item.command === 'files2prompt.clearChecks'
+  );
+  const command = manifest.contributes.commands.find(
+    item => item.command === 'files2prompt.clearChecks'
+  );
+
+  assert.match(entry?.group ?? '', /^navigation@/);
+  assert.equal(entry?.when, 'view == files2PromptView');
+  assert.ok(command?.icon, 'the toolbar needs an icon');
+});
+
 test('every nls key used by the manifest exists in both languages', () => {
   const english = readJson<Record<string, string>>('package.nls.json');
   const spanish = readJson<Record<string, string>>('package.nls.es.json');

@@ -56,20 +56,21 @@ test('a partial preview says how many files were left out', () => {
   assert.deepEqual(notice.args, [1354, 562]);
 });
 
-test('the view title keeps four codicon actions and a select submenu', () => {
+test('the view title keeps five codicon actions and a select submenu', () => {
   const manifest = readManifest();
 
   const title = manifest.contributes.menus['view/title'];
   const navigation = title.filter(item => item.group?.startsWith('navigation'));
 
-  assert.equal(navigation.length, 4);
+  assert.equal(navigation.length, 5);
   assert.deepEqual(
     navigation.map(item => item.command ?? item.submenu),
     [
       'files2prompt.copyFiles',
       'files2prompt.previewPrompt',
       'files2prompt.select',
-      'files2prompt.selectChanges'
+      'files2prompt.selectChanges',
+      'files2prompt.clearChecks'
     ]
   );
 

@@ -229,6 +229,11 @@
           "group": "navigation@4"
         },
         {
+          "command": "files2prompt.clearChecks",
+          "when": "view == files2PromptView",
+          "group": "navigation@5"
+        },
+        {
           "command": "files2prompt.copyOpenFiles",
           "when": "view == files2PromptView",
           "group": "1_overflow@1"
