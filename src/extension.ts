@@ -1,50 +1,54 @@
-import * as fs from 'fs';
+import type { PromptChange } from './domain/entities/git-change.entity';
+import type {
+  SelectionHistoryState,
+  SelectionSnapshot
+} from './domain/entities/selection-snapshot.entity';
+import type { DiscoveredRepository, GitApiLike } from './gitRepos';
+
 import * as path from 'path';
 
 import * as vscode from 'vscode';
 
 import { createCopyGate } from './copyGate';
-import { DiscoverGitRepositories } from './domain/use-cases/git/discover-git-repositories.use-case';
-import { GetGitChanges } from './domain/use-cases/git/get-git-changes.use-case';
-import { DeliverPrompt } from './domain/use-cases/prompt/deliver-prompt.use-case';
-import { GeneratePrompt } from './domain/use-cases/prompt/generate-prompt.use-case';
 import {
-  extensionCounts,
-  extensionPickItems,
-  filterByExtensions
-} from './extensionFilter';
-import { ExtensionsProvider } from './extensionsProvider';
-import { FileTreeProvider } from './fileTreeProvider';
-import { GitChangesProvider } from './gitChangesProvider';
+  changeBadge,
+  changeStatusLabel
+} from './domain/services/git-changes.service';
 import {
   discoverRepositories,
   gitUnavailableMessage,
   noRepositoriesMessage,
-  recordsFromGitApi,
-  type DiscoveredRepository,
-  type GitApiLike
-} from './gitRepos';
+  recordsFromGitApi
+} from './domain/services/git-repos.service';
+import { createSelectionHistory } from './domain/services/selection-history.service';
+import { DiscoverGitRepositories } from './domain/use-cases/git/discover-git-repositories.use-case';
+import { GetGitChanges } from './domain/use-cases/git/get-git-changes.use-case';
+import { DeliverPrompt } from './domain/use-cases/prompt/deliver-prompt.use-case';
+import { GeneratePrompt } from './domain/use-cases/prompt/generate-prompt.use-case';
+import { RecordSelection } from './domain/use-cases/selection/record-selection.use-case';
 import { filesSelectedByFolderAsync } from './ignore/selectFiles';
 import { ClipboardOutputDataSource } from './infrastructure/datasources/clipboard-output.datasource';
 import { NodeWorkspaceFilesDataSource } from './infrastructure/datasources/node-workspace-files.datasource';
 import { VscodeGitDataSource } from './infrastructure/datasources/vscode-git.datasource';
 import { VscodeSettingsDataSource } from './infrastructure/datasources/vscode-settings.datasource';
+import { WorkspaceStateDataSource } from './infrastructure/datasources/workspace-state.datasource';
 import { GitChangesRepositoryImpl } from './infrastructure/repositories/git-changes.repository.impl';
 import { PromptRepositoryImpl } from './infrastructure/repositories/prompt.repository.impl';
 import { createDetailBook } from './operationReport';
 import { registerGitCommands } from './presentation/commands/git.commands';
+import { registerHistoryCommands } from './presentation/commands/history.commands';
 import { registerPromptCommands } from './presentation/commands/prompt.commands';
+import { registerSelectionCommands } from './presentation/commands/selection.commands';
+import { confirmExcluded } from './presentation/pickers/exclusion.prompt';
+import { ExtensionsProvider } from './presentation/views/extensions.provider';
+import { FileTreeProvider } from './presentation/views/file-tree.provider';
+import { GitChangesProvider } from './presentation/views/git-changes.tree-provider';
 import {
   createDetailsSource,
   createPreviewSource,
   DETAILS_SCHEME,
   PREVIEW_SCHEME
 } from './promptPreview';
-import {
-  changeBadge,
-  changeStatusLabel,
-  type PromptChange
-} from './selectChanges';
 import {
   formatByteSize,
   nextOutputFormat,
@@ -53,11 +57,6 @@ import {
   shouldConfirmIgnored,
   shouldRefreshSummary
 } from './selectionBudget';
-import {
-  createSelectionHistory,
-  type SelectionSnapshot
-} from './selectionHistory';
-import { syncChangeCheck, syncExtensionCheck } from './sideViews';
 
 export function activate(context: vscode.ExtensionContext) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -71,12 +70,17 @@ export function activate(context: vscode.ExtensionContext) {
 
     const filesDataSource = new NodeWorkspaceFilesDataSource();
     const settingsDataSource = new VscodeSettingsDataSource();
+    const stateDataSource = new WorkspaceStateDataSource(
+      context.workspaceState
+    );
+
     const promptRepository = new PromptRepositoryImpl(
       workspaceRoot,
       filesDataSource,
       settingsDataSource,
       fileTreeProvider
     );
+
     const generatePrompt = new GeneratePrompt(promptRepository);
     const deliverPrompt = new DeliverPrompt(promptRepository, copyGate);
     const clipboardOutput = new ClipboardOutputDataSource();
@@ -90,6 +94,7 @@ export function activate(context: vscode.ExtensionContext) {
       treeDataProvider: fileTreeProvider,
       manageCheckboxStateManually: true
     });
+
     const gitChangesView = vscode.window.createTreeView(
       'files2prompt.gitChanges',
       {
@@ -97,6 +102,7 @@ export function activate(context: vscode.ExtensionContext) {
         manageCheckboxStateManually: true
       }
     );
+
     const extensions = new ExtensionsProvider();
     const extensionsView = vscode.window.createTreeView(
       'files2prompt.extensions',
@@ -105,7 +111,9 @@ export function activate(context: vscode.ExtensionContext) {
         manageCheckboxStateManually: true
       }
     );
+
     let extensionTimer: ReturnType<typeof setTimeout> | undefined;
+
     const refreshExtensions = () => {
       if (extensionTimer) {
         clearTimeout(extensionTimer);
@@ -120,6 +128,7 @@ export function activate(context: vscode.ExtensionContext) {
           const available = listed.files.map(filePath =>
             path.relative(workspaceRoot, filePath).split(path.sep).join('/')
           );
+
           const selected = fileTreeProvider
             .getCheckedFiles()
             .map(filePath =>
@@ -132,6 +141,7 @@ export function activate(context: vscode.ExtensionContext) {
     };
 
     refreshExtensions();
+
     const publishChanges = (changes: PromptChange[]) => {
       fileTreeProvider.setPromptChanges(changes);
       gitChanges.setListed(changes);
@@ -143,6 +153,7 @@ export function activate(context: vscode.ExtensionContext) {
       workspaceRoot,
       gitDataSource
     );
+
     const getGitChanges = new GetGitChanges(gitChangesRepository);
     const discoverRepositories = new DiscoverGitRepositories(
       gitChangesRepository
@@ -169,19 +180,21 @@ export function activate(context: vscode.ExtensionContext) {
       })
     );
 
-    const stored = context.workspaceState.get<{
-      entries: Array<string[] | SelectionSnapshot>;
-      position: number;
-    }>('files2prompt.selectionHistory');
+    const stored = stateDataSource.get<SelectionHistoryState>(
+      'files2prompt.selectionHistory'
+    );
+
     const history = createSelectionHistory(
       stored?.entries ?? [],
       stored?.position ?? -1
     );
+
     const currentSnapshot = (): SelectionSnapshot => ({
       files: fileTreeProvider.getCheckedFiles(),
       forcedRoots: fileTreeProvider.forcedRootList(),
       promptChanges: fileTreeProvider.promptChangeList()
     });
+
     const selectionItem = vscode.window.createStatusBarItem(
       vscode.StatusBarAlignment.Left,
       50
@@ -189,7 +202,9 @@ export function activate(context: vscode.ExtensionContext) {
 
     selectionItem.command = 'files2prompt.changeOutputFormat';
     selectionItem.name = vscode.l10n.t('Files2Prompt selection');
+
     let descriptionTimer: ReturnType<typeof setTimeout> | undefined;
+
     const scheduleDescription = () => {
       if (descriptionTimer) {
         clearTimeout(descriptionTimer);
@@ -225,6 +240,12 @@ export function activate(context: vscode.ExtensionContext) {
       }, 200);
     };
 
+    const recordSelection = new RecordSelection(
+      history,
+      stateDataSource,
+      scheduleDescription
+    );
+
     context.subscriptions.push(
       selectionItem,
       vscode.window.registerFileDecorationProvider({
@@ -253,6 +274,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
       })
     );
+
     scheduleDescription();
 
     context.subscriptions.push(
@@ -260,6 +282,7 @@ export function activate(context: vscode.ExtensionContext) {
         gitChanges.setRepositories(found)
       )
     );
+
     const ignoredPrompt = () => ({
       confirm: shouldConfirmIgnored({
         setting: vscode.workspace
@@ -271,11 +294,13 @@ export function activate(context: vscode.ExtensionContext) {
       remember: () =>
         context.workspaceState.update('files2prompt.skipIgnoredConfirm', true)
     });
-    const saveHistory = () =>
-      context.workspaceState.update('files2prompt.selectionHistory', {
+
+    const saveHistory = async () => {
+      await stateDataSource.update('files2prompt.selectionHistory', {
         entries: history.entries().slice(-20),
         position: history.position()
       });
+    };
 
     context.subscriptions.push(
       vscode.commands.registerCommand(
@@ -350,41 +375,6 @@ export function activate(context: vscode.ExtensionContext) {
             ignoredPrompt()
           )
       }),
-      vscode.commands.registerCommand('files2prompt.clearChecks', async () => {
-        history.record(currentSnapshot());
-        fileTreeProvider.clearChecks();
-        history.record(currentSnapshot());
-        await saveHistory();
-        vscode.window.showInformationMessage('All checks have been cleared.');
-      }),
-      vscode.commands.registerCommand('files2prompt.goBack', async () => {
-        const previousSelection = history.back();
-
-        if (previousSelection) {
-          await saveHistory();
-          fileTreeProvider.setForcedRoots(previousSelection.forcedRoots);
-          publishChanges(previousSelection.promptChanges);
-          await fileTreeProvider.setCheckedFiles(previousSelection.files);
-        } else {
-          vscode.window.showWarningMessage(
-            'No previous selection to go back to.'
-          );
-        }
-      }),
-      vscode.commands.registerCommand('files2prompt.goForward', async () => {
-        const nextSelection = history.forward();
-
-        if (nextSelection) {
-          await saveHistory();
-          fileTreeProvider.setForcedRoots(nextSelection.forcedRoots);
-          publishChanges(nextSelection.promptChanges);
-          await fileTreeProvider.setCheckedFiles(nextSelection.files);
-        } else {
-          vscode.window.showWarningMessage(
-            'No next selection to go forward to.'
-          );
-        }
-      }),
       ...registerGitCommands({
         workspaceRoot,
         gitRepository: gitChangesRepository,
@@ -392,259 +382,37 @@ export function activate(context: vscode.ExtensionContext) {
         discoverRepositories,
         fileSelection: fileTreeProvider,
         publishChanges,
-        recordHistory: () => history.record(currentSnapshot()),
+        recordHistory: () => {
+          void recordSelection.execute({ snapshot: currentSnapshot() });
+        },
         saveHistory,
         scheduleDescription
       }),
-      vscode.commands.registerCommand('files2prompt.selectAll', async () => {
-        const outcome = await vscode.window.withProgress(
-          {
-            location: vscode.ProgressLocation.Notification,
-            title: vscode.l10n.t('Selecting files'),
-            cancellable: true
-          },
-          async (_progress, token) =>
-            fileTreeProvider.selectFolder(workspaceRoot, {
-              isCancelled: () => token.isCancellationRequested
-            })
-        );
-
-        if (outcome === 'cancelled') {
-          return;
-        }
-
-        history.record(currentSnapshot());
-        await saveHistory();
-        scheduleDescription();
+      ...registerHistoryCommands({
+        history,
+        saveHistory,
+        fileTreeProvider,
+        publishChanges
       }),
-      vscode.commands.registerCommand(
-        'files2prompt.selectByExtension',
-        async (target?: vscode.Uri | { resourceUri?: vscode.Uri }) => {
-          const folderPath = folderFromTarget(target, workspaceRoot);
-          const listed = await filesSelectedByFolderAsync(
-            workspaceRoot,
+      ...registerSelectionCommands({
+        workspaceRoot,
+        fileTreeProvider,
+        treeView,
+        gitChanges,
+        gitChangesView,
+        extensions,
+        extensionsView,
+        recordSelection,
+        currentSnapshot,
+        confirmExcluded: (provider, folderPath, relative, decision) =>
+          confirmExcluded(
+            provider,
             folderPath,
-            fileTreeProvider.resolvePath.bind(fileTreeProvider)
-          );
-          const relative = listed.files.map(filePath =>
-            path.relative(workspaceRoot, filePath).split(path.sep).join('/')
-          );
-          const presets = vscode.workspace
-            .getConfiguration('files2prompt')
-            .get<Record<string, string[]>>('extensionPresets', {});
-          const detected = [
-            ...Object.entries(presets).map(([name, suffixes]) => ({
-              label: name,
-              description: suffixes.join(', '),
-              suffixes
-            })),
-            ...extensionCounts(relative).map(([suffix, count]) => ({
-              label: `${suffix} (${count})`,
-              description: String(count),
-              suffixes: [suffix === '(no extension)' ? '' : suffix]
-            }))
-          ];
-          const picked = await new Promise<
-            Array<{ suffixes: string[] }> | undefined
-          >(resolve => {
-            const pick = vscode.window.createQuickPick<
-              vscode.QuickPickItem & { suffixes: string[] }
-            >();
-            let settled = false;
-            const finish = (
-              value: Array<{ suffixes: string[] }> | undefined
-            ) => {
-              if (settled) return;
-
-              settled = true;
-              pick.dispose();
-              resolve(value);
-            };
-
-            pick.canSelectMany = true;
-            pick.placeholder = vscode.l10n.t(
-              'Select several or type md, ts, php'
-            );
-            pick.items = detected;
-            pick.onDidChangeValue(value => {
-              pick.items = extensionPickItems(detected, value);
-            });
-            pick.onDidAccept(() => {
-              finish([...pick.selectedItems]);
-            });
-            pick.onDidHide(() => {
-              finish(undefined);
-            });
-            pick.show();
-          });
-
-          if (!picked || picked.length === 0) {
-            return;
-          }
-
-          const suffixes = picked.flatMap(item => item.suffixes);
-
-          if (suffixes.length === 0) {
-            return;
-          }
-
-          const mode = await vscode.window.showQuickPick(
-            [
-              {
-                label: vscode.l10n.t('Add to selection'),
-                id: 'add'
-              },
-              {
-                label: vscode.l10n.t('Replace selection'),
-                id: 'replace'
-              }
-            ],
-            { placeHolder: vscode.l10n.t('How should this selection apply?') }
-          );
-
-          if (!mode) {
-            return;
-          }
-
-          const matched = filterByExtensions(relative, suffixes).map(file =>
-            path.join(workspaceRoot, file)
-          );
-
-          if (mode.id === 'replace') {
-            fileTreeProvider.clearChecks();
-          }
-
-          await fileTreeProvider.setCheckedFiles([
-            ...(mode.id === 'add' ? fileTreeProvider.getCheckedFiles() : []),
-            ...matched
-          ]);
-          history.record(currentSnapshot());
-          await saveHistory();
-          scheduleDescription();
-        }
-      )
-    );
-
-    context.subscriptions.push(
-      treeView.onDidChangeCheckboxState(async event => {
-        for (const [item, state] of event.items) {
-          const relative = path
-            .relative(workspaceRoot, item.resourceUri.fsPath)
-            .split(path.sep)
-            .join('/');
-          const kind = item.isDirectory ? 'directory' : 'file';
-
-          if (state === vscode.TreeItemCheckboxState.Unchecked) {
-            fileTreeProvider.removeForcedRoot(relative);
-            await fileTreeProvider.updateCheckState(item, state);
-            continue;
-          }
-
-          const decision = fileTreeProvider.explain(relative, kind);
-
-          if (!decision.included) {
-            const forced = await confirmExcluded(
-              fileTreeProvider,
-              item.resourceUri.fsPath,
-              relative,
-              decision,
-              ignoredPrompt()
-            );
-
-            if (!forced) {
-              await fileTreeProvider.updateCheckState(
-                item,
-                vscode.TreeItemCheckboxState.Unchecked
-              );
-              continue;
-            }
-          }
-
-          if (item.isDirectory) {
-            const outcome = await vscode.window.withProgress(
-              {
-                location: vscode.ProgressLocation.Notification,
-                title: vscode.l10n.t('Selecting files'),
-                cancellable: true
-              },
-              async (_progress, token) =>
-                fileTreeProvider.selectFolder(item.resourceUri.fsPath, {
-                  isCancelled: () => token.isCancellationRequested
-                })
-            );
-
-            if (outcome === 'cancelled') {
-              await fileTreeProvider.updateCheckState(
-                item,
-                vscode.TreeItemCheckboxState.Unchecked
-              );
-            }
-          } else {
-            await fileTreeProvider.updateCheckState(item, state);
-          }
-        }
-
-        history.record(currentSnapshot());
-        await saveHistory();
-        scheduleDescription();
-      }),
-      gitChangesView.onDidChangeCheckboxState(async event => {
-        for (const [item, state] of event.items) {
-          if (!item.change) {
-            continue;
-          }
-
-          const selected = fileTreeProvider
-            .getCheckedFiles()
-            .map(filePath =>
-              path.relative(workspaceRoot, filePath).split(path.sep).join('/')
-            );
-          const next = syncChangeCheck({
-            checked: state === vscode.TreeItemCheckboxState.Checked,
-            change: item.change,
-            selectedFiles: selected,
-            promptChanges: fileTreeProvider.promptChangeList()
-          });
-
-          fileTreeProvider.setPromptChanges(next.changes);
-          gitChanges.setIncluded(next.changes);
-          await fileTreeProvider.setCheckedFiles(
-            next.files.map(filePath => path.join(workspaceRoot, filePath))
-          );
-        }
-
-        history.record(currentSnapshot());
-        await saveHistory();
-        scheduleDescription();
-      }),
-
-      extensionsView.onDidChangeCheckboxState(async event => {
-        const available = extensions.availableFiles();
-        let selected = fileTreeProvider
-          .getCheckedFiles()
-          .map(filePath =>
-            path.relative(workspaceRoot, filePath).split(path.sep).join('/')
-          );
-
-        for (const [item, state] of event.items) {
-          selected = syncExtensionCheck({
-            checked: state === vscode.TreeItemCheckboxState.Checked,
-            suffix: item.suffix,
-            available,
-            selected
-          });
-        }
-
-        await fileTreeProvider.setCheckedFiles(
-          selected.map(filePath => path.join(workspaceRoot, filePath))
-        );
-        extensions.setFiles(available, selected);
-        history.record(currentSnapshot());
-        await saveHistory();
-        scheduleDescription();
-      }),
-      fileTreeProvider.onDidChangeTreeData(() => {
-        refreshExtensions();
+            relative,
+            decision,
+            ignoredPrompt()
+          ),
+        refreshExtensions
       })
     );
   } else {
@@ -675,6 +443,7 @@ const watchGitRepositories = (
   let timer: ReturnType<typeof setTimeout> | undefined;
   let reportedEmpty = false;
   const subscriptions: vscode.Disposable[] = [];
+
   const refresh = (api: GitApiLike) => {
     if (timer) {
       clearTimeout(timer);
@@ -725,126 +494,4 @@ const watchGitRepositories = (
       item.dispose();
     }
   });
-};
-
-const folderFromTarget = (
-  target: vscode.Uri | { resourceUri?: vscode.Uri } | undefined,
-  workspaceRoot: string
-) => {
-  if (target instanceof vscode.Uri) {
-    return fs.existsSync(target.fsPath) &&
-      fs.lstatSync(target.fsPath).isDirectory()
-      ? target.fsPath
-      : path.dirname(target.fsPath);
-  }
-
-  if (target?.resourceUri) {
-    return target.resourceUri.fsPath;
-  }
-
-  return workspaceRoot;
-};
-
-const confirmExcluded = async (
-  provider: {
-    explain: (
-      relativePath: string,
-      kind: 'file' | 'directory'
-    ) => { reason?: string; pattern?: string; sourceFile?: string };
-    countIfForced: (
-      folderPath: string,
-      root: { relativePath: string; pattern: string; sourceFile: string }
-    ) => Promise<number>;
-    addForcedRoot: (root: {
-      relativePath: string;
-      pattern: string;
-      sourceFile: string;
-    }) => void;
-  },
-  folderPath: string,
-  relativePath: string,
-  decision: { reason?: string; pattern?: string; sourceFile?: string },
-  prompt: {
-    confirm: boolean;
-    remember: () => Thenable<void>;
-  } = { confirm: true, remember: async () => undefined }
-) => {
-  if (
-    decision.reason === 'promptignore' ||
-    decision.reason === 'built-in' ||
-    decision.reason === 'binary'
-  ) {
-    const message =
-      decision.reason === 'promptignore'
-        ? vscode.l10n.t(
-            '{0} is excluded by .promptignore, so it stays out of the prompt.',
-            relativePath
-          )
-        : vscode.l10n.t(
-            '{0} stays out of the prompt because it is generated or binary.',
-            relativePath
-          );
-
-    await vscode.window.showWarningMessage(message);
-
-    return false;
-  }
-
-  if (
-    decision.reason !== 'gitignore' &&
-    decision.reason !== 'workspace-exclude'
-  ) {
-    await vscode.window.showWarningMessage(
-      vscode.l10n.t('{0} stays out of the prompt.', relativePath)
-    );
-
-    return false;
-  }
-
-  const root = {
-    relativePath: relativePath.replace(/\\/g, '/').replace(/\/$/, ''),
-    pattern: decision.pattern ?? relativePath,
-    sourceFile: decision.sourceFile ?? '.gitignore'
-  };
-  const count = fs.lstatSync(folderPath).isDirectory()
-    ? await provider.countIfForced(folderPath, root)
-    : 1;
-
-  if (!prompt.confirm) {
-    provider.addForcedRoot(root);
-
-    return true;
-  }
-
-  const include = vscode.l10n.t('Include');
-  const remember = vscode.l10n.t(
-    'Include and do not ask again in this project'
-  );
-  const choice = await vscode.window.showWarningMessage(
-    vscode.l10n.t(
-      '{0} is listed in {1}. Include its {2} files anyway?',
-      relativePath,
-      root.sourceFile,
-      count
-    ),
-    { modal: true },
-    include,
-    remember,
-    vscode.l10n.t('Cancel')
-  );
-
-  if (choice === remember) {
-    await prompt.remember();
-    provider.addForcedRoot(root);
-
-    return true;
-  }
-
-  if (choice !== include) {
-    return false;
-  }
-
-  provider.addForcedRoot(root);
-
-  return true;
 };
