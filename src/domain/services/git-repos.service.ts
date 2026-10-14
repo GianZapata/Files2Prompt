@@ -1,0 +1,156 @@
+import type {
+  DiscoveredRepository,
+  GitRepositoryRecord,
+  GitSubmoduleRecord
+} from '../entities/git-change.entity';
+
+import {
+  RepositoryKind,
+  type AnyRepositoryKind
+} from '../entities/repository-kind.enum';
+
+export type { DiscoveredRepository, GitRepositoryRecord, GitSubmoduleRecord };
+
+export interface RepositoryLabelTarget {
+  kind: AnyRepositoryKind;
+  branch?: string;
+  commit?: string;
+}
+
+export const shortCommit = (commit: string) => commit.slice(0, 7);
+
+export const repositoryLabel = (repo: RepositoryLabelTarget) => {
+  const name =
+    repo.branch ?? (repo.commit ? shortCommit(repo.commit) : 'detached');
+
+  if (repo.kind === RepositoryKind.Submodule) {
+    return { message: 'submodule · {0}', args: [name] };
+  }
+
+  return { message: 'git · {0}', args: [name] };
+};
+
+export const discoverRepositories = (
+  workspaceRoot: string,
+  records: GitRepositoryRecord[],
+  included: (relativeDirectory: string) => boolean
+) => {
+  const found: DiscoveredRepository[] = [];
+
+  for (const record of records) {
+    const relative = relativeToWorkspace(workspaceRoot, record.rootPath);
+
+    if (relative === undefined) {
+      continue;
+    }
+
+    if (relative !== '' && !included(relative)) {
+      continue;
+    }
+
+    found.push({
+      relativePath: relative,
+      kind: RepositoryKind.Repository,
+      branch: record.branch,
+      commit: record.commit
+    });
+
+    for (const submodule of record.submodules ?? []) {
+      const submodulePath = joinPosix(relative, submodule.path);
+
+      if (!included(submodulePath)) {
+        continue;
+      }
+
+      found.push({
+        relativePath: submodulePath,
+        kind: RepositoryKind.Submodule,
+        branch: submodule.branch,
+        commit: submodule.commit
+      });
+    }
+  }
+
+  return found;
+};
+
+export interface GitApiRepositoryHead {
+  name?: string;
+  commit?: string;
+}
+
+export interface GitApiSubmoduleRef {
+  path: string;
+}
+
+export interface GitApiRepositoryState {
+  HEAD?: GitApiRepositoryHead;
+  submodules?: GitApiSubmoduleRef[];
+  onDidChange: (listener: () => void) => { dispose: () => void };
+}
+
+export interface GitApiRepository {
+  rootUri: { fsPath: string };
+  state: GitApiRepositoryState;
+}
+
+export interface GitApiLike {
+  repositories: GitApiRepository[];
+  onDidOpenRepository: (listener: (repository: GitApiRepository) => void) => {
+    dispose: () => void;
+  };
+  onDidCloseRepository: (listener: (repository: GitApiRepository) => void) => {
+    dispose: () => void;
+  };
+}
+
+export const recordsFromGitApi = (api: GitApiLike): GitRepositoryRecord[] =>
+  api.repositories.map(repository => ({
+    rootPath: repository.rootUri.fsPath,
+    branch: repository.state.HEAD?.name,
+    commit: repository.state.HEAD?.commit,
+    submodules: (repository.state.submodules ?? []).map(submodule => {
+      const parent = repository.rootUri.fsPath
+        .replace(/\\/g, '/')
+        .replace(/\/$/, '');
+
+      const opened = api.repositories.find(
+        item =>
+          item.rootUri.fsPath.replace(/\\/g, '/').replace(/\/$/, '') ===
+          `${parent}/${submodule.path.replace(/\\/g, '/')}`
+      );
+
+      return {
+        path: submodule.path,
+        branch: opened?.state.HEAD?.name,
+        commit: opened?.state.HEAD?.commit
+      };
+    })
+  }));
+
+export const gitUnavailableMessage = () =>
+  'Git is not available in this window.';
+
+export const noRepositoriesMessage = () =>
+  'No Git repositories in this workspace.';
+
+const relativeToWorkspace = (workspaceRoot: string, rootPath: string) => {
+  const root = workspaceRoot.replace(/\\/g, '/').replace(/\/$/, '');
+  const target = rootPath.replace(/\\/g, '/').replace(/\/$/, '');
+
+  if (target === root) {
+    return '';
+  }
+
+  if (!target.startsWith(`${root}/`)) {
+    return undefined;
+  }
+
+  return target.slice(root.length + 1);
+};
+
+const joinPosix = (parent: string, child: string) => {
+  const next = child.replace(/\\/g, '/').replace(/^\//, '');
+
+  return parent ? `${parent}/${next}` : next;
+};

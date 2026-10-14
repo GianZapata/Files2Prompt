@@ -7,7 +7,7 @@ node_modules
 foobar
 .DS_Store
 docs/
-prompt
+/prompt
 .aider*
 .env
 odd/

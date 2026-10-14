@@ -4,6 +4,8 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { createCopyGate } from './copyGate';
+import { DiscoverGitRepositories } from './domain/use-cases/git/discover-git-repositories.use-case';
+import { GetGitChanges } from './domain/use-cases/git/get-git-changes.use-case';
 import { DeliverPrompt } from './domain/use-cases/prompt/deliver-prompt.use-case';
 import { GeneratePrompt } from './domain/use-cases/prompt/generate-prompt.use-case';
 import {
@@ -13,8 +15,7 @@ import {
 } from './extensionFilter';
 import { ExtensionsProvider } from './extensionsProvider';
 import { FileTreeProvider } from './fileTreeProvider';
-import { GitChangeItem, GitChangesProvider } from './gitChangesProvider';
-import { branchRangeBase, fillChangeDiff, listCommitChanges } from './gitDiff';
+import { GitChangesProvider } from './gitChangesProvider';
 import {
   discoverRepositories,
   gitUnavailableMessage,
@@ -23,13 +24,15 @@ import {
   type DiscoveredRepository,
   type GitApiLike
 } from './gitRepos';
-import { binaryExtensions } from './ignore/builtInPatterns';
 import { filesSelectedByFolderAsync } from './ignore/selectFiles';
 import { ClipboardOutputDataSource } from './infrastructure/datasources/clipboard-output.datasource';
 import { NodeWorkspaceFilesDataSource } from './infrastructure/datasources/node-workspace-files.datasource';
+import { VscodeGitDataSource } from './infrastructure/datasources/vscode-git.datasource';
 import { VscodeSettingsDataSource } from './infrastructure/datasources/vscode-settings.datasource';
+import { GitChangesRepositoryImpl } from './infrastructure/repositories/git-changes.repository.impl';
 import { PromptRepositoryImpl } from './infrastructure/repositories/prompt.repository.impl';
 import { createDetailBook } from './operationReport';
+import { registerGitCommands } from './presentation/commands/git.commands';
 import { registerPromptCommands } from './presentation/commands/prompt.commands';
 import {
   createDetailsSource,
@@ -38,17 +41,9 @@ import {
   PREVIEW_SCHEME
 } from './promptPreview';
 import {
-  applyChangeSelection,
-  baseChoices,
   changeBadge,
   changeStatusLabel,
-  changesForScope,
-  gitScopeMenu,
-  mapGitStatus,
-  mergeChanges,
-  type ChangeScope,
-  type PromptChange,
-  type RawGitChange
+  type PromptChange
 } from './selectChanges';
 import {
   formatByteSize,
@@ -142,59 +137,16 @@ export function activate(context: vscode.ExtensionContext) {
       gitChanges.setListed(changes);
       gitChanges.setIncluded(changes);
     };
-    const reloadGitRepo = async (
-      repo: string,
-      scope: ChangeScope,
-      forcedBase?: string
-    ) => {
-      const gitExtension = vscode.extensions.getExtension('vscode.git');
 
-      if (!gitExtension) {
-        return;
-      }
-
-      const api = (
-        (gitExtension.isActive
-          ? gitExtension.exports
-          : await gitExtension.activate()) as {
-          getAPI: (version: 1) => {
-            repositories: Array<{ rootUri: { fsPath: string } }>;
-          };
-        }
-      ).getAPI(1);
-      const repository = api.repositories.find(item => {
-        const relative = path
-          .relative(workspaceRoot, item.rootUri.fsPath)
-          .split(path.sep)
-          .join('/');
-
-        return relative === repo;
-      });
-
-      if (!repository) {
-        return;
-      }
-
-      const collected = await changesFromRepository(
-        repository as never,
-        repo,
-        scope,
-        forcedBase
-      );
-      const others = fileTreeProvider
-        .promptChangeList()
-        .filter(change => change.repo !== repo);
-
-      publishChanges([...others, ...collected]);
-      await fileTreeProvider.setCheckedFiles(
-        [
-          ...fileTreeProvider.getCheckedFiles(),
-          ...collected
-            .filter(change => change.status !== 'deleted')
-            .map(change => path.join(workspaceRoot, change.path))
-        ].filter((filePath, index, all) => all.indexOf(filePath) === index)
-      );
-    };
+    const gitDataSource = new VscodeGitDataSource();
+    const gitChangesRepository = new GitChangesRepositoryImpl(
+      workspaceRoot,
+      gitDataSource
+    );
+    const getGitChanges = new GetGitChanges(gitChangesRepository);
+    const discoverRepositories = new DiscoverGitRepositories(
+      gitChangesRepository
+    );
 
     const previewSource = createPreviewSource();
     const previewEmitter = new vscode.EventEmitter<vscode.Uri>();
@@ -433,9 +385,16 @@ export function activate(context: vscode.ExtensionContext) {
           );
         }
       }),
-      vscode.commands.registerCommand('files2prompt.clearGitChanges', () => {
-        publishChanges([]);
-        scheduleDescription();
+      ...registerGitCommands({
+        workspaceRoot,
+        gitRepository: gitChangesRepository,
+        getGitChanges,
+        discoverRepositories,
+        fileSelection: fileTreeProvider,
+        publishChanges,
+        recordHistory: () => history.record(currentSnapshot()),
+        saveHistory,
+        scheduleDescription
       }),
       vscode.commands.registerCommand('files2prompt.selectAll', async () => {
         const outcome = await vscode.window.withProgress(
@@ -458,46 +417,6 @@ export function activate(context: vscode.ExtensionContext) {
         await saveHistory();
         scheduleDescription();
       }),
-      vscode.commands.registerCommand(
-        'files2prompt.selectChanges',
-        async (target?: { resourceUri?: vscode.Uri }) => {
-          const applied = await selectGitChanges(workspaceRoot, target);
-
-          if (!applied) {
-            return;
-          }
-
-          const current = fileTreeProvider
-            .getCheckedFiles()
-            .map(filePath =>
-              path.relative(workspaceRoot, filePath).split(path.sep).join('/')
-            );
-          const next = applyChangeSelection(
-            current,
-            applied.changes,
-            applied.mode
-          );
-
-          if (applied.mode === 'replace') {
-            fileTreeProvider.clearChecks();
-          }
-
-          await fileTreeProvider.setCheckedFiles(
-            next.map(filePath => path.join(workspaceRoot, filePath))
-          );
-          publishChanges(
-            applied.mode === 'add'
-              ? mergeChanges(
-                  fileTreeProvider.promptChangeList(),
-                  applied.changes
-                )
-              : applied.changes
-          );
-          history.record(currentSnapshot());
-          await saveHistory();
-          scheduleDescription();
-        }
-      ),
       vscode.commands.registerCommand(
         'files2prompt.selectByExtension',
         async (target?: vscode.Uri | { resourceUri?: vscode.Uri }) => {
@@ -698,42 +617,7 @@ export function activate(context: vscode.ExtensionContext) {
         await saveHistory();
         scheduleDescription();
       }),
-      vscode.commands.registerCommand(
-        'files2prompt.gitChanges.setScope',
-        async (item?: GitChangeItem) => {
-          if (!item) {
-            return;
-          }
 
-          const picked = await vscode.window.showQuickPick(gitScopeItems(), {
-            placeHolder: vscode.l10n.t('Which changes should be selected?')
-          });
-
-          if (!picked || !('scope' in picked) || !picked.scope) {
-            return;
-          }
-
-          await reloadGitRepo(item.repo, picked.scope);
-        }
-      ),
-      vscode.commands.registerCommand(
-        'files2prompt.gitChanges.setBase',
-        async (item?: GitChangeItem) => {
-          if (!item) {
-            return;
-          }
-
-          const baseName = await vscode.window.showInputBox({
-            prompt: vscode.l10n.t('Base branch or commit')
-          });
-
-          if (!baseName) {
-            return;
-          }
-
-          await reloadGitRepo(item.repo, 'branch', baseName);
-        }
-      ),
       extensionsView.onDidChangeCheckboxState(async event => {
         const available = extensions.availableFiles();
         let selected = fileTreeProvider
@@ -771,19 +655,6 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {}
-
-const gitScopeItems = () =>
-  gitScopeMenu().map(item =>
-    item.kind === 'separator'
-      ? {
-          label: vscode.l10n.t(item.labelKey),
-          kind: vscode.QuickPickItemKind.Separator
-        }
-      : {
-          label: vscode.l10n.t(item.labelKey),
-          scope: item.scope
-        }
-  );
 
 const watchGitRepositories = (
   workspaceRoot: string,
@@ -872,419 +743,6 @@ const folderFromTarget = (
   }
 
   return workspaceRoot;
-};
-
-const selectGitChanges = async (
-  workspaceRoot: string,
-  target?: { resourceUri?: vscode.Uri }
-): Promise<
-  { changes: PromptChange[]; mode: 'add' | 'replace' } | undefined
-> => {
-  const gitExtension = vscode.extensions.getExtension('vscode.git');
-
-  if (!gitExtension) {
-    await vscode.window.showInformationMessage(
-      vscode.l10n.t(gitUnavailableMessage())
-    );
-
-    return undefined;
-  }
-
-  const api = (
-    (gitExtension.isActive
-      ? gitExtension.exports
-      : await gitExtension.activate()) as {
-      getAPI: (version: 1) => GitApiLike & {
-        repositories: Array<
-          GitApiLike['repositories'][number] & {
-            diffWith?: (
-              ref: string,
-              path: string
-            ) => Promise<string | unknown[]>;
-            diffWithHEAD?: (path?: string) => Promise<string | unknown[]>;
-            diffBetween?: (
-              ref1: string,
-              ref2: string,
-              path?: string
-            ) => Promise<string | unknown[]>;
-            getMergeBase?: (
-              ref1: string,
-              ref2: string
-            ) => Promise<string | undefined>;
-            log?: (options?: {
-              maxEntries?: number;
-            }) => Promise<Array<{ hash: string; message: string }>>;
-            state: GitApiLike['repositories'][number]['state'] & {
-              indexChanges?: GitStatusChange[];
-              workingTreeChanges?: GitStatusChange[];
-              refs?: Array<{ name?: string; type?: number }>;
-              remotes?: Array<{ name: string }>;
-            };
-          }
-        >;
-      };
-    }
-  ).getAPI(1);
-  const wanted = target?.resourceUri
-    ? path
-        .relative(workspaceRoot, target.resourceUri.fsPath)
-        .split(path.sep)
-        .join('/')
-    : undefined;
-  const repos = api.repositories.filter(repository => {
-    const relative = path
-      .relative(workspaceRoot, repository.rootUri.fsPath)
-      .split(path.sep)
-      .join('/');
-
-    return !wanted || relative === wanted || wanted.startsWith(`${relative}/`);
-  });
-
-  if (repos.length === 0) {
-    await vscode.window.showInformationMessage(
-      vscode.l10n.t(noRepositoriesMessage())
-    );
-
-    return undefined;
-  }
-
-  const pickedRepos =
-    repos.length === 1
-      ? repos
-      : await vscode.window.showQuickPick(
-          repos.map(repository => {
-            const relative = path
-              .relative(workspaceRoot, repository.rootUri.fsPath)
-              .split(path.sep)
-              .join('/');
-            const state = repository.state as {
-              indexChanges?: unknown[];
-              workingTreeChanges?: unknown[];
-            };
-            const dirty =
-              (state.indexChanges?.length ?? 0) +
-                (state.workingTreeChanges?.length ?? 0) >
-              0;
-
-            return {
-              label: relative || path.basename(workspaceRoot),
-              description: repository.state.HEAD?.name,
-              picked: dirty,
-              repository
-            };
-          }),
-          {
-            canPickMany: true,
-            placeHolder: vscode.l10n.t('Choose repositories')
-          }
-        );
-
-  if (!pickedRepos || pickedRepos.length === 0) {
-    return undefined;
-  }
-
-  const scopePick = await vscode.window.showQuickPick(gitScopeItems(), {
-    placeHolder: vscode.l10n.t('Which changes should be selected?')
-  });
-
-  const scope = scopePick && 'scope' in scopePick ? scopePick.scope : undefined;
-
-  if (!scope) {
-    return undefined;
-  }
-
-  const modePick = await vscode.window.showQuickPick(
-    [
-      { label: vscode.l10n.t('Add to selection'), id: 'add' as const },
-      { label: vscode.l10n.t('Replace selection'), id: 'replace' as const }
-    ],
-    { placeHolder: vscode.l10n.t('How should this selection apply?') }
-  );
-
-  if (!modePick) {
-    return undefined;
-  }
-
-  const changes: PromptChange[] = [];
-
-  for (const item of pickedRepos) {
-    const repository = 'repository' in item ? item.repository : item;
-    const relative = path
-      .relative(workspaceRoot, repository.rootUri.fsPath)
-      .split(path.sep)
-      .join('/');
-    const collected = await changesFromRepository(repository, relative, scope);
-
-    changes.push(...collected);
-  }
-
-  if (changes.some(change => change.status === 'submodule')) {
-    const includeInner = vscode.l10n.t('Include');
-    const choice = await vscode.window.showWarningMessage(
-      vscode.l10n.t('Include the submodule diff?'),
-      { modal: true },
-      includeInner,
-      vscode.l10n.t('Cancel')
-    );
-
-    if (choice !== includeInner) {
-      for (const change of changes) {
-        if (change.status === 'submodule') {
-          change.diff = undefined;
-        }
-      }
-    }
-  }
-
-  return { changes, mode: modePick.id };
-};
-
-type GitStatusChange = {
-  uri: { fsPath: string };
-  originalUri: { fsPath: string };
-  renameUri?: { fsPath: string };
-  status: number;
-};
-
-const changesFromRepository = async (
-  repository: {
-    rootUri: { fsPath: string };
-    state: {
-      HEAD?: { name?: string; commit?: string };
-      indexChanges?: GitStatusChange[];
-      workingTreeChanges?: GitStatusChange[];
-      refs?: Array<{ name?: string }>;
-    };
-    diffWith?: (ref: string, filePath: string) => Promise<string | unknown[]>;
-    diffWithHEAD?: (filePath?: string) => Promise<string | unknown[]>;
-    diffIndexWithHEAD?: (filePath?: string) => Promise<string | unknown[]>;
-    diffBetween?: (
-      ref1: string,
-      ref2: string,
-      filePath?: string
-    ) => Promise<string | unknown[]>;
-    getMergeBase?: (ref1: string, ref2: string) => Promise<string | undefined>;
-    diffBlobs?: (from: string, to: string) => Promise<string>;
-    show?: (ref: string, filePath: string) => Promise<string>;
-    getCommit?: (ref: string) => Promise<{ hash: string } | undefined>;
-    log?: (options?: {
-      maxEntries?: number;
-    }) => Promise<Array<{ hash: string; message: string }>>;
-  },
-  repo: string,
-  scope: ChangeScope,
-  forcedBase?: string
-) => {
-  const toRaw = (change: GitStatusChange): RawGitChange | undefined => {
-    const status = mapGitStatus(change.status);
-
-    if (!status) {
-      return undefined;
-    }
-
-    const relative = path
-      .relative(repository.rootUri.fsPath, change.uri.fsPath)
-      .split(path.sep)
-      .join('/');
-    const original = path
-      .relative(repository.rootUri.fsPath, change.originalUri.fsPath)
-      .split(path.sep)
-      .join('/');
-
-    const submodulePaths = new Set(
-      (
-        repository.state as { submodules?: Array<{ path: string }> }
-      ).submodules?.map(item => item.path.replace(/\\/g, '/')) ?? []
-    );
-    const kind = submodulePaths.has(relative) ? 'submodule' : status;
-
-    return {
-      path: relative,
-      originalPath: original !== relative ? original : undefined,
-      status: kind
-    };
-  };
-  const staged = (repository.state.indexChanges ?? [])
-    .map(toRaw)
-    .filter((item): item is RawGitChange => item !== undefined);
-  const working = (repository.state.workingTreeChanges ?? [])
-    .map(toRaw)
-    .filter((item): item is RawGitChange => item !== undefined);
-  const untracked = working.filter(change => change.status === 'untracked');
-  const trackedWorking = working.filter(
-    change => change.status !== 'untracked'
-  );
-  let commit: RawGitChange[] = [];
-  let branch: RawGitChange[] = [];
-  let base: string | undefined;
-  let head = repository.state.HEAD?.name;
-  let commitRef = head;
-
-  if (scope === 'commit') {
-    const history = (await repository.log?.({ maxEntries: 20 })) ?? [];
-    const picked = await vscode.window.showQuickPick(
-      history.map(entry => ({
-        label: entry.hash.slice(0, 7),
-        description: entry.message,
-        hash: entry.hash
-      })),
-      { placeHolder: vscode.l10n.t('Choose a commit') }
-    );
-
-    if (picked && repository.diffBetween && repository.diffBlobs) {
-      const listed = await listCommitChanges(
-        {
-          parentOf: async hash => {
-            try {
-              const parent = await repository.getCommit?.(`${hash}~1`);
-
-              return parent ? `${hash}~1` : undefined;
-            } catch {
-              return undefined;
-            }
-          },
-          diffBetween: async (from, to) => {
-            const changes = await repository.diffBetween?.(from, to);
-
-            return Array.isArray(changes)
-              ? changes
-                  .map(item => toRaw(item as GitStatusChange))
-                  .filter((item): item is RawGitChange => item !== undefined)
-                  .map(item => ({
-                    path: item.path,
-                    status:
-                      item.status === 'deleted'
-                        ? 'deleted'
-                        : item.status === 'added' || item.status === 'untracked'
-                          ? 'added'
-                          : 'modified'
-                  }))
-              : [];
-          },
-          diffBlobs: async (from, to) =>
-            (await repository.diffBlobs?.(from, to)) ?? ''
-        },
-        picked.hash
-      );
-
-      commit = listed.map(item => ({
-        path: item.path,
-        status: item.status
-      }));
-      commitRef = picked.hash;
-      head = picked.hash.slice(0, 7);
-    }
-  }
-
-  if (scope === 'branch') {
-    const choices = baseChoices({
-      branches: (repository.state.refs ?? [])
-        .map(ref => ref.name ?? '')
-        .filter(Boolean)
-    });
-    const picked = forcedBase
-      ? undefined
-      : await vscode.window.showQuickPick(
-          [
-            ...choices.map(choice => ({ label: choice.label })),
-            { label: vscode.l10n.t('Type a base…') }
-          ],
-          { placeHolder: vscode.l10n.t('Choose a base') }
-        );
-    const baseName = forcedBase
-      ? forcedBase
-      : picked?.label === vscode.l10n.t('Type a base…')
-        ? await vscode.window.showInputBox({
-            prompt: vscode.l10n.t('Base branch or commit')
-          })
-        : picked?.label;
-
-    if (baseName && repository.diffBetween) {
-      const chosenBase = baseName;
-      const mergeBase = await repository.getMergeBase?.(chosenBase, 'HEAD');
-
-      base = branchRangeBase(mergeBase, chosenBase);
-      const listed = await repository.diffBetween(base, 'HEAD');
-
-      branch = Array.isArray(listed)
-        ? listed
-            .map(item => toRaw(item as GitStatusChange))
-            .filter((item): item is RawGitChange => item !== undefined)
-        : [];
-    }
-  }
-
-  const changes = changesForScope(
-    {
-      repo,
-      staged,
-      working: trackedWorking,
-      untracked,
-      commit,
-      branch
-    },
-    scope
-  );
-  const asText = (value: string | unknown[] | undefined) =>
-    typeof value === 'string' ? value : '';
-  const reader = {
-    diffWith: async (ref: string, filePath: string) =>
-      asText(await repository.diffWith?.(ref, filePath)),
-    diffWithHEAD: async (filePath: string) =>
-      asText(await repository.diffWithHEAD?.(filePath)),
-    diffIndexWithHEAD: async (filePath: string) =>
-      asText(await repository.diffIndexWithHEAD?.(filePath)),
-    diffBetween: async (from: string, to: string, filePath: string) =>
-      asText(await repository.diffBetween?.(from, to, filePath)),
-    getMergeBase: async (ref: string, tip: string) =>
-      repository.getMergeBase?.(ref, tip),
-    show: async (ref: string, filePath: string) =>
-      (await repository.show?.(ref, filePath)) ?? '',
-    parentOf: async (hash: string) => {
-      try {
-        const parent = await repository.getCommit?.(`${hash}~1`);
-
-        return parent ? `${hash}~1` : undefined;
-      } catch {
-        return undefined;
-      }
-    },
-    readFile: (filePath: string) =>
-      fs.promises.readFile(
-        path.join(repository.rootUri.fsPath, filePath),
-        'utf8'
-      )
-  };
-  const filled = [];
-
-  for (const change of changes) {
-    const relative = change.path.startsWith(`${repo}/`)
-      ? change.path.slice(repo.length + 1)
-      : change.path;
-    const extension = relative.split('.').pop()?.toLowerCase() ?? '';
-    const loaded = await fillChangeDiff(
-      reader,
-      {
-        path: relative,
-        status: change.status,
-        binary: binaryExtensions.includes(extension)
-      },
-      scope,
-      { commit: commitRef, base }
-    );
-
-    filled.push({
-      ...change,
-      repo,
-      scope,
-      diff: loaded.diff,
-      binary: loaded.binary,
-      base,
-      head
-    });
-  }
-
-  return filled;
 };
 
 const confirmExcluded = async (
