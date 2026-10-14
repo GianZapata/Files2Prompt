@@ -1,12 +1,8 @@
 # Promptfold
 
-Local fork of [Thomas-McKanna/Files2Prompt](https://github.com/Thomas-McKanna/Files2Prompt), maintained by Gian Zapata. This is not the Marketplace extension `thomas-mckanna.files2prompt`. Install the local VSIX so editor updates do not replace it with upstream.
-
-Original project: [Thomas-McKanna/Files2Prompt](https://github.com/Thomas-McKanna/Files2Prompt). License: MIT, Copyright 2024 Thomas McKanna.
-
 [![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/GianZapata/Files2Prompt)
 
-Copy files and Git changes as XML, Markdown or plain text for LLM prompts, with an estimate of the tokens they use.
+Copy files and Git changes as XML, Markdown or plain text for LLM prompts, with an estimate of the tokens they use. No telemetry, no network access.
 
 ![Demo](demo.gif)
 
@@ -30,9 +26,11 @@ Copy files and Git changes as XML, Markdown or plain text for LLM prompts, with 
 
 ## Installation
 
-Install this fork from a local VSIX only. Do not install `thomas-mckanna.files2prompt` from the Marketplace. An editor update can replace this fork with upstream if the Marketplace copy is installed.
+Install Promptfold from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=gianzapata.promptfold) or from [Open VSX](https://open-vsx.org/extension/gianzapata/promptfold): search for "Promptfold" in the Extensions view.
 
-1. Build or download the local `.vsix`.
+To install a `.vsix` instead:
+
+1. Download the `.vsix` file.
 2. In VS Code, press `Ctrl+Shift+P` (`Cmd+Shift+P` on macOS) to open the Command Palette.
 3. Type `Extensions: Install from VSIX...` and select the command.
 4. Browse to the `.vsix` file and install.
@@ -248,3 +246,7 @@ Copy the selected files into the LLM, then edit the project yourself from the re
 3. Paste that prompt into the LLM and submit.
 4. Apply the reply in the editor.
 5. Repeat.
+
+## Credits
+
+Promptfold is based on [Files2Prompt](https://github.com/Thomas-McKanna/Files2Prompt) by Thomas McKanna, released under the MIT license. See [LICENSE.md](LICENSE.md).
