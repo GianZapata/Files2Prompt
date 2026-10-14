@@ -197,7 +197,7 @@ suite('Files2Prompt with two git repositories', () => {
 
     assert.equal(
       path.dirname(revealed.fsPath),
-      path.join(os.tmpdir(), 'files2prompt')
+      vscode.Uri.file(path.join(os.tmpdir(), 'files2prompt')).fsPath
     );
 
     assert.match(path.basename(revealed.fsPath), PROMPT_FILE_NAME);
