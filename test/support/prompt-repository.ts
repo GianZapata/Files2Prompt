@@ -37,7 +37,8 @@ export class DiskFilesDataSource extends WorkspaceFilesDataSource {
 export const repositoryFor = (
   workspace: string,
   limits: Partial<RepositoryLimits> = {},
-  format: OutputFormat = OutputFormat.Xml
+  format: OutputFormat = OutputFormat.Xml,
+  systemMessage?: string
 ) =>
   new PromptRepositoryImpl(
     workspace,
@@ -45,6 +46,7 @@ export const repositoryFor = (
     {
       promptSettings: () => ({
         outputFormat: format,
+        systemMessage,
         diffMode: DiffMode.DiffAndFiles,
         ...defaultLimits,
         ...limits

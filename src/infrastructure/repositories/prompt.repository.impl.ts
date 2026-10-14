@@ -18,7 +18,7 @@ import {
   PromptRepository,
   type PromptRequest
 } from '../../domain/repositories/prompt.repository';
-import { renderPrompt } from '../../domain/services/prompt-formats.service';
+import { promptLayout } from '../../domain/services/prompt-formats.service';
 
 export interface PromptPathResolver {
   resolvePath: (
@@ -74,26 +74,26 @@ export class PromptRepositoryImpl extends PromptRepository {
     const seen = new Set<string>();
     const realRoot = await this.files.realPathOf(this.workspaceRoot);
 
-    const rendered = (files: PromptFile[]) =>
-      renderPrompt(format, {
-        systemMessage,
-        files,
-        changes
-      });
+    const layout = promptLayout(format, { systemMessage, changes });
+    const pieces: string[] = [];
+    let usedBytes = layout.emptyBytes;
 
-    const empty = rendered([]);
+    const finish = (stop: CopyStop, pending: number): PromptBuild => {
+      const cancelled = stop === CopyStop.UserCancelled;
 
-    if (Buffer.byteLength(empty) > config.maxTotalBytes) {
-      return this.finish(
-        CopyStop.TotalBytes,
-        format,
-        systemMessage,
-        changes,
+      return {
+        stop,
+        output: cancelled ? '' : layout.assemble(pieces),
         included,
         omittedFiles,
         omittedFolders,
-        0
-      );
+        pending,
+        byteLength: cancelled ? 0 : usedBytes
+      };
+    };
+
+    if (layout.emptyBytes > config.maxTotalBytes) {
+      return finish(CopyStop.TotalBytes, 0);
     }
 
     for (let index = 0; index < filePaths.length; index += 1) {
@@ -103,29 +103,11 @@ export class PromptRepositoryImpl extends PromptRepository {
       await new Promise(resolve => setImmediate(resolve));
 
       if (isCancelled()) {
-        return this.finish(
-          CopyStop.UserCancelled,
-          format,
-          systemMessage,
-          changes,
-          included,
-          omittedFiles,
-          omittedFolders,
-          pending
-        );
+        return finish(CopyStop.UserCancelled, pending);
       }
 
       if (included.length >= config.maxFiles) {
-        return this.finish(
-          CopyStop.FileBudget,
-          format,
-          systemMessage,
-          changes,
-          included,
-          omittedFiles,
-          omittedFolders,
-          pending
-        );
+        return finish(CopyStop.FileBudget, pending);
       }
 
       const normalized = filePath;
@@ -186,63 +168,19 @@ export class PromptRepositoryImpl extends PromptRepository {
       }
 
       const content = await this.files.readText(normalized);
-      const nextText = rendered([...included, { name, content }]);
+      const piece = layout.piece({ name, content });
+      const nextBytes =
+        usedBytes + layout.bytesToAdd(Buffer.byteLength(piece), pieces.length);
 
-      if (Buffer.byteLength(nextText) > config.maxTotalBytes) {
-        return this.finish(
-          CopyStop.TotalBytes,
-          format,
-          systemMessage,
-          changes,
-          included,
-          omittedFiles,
-          omittedFolders,
-          pending
-        );
+      if (nextBytes > config.maxTotalBytes) {
+        return finish(CopyStop.TotalBytes, pending);
       }
 
+      pieces.push(piece);
       included.push({ name, content });
+      usedBytes = nextBytes;
     }
 
-    return this.finish(
-      CopyStop.Completed,
-      format,
-      systemMessage,
-      changes,
-      included,
-      omittedFiles,
-      omittedFolders,
-      0
-    );
-  };
-
-  private finish = (
-    stop: CopyStop,
-    format: string,
-    systemMessage: string | undefined,
-    changes: PromptChangeEntry[],
-    included: PromptFile[],
-    omittedFiles: OmittedFile[],
-    omittedFolders: string[],
-    pending: number
-  ): PromptBuild => {
-    const output =
-      stop === CopyStop.UserCancelled
-        ? ''
-        : renderPrompt(format, {
-            systemMessage,
-            files: included,
-            changes
-          });
-
-    return {
-      stop,
-      output,
-      included,
-      omittedFiles,
-      omittedFolders,
-      pending,
-      byteLength: Buffer.byteLength(output)
-    };
+    return finish(CopyStop.Completed, 0);
   };
 }

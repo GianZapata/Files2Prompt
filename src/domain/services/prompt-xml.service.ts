@@ -18,6 +18,9 @@ const escapeCdata = (value: string) =>
 
 const cdata = (value: string) => `<![CDATA[${escapeCdata(value)}]]>`;
 
+export const serializedSystemMessage = (message: string) =>
+  `<systemMessage>${cdata(message)}</systemMessage>`;
+
 export const serializedFile = (file: PromptFile) =>
   `<file name="${escapeAttribute(file.name)}">${cdata(file.content)}</file>`;
 
@@ -73,14 +76,12 @@ export const serializeChanges = (changes: PromptChangeEntry[]) => {
 };
 
 export const serializePrompt = (input: PromptPayload) => {
-  const parts: string[] = [];
-
-  if (input.systemMessage && input.systemMessage.length > 0) {
-    parts.push(`<systemMessage>${cdata(input.systemMessage)}</systemMessage>`);
-  }
-
+  const message =
+    input.systemMessage && input.systemMessage.length > 0
+      ? serializedSystemMessage(input.systemMessage)
+      : '';
   const files = input.files.map(serializedFile).join('');
   const changes = serializeChanges(input.changes ?? []);
 
-  return `<files>${parts.join('')}${changes}${files}</files>`;
+  return `<files>${message}${changes}${files}</files>`;
 };

@@ -157,17 +157,65 @@ test('the total byte cap stops the build before the file that would not fit', as
 });
 
 for (const format of Object.values(OutputFormat)) {
-  test(`the reported size matches the ${format} output byte for byte`, async () => {
+  test(`the calculated size matches the ${format} output byte for byte`, async () => {
     const workspace = temporaryFolder();
     const files = writeFiles(workspace, ['a.ts', 'español.md', 'c d.txt']);
 
     fs.writeFileSync(files[1], '# Guía\nacción con acentuación ñ 🙂\n');
+    fs.writeFileSync(files[2], 'cierra ]]> y ``` abre <tag a="1">\n');
 
-    const result = await repositoryFor(workspace, {}, format).build({
-      filePaths: files
+    const result = await repositoryFor(
+      workspace,
+      {},
+      format,
+      'Sistema: responde en español ✓'
+    ).build({
+      filePaths: files,
+      changes: [
+        {
+          repo: 'api',
+          path: 'src/índice.ts',
+          status: 'modified',
+          scope: 'uncommitted',
+          diff: '-a\n+b ]]> ñ'
+        },
+        { repo: 'api', path: 'logo.png', status: 'added', binary: true }
+      ]
     });
 
     assert.equal(result.included.length, 3);
+    assert.equal(result.stop, 'completed');
+    assert.equal(result.byteLength, Buffer.byteLength(result.output));
+    assert.ok(result.byteLength > 0);
+  });
+}
+
+test('the byte cap is decided by the calculated size, not by a second render', async () => {
+  const workspace = temporaryFolder();
+  const files = writeFiles(workspace, ['a.ts', 'b.ts', 'c.ts']);
+  const full = await repositoryFor(workspace).build({ filePaths: files });
+  const twoOfThree = await repositoryFor(workspace, {
+    maxTotalBytes: full.byteLength - 1
+  }).build({ filePaths: files });
+
+  assert.equal(twoOfThree.stop, 'total-bytes');
+  assert.equal(twoOfThree.included.length, 2);
+  assert.equal(twoOfThree.pending, 1);
+  assert.ok(twoOfThree.byteLength <= full.byteLength - 1);
+  assert.equal(twoOfThree.byteLength, Buffer.byteLength(twoOfThree.output));
+});
+
+for (const format of Object.values(OutputFormat)) {
+  test(`the calculated size matches the ${format} output with no header at all`, async () => {
+    const workspace = temporaryFolder();
+    const files = writeFiles(workspace, ['a.ts', 'b.ts']);
+
+    const result = await repositoryFor(workspace, {}, format).build({
+      filePaths: files,
+      changes: []
+    });
+
+    assert.equal(result.included.length, 2);
     assert.equal(result.byteLength, Buffer.byteLength(result.output));
   });
 }

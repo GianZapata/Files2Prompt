@@ -5,7 +5,11 @@ import type {
 
 import { OutputFormat } from '../entities/output-format.enum';
 
-import { serializePrompt } from './prompt-xml.service';
+import {
+  serializeChanges,
+  serializedFile,
+  serializedSystemMessage
+} from './prompt-xml.service';
 
 export type { OutputFormat };
 
@@ -98,7 +102,14 @@ const plainChange = (change: PromptChangeEntry) => {
   return `${heading}\n${change.diff ?? ''}`;
 };
 
-const renderMarkdown = (input: PromptDocument) => {
+const markdownFile = (file: PromptFile) => {
+  const fence = fenceFor(file.content);
+  const language = languageFor(file.name);
+
+  return `### ${file.name}\n${fence}${language}\n${file.content}\n${fence}`;
+};
+
+const markdownPrefix = (input: PromptDocument) => {
   const parts: string[] = [];
 
   if (input.systemMessage) {
@@ -123,47 +134,67 @@ const renderMarkdown = (input: PromptDocument) => {
     parts.push([heading, ...blocks].join('\n\n'));
   }
 
-  for (const file of input.files) {
-    const fence = fenceFor(file.content);
-    const language = languageFor(file.name);
-
-    parts.push(
-      `### ${file.name}\n${fence}${language}\n${file.content}\n${fence}`
-    );
-  }
-
   return parts.join('\n\n');
 };
 
-const renderPlain = (input: PromptDocument) => {
-  const parts: string[] = [];
+const plainFile = (file: PromptFile) =>
+  `=== FILE ${file.name} ===\n${file.content}`;
 
-  if (input.systemMessage) {
-    parts.push(input.systemMessage);
-  }
+const plainPrefix = (input: PromptDocument) =>
+  [
+    ...(input.systemMessage ? [input.systemMessage] : []),
+    ...(input.changes ?? []).map(plainChange)
+  ].join('\n\n');
 
-  for (const change of input.changes ?? []) {
-    parts.push(plainChange(change));
-  }
+const xmlPrefix = (input: PromptDocument) =>
+  `<files>${
+    input.systemMessage ? serializedSystemMessage(input.systemMessage) : ''
+  }${serializeChanges(input.changes ?? [])}`;
 
-  for (const file of input.files) {
-    parts.push(`=== FILE ${file.name} ===\n${file.content}`);
-  }
+export interface PromptLayout {
+  piece: (file: PromptFile) => string;
+  assemble: (pieces: string[]) => string;
+  emptyBytes: number;
+  bytesToAdd: (pieceBytes: number, alreadyAdded: number) => number;
+}
 
-  return parts.join('\n\n');
+export const promptLayout = (
+  format: OutputFormat | string,
+  input: Omit<PromptDocument, 'files'>
+): PromptLayout => {
+  const document = { ...input, files: [] };
+  const isMarkdown = format === OutputFormat.Markdown;
+  const isPlain = format === OutputFormat.Plain;
+  const isXml = !isMarkdown && !isPlain;
+  const prefix = isMarkdown
+    ? markdownPrefix(document)
+    : isPlain
+      ? plainPrefix(document)
+      : xmlPrefix(document);
+  const suffix = isXml ? '</files>' : '';
+  const separator = isXml ? '' : '\n\n';
+  const piece = isMarkdown
+    ? markdownFile
+    : isPlain
+      ? plainFile
+      : serializedFile;
+  const separatorBytes = Buffer.byteLength(separator);
+
+  return {
+    piece,
+    emptyBytes: Buffer.byteLength(prefix) + Buffer.byteLength(suffix),
+    bytesToAdd: (pieceBytes, alreadyAdded) =>
+      pieceBytes + (alreadyAdded > 0 || prefix !== '' ? separatorBytes : 0),
+    assemble: pieces =>
+      `${prefix}${prefix !== '' && pieces.length > 0 ? separator : ''}${pieces.join(separator)}${suffix}`
+  };
 };
 
 export const renderPrompt = (
   format: OutputFormat | string,
   input: PromptDocument
 ) => {
-  if (format === OutputFormat.Markdown || format === 'markdown') {
-    return renderMarkdown(input);
-  }
+  const layout = promptLayout(format, input);
 
-  if (format === OutputFormat.Plain || format === 'plain') {
-    return renderPlain(input);
-  }
-
-  return serializePrompt(input);
+  return layout.assemble(input.files.map(layout.piece));
 };
