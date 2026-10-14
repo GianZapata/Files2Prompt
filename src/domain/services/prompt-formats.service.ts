@@ -64,18 +64,6 @@ export const fenceFor = (content: string) => {
   return '`'.repeat(Math.max(3, longest + 1));
 };
 
-export const languageIdFor = (format: OutputFormat | string) => {
-  if (format === OutputFormat.Markdown || format === 'markdown') {
-    return 'markdown';
-  }
-
-  if (format === OutputFormat.Plain || format === 'plain') {
-    return 'plaintext';
-  }
-
-  return 'xml';
-};
-
 const hasDiff = (diff?: string) => (diff ?? '').trim().length > 0;
 
 const markdownChange = (change: PromptChangeEntry) => {

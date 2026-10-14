@@ -77,7 +77,7 @@ test('deliver-prompt: does not write when user cancels', async () => {
     build: async () =>
       ({
         stop: CopyStop.UserCancelled,
-        xml: '',
+        output: '',
         included: [],
         omittedFiles: [],
         omittedFolders: [],
@@ -103,7 +103,7 @@ test('deliver-prompt: does not write when build text is empty', async () => {
     build: async () =>
       ({
         stop: CopyStop.Completed,
-        xml: '',
+        output: '',
         included: [],
         omittedFiles: [],
         omittedFolders: [],
@@ -129,7 +129,7 @@ test('deliver-prompt: writes to output on success and releases gate', async () =
     build: async (_request: PromptRequest) =>
       ({
         stop: CopyStop.Completed,
-        xml: '<files>test</files>',
+        output: '<files>test</files>',
         included: [{ name: 'a.ts', content: 'test' }],
         omittedFiles: [],
         omittedFolders: [],
@@ -155,7 +155,7 @@ test('deliver-prompt: releases gate even if output write throws', async () => {
     build: async () =>
       ({
         stop: CopyStop.Completed,
-        xml: '<files>fail</files>',
+        output: '<files>fail</files>',
         included: [{ name: 'a.ts', content: 'fail' }],
         omittedFiles: [],
         omittedFolders: [],

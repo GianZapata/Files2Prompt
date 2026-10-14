@@ -32,7 +32,7 @@ export interface OmittedFile {
 
 export interface PromptBuild {
   stop: AnyCopyStop;
-  xml: string;
+  output: string;
   included: PromptFile[];
   omittedFiles: OmittedFile[];
   omittedFolders: string[];

@@ -15,6 +15,7 @@ test('file budget reports pending work when nothing else was excluded', async ()
 
     return filePath;
   });
+
   const result = await buildPrompt({
     workspaceRoot: root,
     filePaths: files,
@@ -30,5 +31,5 @@ test('file budget reports pending work when nothing else was excluded', async ()
   assert.equal(result.omittedFiles.length, 0);
   assert.equal(result.included.length, 1);
   assert.equal(result.pending, 2);
-  assert.equal(result.byteLength, Buffer.byteLength(result.xml));
+  assert.equal(result.byteLength, Buffer.byteLength(result.output));
 });

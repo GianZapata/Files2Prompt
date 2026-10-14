@@ -13,7 +13,7 @@ import { runCopy } from '../src/domain/services/prompt-run.service';
 
 const summary = (name: string, count: number): PromptBuild => ({
   stop: 'completed',
-  xml: name,
+  output: name,
   included: Array.from({ length: count }, (_, index) => ({
     name: `${name}-${index}.ts`,
     content: 'x'
@@ -61,7 +61,7 @@ test('cancel report says collected files were not copied', () => {
     summary: {
       ...summary('cancel', 291),
       stop: 'user-cancelled',
-      xml: ''
+      output: ''
     }
   });
 
@@ -84,7 +84,6 @@ test('empty selection does not start a copy and the next copy can start', async 
   const next = await runCopy({
     gate,
     clipboard: {
-      read: () => 'SENTINEL',
       write: text => {
         writes.push(text);
       }

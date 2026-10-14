@@ -14,7 +14,7 @@ test('generate-prompt: delegates to repository without side effects', async () =
   let calledWith: PromptRequest | undefined;
   const expected: PromptBuild = {
     stop: CopyStop.Completed,
-    xml: '<files><file name="x">hi</file></files>',
+    output: '<files><file name="x">hi</file></files>',
     included: [{ name: 'x', content: 'hi' }],
     omittedFiles: [],
     omittedFolders: [],

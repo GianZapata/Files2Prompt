@@ -10,7 +10,6 @@ import {
 export interface PromptVirtualDocuments {
   previewSource: ReturnType<typeof createPreviewSource>;
   previewEmitter: vscode.EventEmitter<vscode.Uri>;
-  previewUri: vscode.Uri;
   detailsSource: ReturnType<typeof createDetailsSource>;
   detailsEmitter: vscode.EventEmitter<vscode.Uri>;
   detailsUri: vscode.Uri;
@@ -24,13 +23,12 @@ export const createPromptVirtualDocuments = (): PromptVirtualDocuments => {
 
   const previewSource = createPreviewSource();
   const previewEmitter = new vscode.EventEmitter<vscode.Uri>();
-  const previewUri = vscode.Uri.parse(previewSource.uri);
 
   const previewProvider = vscode.workspace.registerTextDocumentContentProvider(
     PREVIEW_SCHEME,
     {
       onDidChange: previewEmitter.event,
-      provideTextDocumentContent: () => previewSource.get()
+      provideTextDocumentContent: uri => previewSource.get(uri.toString())
     }
   );
 
@@ -45,7 +43,6 @@ export const createPromptVirtualDocuments = (): PromptVirtualDocuments => {
   return {
     previewSource,
     previewEmitter,
-    previewUri,
     detailsSource,
     detailsEmitter,
     detailsUri,

@@ -163,7 +163,7 @@ const finish = (
   omittedFolders: string[],
   pending: number
 ): PromptBuild => {
-  const xml =
+  const output =
     stop === 'user-cancelled'
       ? ''
       : renderPrompt(input.format ?? 'xml', {
@@ -174,11 +174,11 @@ const finish = (
 
   return {
     stop,
-    xml,
+    output,
     included,
     omittedFiles,
     omittedFolders,
     pending,
-    byteLength: Buffer.byteLength(xml)
+    byteLength: Buffer.byteLength(output)
   };
 };

@@ -43,11 +43,11 @@ export class DeliverPrompt implements DeliverPromptUseCase {
     try {
       const build = await this.repository.build(request);
 
-      if (build.stop === CopyStop.UserCancelled || build.xml.length === 0) {
+      if (build.stop === CopyStop.UserCancelled || build.output.length === 0) {
         return { started: true, wrote: false, build };
       }
 
-      await output.write(build.xml);
+      await output.write(build.output);
 
       return { started: true, wrote: true, build };
     } finally {

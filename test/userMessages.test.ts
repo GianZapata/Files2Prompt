@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import path from 'path';
 
+import { OutputFormat } from '../src/domain/entities/output-format.enum';
 import {
   copyStatusMessage,
   previewStatusMessage,
@@ -219,10 +220,34 @@ test('details content is served from a virtual document', () => {
   assert.equal(details.get(), 'Stop: total-bytes');
 });
 
-test('preview content is served from a virtual document', () => {
+test('preview names its virtual document after the output format', () => {
   const preview = createPreviewSource();
 
-  preview.set('<files></files>');
-  assert.equal(preview.uri.startsWith('files2prompt-preview:'), true);
-  assert.equal(preview.get(), '<files></files>');
+  assert.equal(
+    preview.uriFor(OutputFormat.Markdown),
+    'files2prompt-preview:prompt.md'
+  );
+
+  assert.equal(
+    preview.uriFor(OutputFormat.Plain),
+    'files2prompt-preview:prompt.txt'
+  );
+
+  assert.equal(
+    preview.uriFor(OutputFormat.Xml),
+    'files2prompt-preview:prompt.xml'
+  );
+});
+
+test('preview keeps the content of each format separate', () => {
+  const preview = createPreviewSource();
+  const markdown = preview.uriFor(OutputFormat.Markdown);
+  const xml = preview.uriFor(OutputFormat.Xml);
+
+  preview.set(markdown, '### a.ts');
+  preview.set(xml, '<files></files>');
+
+  assert.equal(preview.get(markdown), '### a.ts');
+  assert.equal(preview.get(xml), '<files></files>');
+  assert.equal(preview.get(preview.uriFor(OutputFormat.Plain)), '');
 });

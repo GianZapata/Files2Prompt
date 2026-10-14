@@ -1,15 +1,20 @@
+import type { OutputFormat } from '../../domain/entities/output-format.enum';
+
+import { defaultPromptFileName } from '../../domain/services/saved-prompt-file.service';
+
 export const PREVIEW_SCHEME = 'files2prompt-preview';
 export const DETAILS_SCHEME = 'files2prompt-details';
 
 export const createPreviewSource = () => {
-  let content = '';
+  const contents = new Map<string, string>();
 
   return {
-    uri: `${PREVIEW_SCHEME}:prompt.xml`,
-    set: (value: string) => {
-      content = value;
+    uriFor: (format: OutputFormat) =>
+      `${PREVIEW_SCHEME}:${defaultPromptFileName(format)}`,
+    set: (uri: string, value: string) => {
+      contents.set(uri, value);
     },
-    get: () => content
+    get: (uri: string) => contents.get(uri) ?? ''
   };
 };
 

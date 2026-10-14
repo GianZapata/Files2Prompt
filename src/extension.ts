@@ -67,6 +67,7 @@ export function activate(context: vscode.ExtensionContext) {
     settingsDataSource,
     fileTreeProvider
   );
+
   const gitChangesRepository = new GitChangesRepositoryImpl(
     workspaceRoot,
     gitDataSource
@@ -85,6 +86,7 @@ export function activate(context: vscode.ExtensionContext) {
     treeDataProvider: fileTreeProvider,
     manageCheckboxStateManually: true
   });
+
   const gitChangesView = vscode.window.createTreeView(
     'files2prompt.gitChanges',
     {
@@ -92,6 +94,7 @@ export function activate(context: vscode.ExtensionContext) {
       manageCheckboxStateManually: true
     }
   );
+
   const extensions = new ExtensionsProvider();
   const extensionsView = vscode.window.createTreeView(
     'files2prompt.extensions',
@@ -109,6 +112,7 @@ export function activate(context: vscode.ExtensionContext) {
   const stored = stateDataSource.get<SelectionHistoryState>(
     'files2prompt.selectionHistory'
   );
+
   const history = createSelectionHistory(
     stored?.entries ?? [],
     stored?.position ?? -1
@@ -149,6 +153,7 @@ export function activate(context: vscode.ExtensionContext) {
         const available = listed.files.map(filePath =>
           path.relative(workspaceRoot, filePath).split(path.sep).join('/')
         );
+
         const selected = fileTreeProvider
           .getCheckedFiles()
           .map(filePath =>
@@ -208,7 +213,6 @@ export function activate(context: vscode.ExtensionContext) {
       detailsEmitter: virtualDocs.detailsEmitter,
       previewSource: virtualDocs.previewSource,
       previewEmitter: virtualDocs.previewEmitter,
-      previewUri: virtualDocs.previewUri,
       detailsUri: virtualDocs.detailsUri,
       detailsChannel: details,
       confirmExcluded: (filePath, relative, decision) =>

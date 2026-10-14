@@ -198,7 +198,7 @@ export class PromptRepositoryImpl extends PromptRepository {
     omittedFolders: string[],
     pending: number
   ): PromptBuild => {
-    const xml =
+    const output =
       stop === CopyStop.UserCancelled
         ? ''
         : renderPrompt(format, {
@@ -209,12 +209,12 @@ export class PromptRepositoryImpl extends PromptRepository {
 
     return {
       stop,
-      xml,
+      output,
       included,
       omittedFiles,
       omittedFolders,
       pending,
-      byteLength: Buffer.byteLength(xml)
+      byteLength: Buffer.byteLength(output)
     };
   };
 }

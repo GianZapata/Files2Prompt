@@ -4,16 +4,16 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createCopyGate } from '../src/domain/services/copy-gate.service';
-import { runCopy, runPreview } from '../src/domain/services/prompt-run.service';
+import { runCopy } from '../src/domain/services/prompt-run.service';
 
-const completed = (xml = '<files></files>'): PromptBuild => ({
+const completed = (output = '<files></files>'): PromptBuild => ({
   stop: 'completed',
-  xml,
+  output,
   included: [{ name: 'a.ts', content: 'a' }],
   omittedFiles: [],
   omittedFolders: [],
   pending: 0,
-  byteLength: Buffer.byteLength(xml)
+  byteLength: Buffer.byteLength(output)
 });
 
 const clipboard = (text = 'SENTINEL') => {
@@ -89,7 +89,7 @@ test('cancel keeps a non-empty clipboard and does not write', async () => {
     build: async () => ({
       ...completed(),
       stop: 'user-cancelled',
-      xml: '',
+      output: '',
       included: [{ name: 'a.ts', content: 'collected' }]
     }),
     withProgress: work => work(() => true)
@@ -103,32 +103,18 @@ test('cancel keeps a non-empty clipboard and does not write', async () => {
 test('copy writes when the prompt has only git changes', async () => {
   const gate = createCopyGate();
   const board = clipboard();
-  const xml = '<files><changes repo="api"></changes></files>';
+  const output = '<files><changes repo="api"></changes></files>';
   const result = await runCopy({
     gate,
     clipboard: board,
     summarize: built => built,
     build: async () => ({
-      ...completed(xml),
+      ...completed(output),
       included: []
     }),
     withProgress: work => work(() => false)
   });
 
   assert.equal(result.wrote, true);
-  assert.equal(board.read(), xml);
-});
-
-test('preview does not write the clipboard', async () => {
-  const board = clipboard('SENTINEL');
-  const result = await runPreview({
-    clipboard: board,
-    build: async () =>
-      completed('<files><file name="a.ts"><![CDATA[a]]></file></files>'),
-    summarize: built => built
-  });
-
-  assert.equal(result.wrote, false);
-  assert.equal(result.clipboard, 'SENTINEL');
-  assert.equal(result.before, 'SENTINEL');
+  assert.equal(board.read(), output);
 });

@@ -71,7 +71,7 @@ test('cancel returns no payload', async () => {
   });
 
   assert.equal(result.stop, 'user-cancelled');
-  assert.equal(result.xml, '');
+  assert.equal(result.output, '');
 });
 
 test('uncheck keeps a file unmarked after the ignore is removed', () => {

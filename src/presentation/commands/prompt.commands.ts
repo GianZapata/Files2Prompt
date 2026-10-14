@@ -27,10 +27,6 @@ import {
   type createDetailBook
 } from '../../domain/services/operation-report.service';
 import {
-  languageIdFor,
-  type OutputFormat as OutputFormatType
-} from '../../domain/services/prompt-formats.service';
-import {
   defaultPromptFileName,
   fileFiltersForFormat
 } from '../../domain/services/saved-prompt-file.service';
@@ -94,7 +90,6 @@ export interface PromptCommandDeps {
   detailsEmitter: vscode.EventEmitter<vscode.Uri>;
   previewSource: ReturnType<typeof createPreviewSource>;
   previewEmitter: vscode.EventEmitter<vscode.Uri>;
-  previewUri: vscode.Uri;
   detailsUri: vscode.Uri;
   detailsChannel: vscode.OutputChannel;
   confirmExcluded: (
@@ -111,6 +106,11 @@ export interface DeliverCollectedOptions {
   format?: OutputFormat;
   destinationUri?: vscode.Uri;
 }
+
+const configuredFormat = (): OutputFormat =>
+  vscode.workspace
+    .getConfiguration('files2prompt')
+    .get<OutputFormat>('outputFormat', OutputFormat.Xml);
 
 const resolveCommandUris = (
   commandUri: vscode.Uri | undefined,
@@ -513,22 +513,18 @@ export const registerPromptCommands = (
       deps.history.record(deps.currentSnapshot());
       await deps.saveHistory();
 
+      const format = configuredFormat();
       const summary = await deps.generatePrompt.execute({
-        filePaths: deps.selection.getCheckedFiles()
+        filePaths: deps.selection.getCheckedFiles(),
+        format
       });
 
-      deps.previewSource.set(summary.xml);
-      deps.previewEmitter.fire(deps.previewUri);
-      const document = await vscode.workspace.openTextDocument(deps.previewUri);
+      const previewUri = vscode.Uri.parse(deps.previewSource.uriFor(format));
 
-      await vscode.languages.setTextDocumentLanguage(
-        document,
-        languageIdFor(
-          vscode.workspace
-            .getConfiguration('files2prompt')
-            .get<OutputFormatType>('outputFormat', OutputFormat.Xml)
-        )
-      );
+      deps.previewSource.set(previewUri.toString(), summary.output);
+      deps.previewEmitter.fire(previewUri);
+
+      const document = await vscode.workspace.openTextDocument(previewUri);
 
       await vscode.window.showTextDocument(document, { preview: true });
 
@@ -569,11 +565,7 @@ export const registerPromptCommands = (
           return;
         }
 
-        const format =
-          formatOverride ??
-          vscode.workspace
-            .getConfiguration('files2prompt')
-            .get<OutputFormatType>('outputFormat', OutputFormat.Xml);
+        const format = formatOverride ?? configuredFormat();
 
         const fileName = defaultPromptFileName(format);
         const defaultUri = vscode.Uri.file(
@@ -602,7 +594,7 @@ export const registerPromptCommands = (
 
         await deliverCollected(checkedFiles, fileOutput, {
           includeSystemMessage: true,
-          format: format as OutputFormat,
+          format,
           destinationUri: destination
         });
       }
