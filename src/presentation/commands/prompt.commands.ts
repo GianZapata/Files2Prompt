@@ -131,7 +131,7 @@ export interface DeliverCollectedOptions {
 
 const configuredFormat = (): OutputFormat =>
   vscode.workspace
-    .getConfiguration('files2prompt')
+    .getConfiguration('promptfold')
     .get<OutputFormat>('outputFormat', OutputFormat.Xml);
 
 const canRevealInOS = () => vscode.env.remoteName === undefined;
@@ -300,7 +300,7 @@ export const registerPromptCommands = (
       return;
     }
 
-    const limits = vscode.workspace.getConfiguration('files2prompt');
+    const limits = vscode.workspace.getConfiguration('promptfold');
     let byteCount = 0;
 
     for (const filePath of filePaths) {
@@ -494,7 +494,7 @@ export const registerPromptCommands = (
     });
 
   return [
-    vscode.commands.registerCommand('files2prompt.copyFiles', async () => {
+    vscode.commands.registerCommand('promptfold.copyFiles', async () => {
       const checkedFiles = deps.selection.getCheckedFiles();
 
       deps.history.record(deps.currentSnapshot());
@@ -507,7 +507,7 @@ export const registerPromptCommands = (
       );
     }),
 
-    vscode.commands.registerCommand('files2prompt.copyAsXml', async () => {
+    vscode.commands.registerCommand('promptfold.copyAsXml', async () => {
       await copyCollected(
         deps.selection.getCheckedFiles(),
         true,
@@ -516,7 +516,7 @@ export const registerPromptCommands = (
       );
     }),
 
-    vscode.commands.registerCommand('files2prompt.copyAsMarkdown', async () => {
+    vscode.commands.registerCommand('promptfold.copyAsMarkdown', async () => {
       await copyCollected(
         deps.selection.getCheckedFiles(),
         true,
@@ -525,7 +525,7 @@ export const registerPromptCommands = (
       );
     }),
 
-    vscode.commands.registerCommand('files2prompt.copyAsPlain', async () => {
+    vscode.commands.registerCommand('promptfold.copyAsPlain', async () => {
       await copyCollected(
         deps.selection.getCheckedFiles(),
         true,
@@ -534,7 +534,7 @@ export const registerPromptCommands = (
       );
     }),
 
-    vscode.commands.registerCommand('files2prompt.copyOpenFiles', async () => {
+    vscode.commands.registerCommand('promptfold.copyOpenFiles', async () => {
       const tabGroups: ReadonlyArray<vscode.TabGroup> =
         vscode.window.tabGroups.all;
 
@@ -552,7 +552,7 @@ export const registerPromptCommands = (
     }),
 
     vscode.commands.registerCommand(
-      'files2prompt.copyExplorerSelection',
+      'promptfold.copyExplorerSelection',
       async (_commandUri: vscode.Uri | undefined, selected: vscode.Uri[]) => {
         const uris = resolveCommandUris(_commandUri, selected);
         const collected: string[] = [];
@@ -629,7 +629,7 @@ export const registerPromptCommands = (
       }
     ),
 
-    vscode.commands.registerCommand('files2prompt.showDetails', async () => {
+    vscode.commands.registerCommand('promptfold.showDetails', async () => {
       const latest = deps.detailBook.latest();
 
       if (!latest) {
@@ -641,7 +641,7 @@ export const registerPromptCommands = (
       await openReport(latest);
     }),
 
-    vscode.commands.registerCommand('files2prompt.previewPrompt', async () => {
+    vscode.commands.registerCommand('promptfold.previewPrompt', async () => {
       deps.history.record(deps.currentSnapshot());
       await deps.saveHistory();
 
@@ -664,7 +664,7 @@ export const registerPromptCommands = (
       const previewBudget = tokenBudgetNotice({
         tokens: estimateTokens(summary.output),
         budget: vscode.workspace
-          .getConfiguration('files2prompt')
+          .getConfiguration('promptfold')
           .get<number>('tokenBudget', 0)
       });
 
@@ -720,7 +720,7 @@ export const registerPromptCommands = (
     }),
 
     vscode.commands.registerCommand(
-      'files2prompt.savePromptAs',
+      'promptfold.savePromptAs',
       async (formatOverride?: OutputFormat, destinationUri?: vscode.Uri) => {
         const checkedFiles = deps.selection.getCheckedFiles();
 
@@ -770,7 +770,7 @@ export const registerPromptCommands = (
       }
     ),
 
-    vscode.commands.registerCommand('files2prompt.copyAsFile', async () => {
+    vscode.commands.registerCommand('promptfold.copyAsFile', async () => {
       const format = configuredFormat();
       const destination = vscode.Uri.file(
         tempPromptFilePath(os.tmpdir(), format, new Date())

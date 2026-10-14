@@ -32,8 +32,8 @@ export const createSelectionStatusBar = (
     50
   );
 
-  selectionItem.command = 'files2prompt.changeOutputFormat';
-  selectionItem.name = vscode.l10n.t('Files2Prompt selection');
+  selectionItem.command = 'promptfold.changeOutputFormat';
+  selectionItem.name = vscode.l10n.t('Promptfold selection');
 
   let descriptionTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -44,7 +44,7 @@ export const createSelectionStatusBar = (
 
     descriptionTimer = setTimeout(() => {
       void options.fileTreeProvider.selectionStats().then(stats => {
-        const config = vscode.workspace.getConfiguration('files2prompt');
+        const config = vscode.workspace.getConfiguration('promptfold');
         const tokens = estimateTokensFromBytes(stats.bytes);
         const changes = options.fileTreeProvider.promptChangeList();
         const status = selectionStatus({
@@ -80,10 +80,10 @@ export const createSelectionStatusBar = (
   };
 
   const changeFormatCommand = vscode.commands.registerCommand(
-    'files2prompt.changeOutputFormat',
+    'promptfold.changeOutputFormat',
     async () => {
       const current = vscode.workspace
-        .getConfiguration('files2prompt')
+        .getConfiguration('promptfold')
         .get<string>('outputFormat', 'xml');
 
       const picked = await vscode.window.showQuickPick(
@@ -105,7 +105,7 @@ export const createSelectionStatusBar = (
       }
 
       await vscode.workspace
-        .getConfiguration('files2prompt')
+        .getConfiguration('promptfold')
         .update(
           'outputFormat',
           next.format,
@@ -117,10 +117,10 @@ export const createSelectionStatusBar = (
   );
 
   const configListener = vscode.workspace.onDidChangeConfiguration(event => {
-    const section = 'files2prompt.outputFormat';
+    const section = 'promptfold.outputFormat';
 
     if (
-      event.affectsConfiguration('files2prompt.tokenBudget') ||
+      event.affectsConfiguration('promptfold.tokenBudget') ||
       (event.affectsConfiguration(section) && shouldRefreshSummary(section))
     ) {
       scheduleDescription();

@@ -9,7 +9,7 @@ import { OutputFormat } from '../../domain/entities/output-format.enum';
 
 export class VscodeSettingsDataSource extends SettingsDataSource {
   promptSettings = (): PromptSettings => {
-    const config = vscode.workspace.getConfiguration('files2prompt');
+    const config = vscode.workspace.getConfiguration('promptfold');
 
     const message = config.inspect<string>('systemMessage');
 

@@ -12,7 +12,7 @@ import {
 } from './support/extension';
 import { withStubs } from './support/window-stubs';
 
-const EXTENSION_ID = 'gianzapata.files2prompt';
+const EXTENSION_ID = 'gianzapata.promptfold';
 const PROMPT_FILE_NAME = /^prompt-\d{4}-\d{2}-\d{2}-\d{4}\.(md|txt|xml)$/;
 
 const uncommittedPaths = [
@@ -27,10 +27,10 @@ const inWorkspace = (relativePath: string) =>
   vscode.Uri.file(path.join(workspaceRoot(), relativePath));
 
 const selectUncommitted = async () => {
-  await vscode.commands.executeCommand('files2prompt.clearChecks');
+  await vscode.commands.executeCommand('promptfold.clearChecks');
   await withStubs({}, () =>
     vscode.commands.executeCommand(
-      'files2prompt.selectChanges',
+      'promptfold.selectChanges',
       undefined,
       'uncommitted'
     )
@@ -52,7 +52,7 @@ const withSettings = async <T>(
 
   for (const [key, value] of Object.entries(values)) {
     await vscode.workspace
-      .getConfiguration('files2prompt')
+      .getConfiguration('promptfold')
       .update(key, value, target);
   }
 
@@ -61,7 +61,7 @@ const withSettings = async <T>(
   } finally {
     for (const key of Object.keys(values)) {
       await vscode.workspace
-        .getConfiguration('files2prompt')
+        .getConfiguration('promptfold')
         .update(key, undefined, target);
     }
   }
@@ -71,7 +71,7 @@ const copyWarnings = (limits: Record<string, number>) =>
   withSettings(limits, () =>
     withStubs({}, async recording => {
       await vscode.env.clipboard.writeText('');
-      await vscode.commands.executeCommand('files2prompt.copyFiles');
+      await vscode.commands.executeCommand('promptfold.copyFiles');
 
       return recording.messages.filter(
         entry =>
@@ -82,7 +82,7 @@ const copyWarnings = (limits: Record<string, number>) =>
   );
 
 const detailsText = async () => {
-  await vscode.commands.executeCommand('files2prompt.showDetails');
+  await vscode.commands.executeCommand('promptfold.showDetails');
 
   return vscode.window.activeTextEditor?.document.getText() ?? '';
 };
@@ -90,7 +90,7 @@ const detailsText = async () => {
 const savePromptTo = (format: string, target: vscode.Uri) =>
   withStubs({}, async recording => {
     await vscode.commands.executeCommand(
-      'files2prompt.savePromptAs',
+      'promptfold.savePromptAs',
       format,
       target
     );
@@ -98,7 +98,7 @@ const savePromptTo = (format: string, target: vscode.Uri) =>
     return recording;
   });
 
-suite('Files2Prompt with two git repositories', () => {
+suite('Promptfold with two git repositories', () => {
   let outputDirectory: string;
 
   suiteSetup(async () => {
@@ -123,7 +123,7 @@ suite('Files2Prompt with two git repositories', () => {
   });
 
   test('selecting uncommitted changes includes staged and unstaged work with its diff', async () => {
-    const xml = await copyWith('files2prompt.copyAsXml');
+    const xml = await copyWith('promptfold.copyAsXml');
 
     for (const changed of uncommittedPaths) {
       assert.ok(xml.includes(`<file name="${changed}">`), `${changed} missing`);
@@ -143,7 +143,7 @@ suite('Files2Prompt with two git repositories', () => {
   });
 
   test('copies the selection as XML', async () => {
-    const xml = await copyWith('files2prompt.copyAsXml');
+    const xml = await copyWith('promptfold.copyAsXml');
 
     assert.ok(xml.startsWith('<files>'));
     assert.ok(xml.endsWith('</files>'));
@@ -152,7 +152,7 @@ suite('Files2Prompt with two git repositories', () => {
   });
 
   test('copies the selection as Markdown', async () => {
-    const markdown = await copyWith('files2prompt.copyAsMarkdown');
+    const markdown = await copyWith('promptfold.copyAsMarkdown');
 
     assert.ok(markdown.includes('## Git changes — web'));
     assert.ok(markdown.includes('### web/docs/mi archivo.md'));
@@ -162,7 +162,7 @@ suite('Files2Prompt with two git repositories', () => {
   });
 
   test('copies the selection as plain text', async () => {
-    const plain = await copyWith('files2prompt.copyAsPlain');
+    const plain = await copyWith('promptfold.copyAsPlain');
 
     assert.ok(plain.includes('=== FILE web/docs/mi archivo.md ==='));
     assert.ok(plain.includes('=== DIFF web/docs/mi archivo.md (modified) ==='));
@@ -202,7 +202,7 @@ suite('Files2Prompt with two git repositories', () => {
 
   test('offers the three filters and a default folder outside the workspace', async () => {
     const recording = await withStubs({}, async stubs => {
-      await vscode.commands.executeCommand('files2prompt.savePromptAs');
+      await vscode.commands.executeCommand('promptfold.savePromptAs');
 
       return stubs;
     });
@@ -230,7 +230,7 @@ suite('Files2Prompt with two git repositories', () => {
 
   test('copies the prompt as a file in the temp folder and reveals it', async () => {
     const recording = await withStubs({}, async stubs => {
-      await vscode.commands.executeCommand('files2prompt.copyAsFile');
+      await vscode.commands.executeCommand('promptfold.copyAsFile');
 
       return stubs;
     });
@@ -240,7 +240,7 @@ suite('Files2Prompt with two git repositories', () => {
 
     assert.equal(
       path.dirname(revealed.fsPath),
-      vscode.Uri.file(path.join(os.tmpdir(), 'files2prompt')).fsPath
+      vscode.Uri.file(path.join(os.tmpdir(), 'promptfold')).fsPath
     );
 
     assert.match(path.basename(revealed.fsPath), PROMPT_FILE_NAME);
@@ -254,12 +254,12 @@ suite('Files2Prompt with two git repositories', () => {
     await savePromptTo('markdown', target);
     assert.ok(fs.existsSync(target.fsPath));
 
-    await vscode.commands.executeCommand('files2prompt.clearChecks');
+    await vscode.commands.executeCommand('promptfold.clearChecks');
     await withStubs({}, () =>
-      vscode.commands.executeCommand('files2prompt.selectAll')
+      vscode.commands.executeCommand('promptfold.selectAll')
     );
 
-    const xml = await copyWith('files2prompt.copyAsXml');
+    const xml = await copyWith('promptfold.copyAsXml');
 
     assert.ok(xml.includes('<file name="web/src/app.ts">'));
     assert.equal(xml.includes('guardado.md'), false);
@@ -268,11 +268,11 @@ suite('Files2Prompt with two git repositories', () => {
   });
 
   test('never includes a secret file or a link that leaves the workspace', async () => {
-    await vscode.commands.executeCommand('files2prompt.clearChecks');
+    await vscode.commands.executeCommand('promptfold.clearChecks');
     await vscode.env.clipboard.writeText('');
     await withStubs({}, () =>
       vscode.commands.executeCommand(
-        'files2prompt.copyExplorerSelection',
+        'promptfold.copyExplorerSelection',
         inWorkspace('web/src/app.ts'),
         [
           inWorkspace('web/src/app.ts'),
@@ -304,7 +304,7 @@ suite('Files2Prompt with two git repositories', () => {
     await vscode.env.clipboard.writeText('');
     await withStubs({}, () =>
       vscode.commands.executeCommand(
-        'files2prompt.copyExplorerSelection',
+        'promptfold.copyExplorerSelection',
         target,
         [target]
       )
@@ -327,7 +327,7 @@ suite('Files2Prompt with two git repositories', () => {
     const warnings = await copyWarnings({ maxTotalBytes: 10, tokenBudget: 1 });
 
     assert.equal(warnings.length, 1);
-    assert.match(warnings[0].message, /files2prompt\.maxTotalBytes/);
+    assert.match(warnings[0].message, /promptfold\.maxTotalBytes/);
     assert.deepEqual(warnings[0].actions, ['Copy what fits', 'Cancel']);
   });
 
@@ -335,7 +335,7 @@ suite('Files2Prompt with two git repositories', () => {
     const warnings = await copyWarnings({ tokenBudget: 1 });
 
     assert.equal(warnings.length, 1);
-    assert.match(warnings[0].message, /files2prompt\.tokenBudget/);
+    assert.match(warnings[0].message, /promptfold\.tokenBudget/);
     assert.deepEqual(warnings[0].actions, [
       'Copy anyway',
       'Do not ask again in this workspace',
@@ -349,7 +349,7 @@ suite('Files2Prompt with two git repositories', () => {
 
     const tokenNotices = () =>
       withStubs({}, async recording => {
-        await vscode.commands.executeCommand('files2prompt.copyFiles');
+        await vscode.commands.executeCommand('promptfold.copyFiles');
 
         return recording.messages.filter(entry =>
           entry.actions.includes('Copy anyway')
@@ -358,13 +358,13 @@ suite('Files2Prompt with two git repositories', () => {
 
     await withSettings({ tokenBudget: 1 }, async () => {
       await withStubs({ warningChoice: silence }, () =>
-        vscode.commands.executeCommand('files2prompt.copyFiles')
+        vscode.commands.executeCommand('promptfold.copyFiles')
       );
 
       assert.equal((await tokenNotices()).length, 0);
 
       await vscode.workspace
-        .getConfiguration('files2prompt')
+        .getConfiguration('promptfold')
         .update('tokenBudget', 2, vscode.ConfigurationTarget.Workspace);
 
       assert.equal((await tokenNotices()).length, 1);
@@ -378,10 +378,10 @@ suite('Files2Prompt with two git repositories', () => {
   });
 
   test('selecting the whole project leaves a lockfile out and says so', async () => {
-    await vscode.commands.executeCommand('files2prompt.clearChecks');
-    await vscode.commands.executeCommand('files2prompt.selectAll');
+    await vscode.commands.executeCommand('promptfold.clearChecks');
+    await vscode.commands.executeCommand('promptfold.selectAll');
 
-    const xml = await copyWith('files2prompt.copyAsXml');
+    const xml = await copyWith('promptfold.copyAsXml');
 
     assert.ok(xml.includes('<file name="web/src/app.ts">'));
     assert.equal(xml.includes('GENERATED-LOCK-MARKER'), false);
@@ -394,11 +394,9 @@ suite('Files2Prompt with two git repositories', () => {
 
     await vscode.env.clipboard.writeText('');
     await withStubs({}, () =>
-      vscode.commands.executeCommand(
-        'files2prompt.copyExplorerSelection',
-        lock,
-        [lock]
-      )
+      vscode.commands.executeCommand('promptfold.copyExplorerSelection', lock, [
+        lock
+      ])
     );
 
     const xml = await vscode.env.clipboard.readText();
@@ -412,7 +410,7 @@ suite('Files2Prompt with two git repositories', () => {
     await vscode.env.clipboard.writeText('');
     await withStubs({}, () =>
       vscode.commands.executeCommand(
-        'files2prompt.copyExplorerSelection',
+        'promptfold.copyExplorerSelection',
         folder,
         [folder]
       )

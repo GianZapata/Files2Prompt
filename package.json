@@ -1,8 +1,8 @@
 {
-  "name": "files2prompt",
-  "displayName": "Files2Prompt Fork",
-  "icon": "./files2prompt-icon.png",
-  "description": "Fork of Thomas-McKanna/Files2Prompt. Copy file contents for LLM prompts.",
+  "name": "promptfold",
+  "displayName": "Promptfold",
+  "icon": "./promptfold-icon.png",
+  "description": "Pack files, Git diffs and project structure into token-aware prompts for LLMs.",
   "version": "2.0.0",
   "publisher": "gianzapata",
   "keywords": [
@@ -18,8 +18,17 @@
     "chatgpt",
     "git",
     "diff",
-    "markdown"
+    "markdown",
+    "files2prompt"
   ],
+  "homepage": "https://github.com/GianZapata/Files2Prompt#readme",
+  "bugs": {
+    "url": "https://github.com/GianZapata/Files2Prompt/issues"
+  },
+  "galleryBanner": {
+    "color": "#2b3a4a",
+    "theme": "dark"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/GianZapata/Files2Prompt"
@@ -27,10 +36,10 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "%files2prompt.untrustedWorkspaces.description%",
+      "description": "%promptfold.untrustedWorkspaces.description%",
       "restrictedConfigurations": [
-        "files2prompt.systemMessage",
-        "files2prompt.allowSensitive"
+        "promptfold.systemMessage",
+        "promptfold.allowSensitive"
       ]
     }
   },
@@ -41,12 +50,13 @@
     "workspace"
   ],
   "categories": [
+    "AI",
     "Other"
   ],
   "activationEvents": [
-    "onView:files2PromptView",
-    "onView:files2prompt.gitChanges",
-    "onView:files2prompt.extensions"
+    "onView:promptfoldView",
+    "onView:promptfold.gitChanges",
+    "onView:promptfold.extensions"
   ],
   "main": "./out/extension.js",
   "l10n": "./l10n",
@@ -54,367 +64,367 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "files2prompt",
-          "title": "%files2prompt.container.title%",
-          "icon": "resources/files2prompt-icon.svg"
+          "id": "promptfold",
+          "title": "%promptfold.container.title%",
+          "icon": "resources/promptfold-icon.svg"
         }
       ]
     },
     "views": {
-      "files2prompt": [
+      "promptfold": [
         {
-          "id": "files2PromptView",
-          "name": "%files2prompt.view.name%"
+          "id": "promptfoldView",
+          "name": "%promptfold.view.name%"
         },
         {
-          "id": "files2prompt.gitChanges",
-          "name": "%files2prompt.gitChanges.name%",
+          "id": "promptfold.gitChanges",
+          "name": "%promptfold.gitChanges.name%",
           "visibility": "collapsed"
         },
         {
-          "id": "files2prompt.extensions",
-          "name": "%files2prompt.extensions.name%",
+          "id": "promptfold.extensions",
+          "name": "%promptfold.extensions.name%",
           "visibility": "collapsed"
         }
       ]
     },
     "commands": [
       {
-        "command": "files2prompt.changeOutputFormat",
-        "title": "%files2prompt.changeOutputFormat.title%"
+        "command": "promptfold.changeOutputFormat",
+        "title": "%promptfold.changeOutputFormat.title%"
       },
       {
-        "command": "files2prompt.refresh",
-        "title": "%files2prompt.refresh.title%",
+        "command": "promptfold.refresh",
+        "title": "%promptfold.refresh.title%",
         "icon": "$(refresh)"
       },
       {
-        "command": "files2prompt.copyFiles",
-        "title": "%files2prompt.copyFiles.title%",
+        "command": "promptfold.copyFiles",
+        "title": "%promptfold.copyFiles.title%",
         "icon": "$(copy)"
       },
       {
-        "command": "files2prompt.copyAsXml",
-        "title": "%files2prompt.copyAsXml.title%"
+        "command": "promptfold.copyAsXml",
+        "title": "%promptfold.copyAsXml.title%"
       },
       {
-        "command": "files2prompt.copyAsMarkdown",
-        "title": "%files2prompt.copyAsMarkdown.title%"
+        "command": "promptfold.copyAsMarkdown",
+        "title": "%promptfold.copyAsMarkdown.title%"
       },
       {
-        "command": "files2prompt.copyAsPlain",
-        "title": "%files2prompt.copyAsPlain.title%"
+        "command": "promptfold.copyAsPlain",
+        "title": "%promptfold.copyAsPlain.title%"
       },
       {
-        "command": "files2prompt.savePromptAs",
-        "title": "%files2prompt.savePromptAs.title%",
+        "command": "promptfold.savePromptAs",
+        "title": "%promptfold.savePromptAs.title%",
         "icon": "$(save-as)"
       },
       {
-        "command": "files2prompt.copyAsFile",
-        "title": "%files2prompt.copyAsFile.title%"
+        "command": "promptfold.copyAsFile",
+        "title": "%promptfold.copyAsFile.title%"
       },
       {
-        "command": "files2prompt.clearChecks",
-        "title": "%files2prompt.clearChecks.title%",
+        "command": "promptfold.clearChecks",
+        "title": "%promptfold.clearChecks.title%",
         "icon": "$(clear-all)"
       },
       {
-        "command": "files2prompt.goBack",
-        "title": "%files2prompt.goBack.title%",
+        "command": "promptfold.goBack",
+        "title": "%promptfold.goBack.title%",
         "icon": "$(arrow-left)"
       },
       {
-        "command": "files2prompt.goForward",
-        "title": "%files2prompt.goForward.title%",
+        "command": "promptfold.goForward",
+        "title": "%promptfold.goForward.title%",
         "icon": "$(arrow-right)"
       },
       {
-        "command": "files2prompt.copyOpenFiles",
-        "title": "%files2prompt.copyOpenFiles.title%",
+        "command": "promptfold.copyOpenFiles",
+        "title": "%promptfold.copyOpenFiles.title%",
         "icon": "$(files)"
       },
       {
-        "command": "files2prompt.copyExplorerSelection",
-        "title": "%files2prompt.copyExplorerSelection.title%"
+        "command": "promptfold.copyExplorerSelection",
+        "title": "%promptfold.copyExplorerSelection.title%"
       },
       {
-        "command": "files2prompt.previewPrompt",
-        "title": "%files2prompt.previewPrompt.title%",
+        "command": "promptfold.previewPrompt",
+        "title": "%promptfold.previewPrompt.title%",
         "icon": "$(open-preview)"
       },
       {
-        "command": "files2prompt.showDetails",
-        "title": "%files2prompt.showDetails.title%",
+        "command": "promptfold.showDetails",
+        "title": "%promptfold.showDetails.title%",
         "icon": "$(list-selection)"
       },
       {
-        "command": "files2prompt.selectAll",
-        "title": "%files2prompt.selectAll.title%",
+        "command": "promptfold.selectAll",
+        "title": "%promptfold.selectAll.title%",
         "icon": "$(checklist)"
       },
       {
-        "command": "files2prompt.selectByExtension",
-        "title": "%files2prompt.selectByExtension.title%",
+        "command": "promptfold.selectByExtension",
+        "title": "%promptfold.selectByExtension.title%",
         "icon": "$(symbol-misc)"
       },
       {
-        "command": "files2prompt.selectChanges",
-        "title": "%files2prompt.selectChanges.title%",
+        "command": "promptfold.selectChanges",
+        "title": "%promptfold.selectChanges.title%",
         "icon": "$(git-compare)"
       },
       {
-        "command": "files2prompt.gitChanges.setScope",
-        "title": "%files2prompt.gitChanges.setScope.title%",
+        "command": "promptfold.gitChanges.setScope",
+        "title": "%promptfold.gitChanges.setScope.title%",
         "icon": "$(list-selection)"
       },
       {
-        "command": "files2prompt.gitChanges.setBase",
-        "title": "%files2prompt.gitChanges.setBase.title%",
+        "command": "promptfold.gitChanges.setBase",
+        "title": "%promptfold.gitChanges.setBase.title%",
         "icon": "$(git-branch)"
       },
       {
-        "command": "files2prompt.clearGitChanges",
-        "title": "%files2prompt.clearGitChanges.title%",
+        "command": "promptfold.clearGitChanges",
+        "title": "%promptfold.clearGitChanges.title%",
         "icon": "$(close)"
       }
     ],
     "submenus": [
       {
-        "id": "files2prompt.select",
-        "label": "%files2prompt.select.title%",
+        "id": "promptfold.select",
+        "label": "%promptfold.select.title%",
         "icon": "$(checklist)"
       }
     ],
     "menus": {
       "explorer/context": [
         {
-          "command": "files2prompt.copyExplorerSelection",
+          "command": "promptfold.copyExplorerSelection",
           "group": "navigation"
         },
         {
-          "command": "files2prompt.selectByExtension",
+          "command": "promptfold.selectByExtension",
           "when": "explorerResourceIsFolder",
           "group": "navigation"
         }
       ],
       "view/item/context": [
         {
-          "command": "files2prompt.selectByExtension",
-          "when": "view == files2PromptView && viewItem == folder",
+          "command": "promptfold.selectByExtension",
+          "when": "view == promptfoldView && viewItem == folder",
           "group": "navigation"
         },
         {
-          "command": "files2prompt.selectChanges",
-          "when": "view == files2PromptView && viewItem == repository",
+          "command": "promptfold.selectChanges",
+          "when": "view == promptfoldView && viewItem == repository",
           "group": "navigation"
         },
         {
-          "command": "files2prompt.gitChanges.setScope",
-          "when": "view == files2prompt.gitChanges && viewItem == gitRepo",
+          "command": "promptfold.gitChanges.setScope",
+          "when": "view == promptfold.gitChanges && viewItem == gitRepo",
           "group": "inline"
         },
         {
-          "command": "files2prompt.gitChanges.setBase",
-          "when": "view == files2prompt.gitChanges && viewItem == gitRepo",
+          "command": "promptfold.gitChanges.setBase",
+          "when": "view == promptfold.gitChanges && viewItem == gitRepo",
           "group": "inline"
         },
         {
-          "command": "files2prompt.clearGitChanges",
-          "when": "view == files2prompt.gitChanges",
+          "command": "promptfold.clearGitChanges",
+          "when": "view == promptfold.gitChanges",
           "group": "navigation"
         }
       ],
       "view/title": [
         {
-          "command": "files2prompt.copyFiles",
-          "when": "view == files2PromptView",
+          "command": "promptfold.copyFiles",
+          "when": "view == promptfoldView",
           "group": "navigation@1"
         },
         {
-          "command": "files2prompt.previewPrompt",
-          "when": "view == files2PromptView",
+          "command": "promptfold.previewPrompt",
+          "when": "view == promptfoldView",
           "group": "navigation@2"
         },
         {
-          "submenu": "files2prompt.select",
-          "when": "view == files2PromptView",
+          "submenu": "promptfold.select",
+          "when": "view == promptfoldView",
           "group": "navigation@3"
         },
         {
-          "command": "files2prompt.selectChanges",
-          "when": "view == files2PromptView",
+          "command": "promptfold.selectChanges",
+          "when": "view == promptfoldView",
           "group": "navigation@4"
         },
         {
-          "command": "files2prompt.clearChecks",
-          "when": "view == files2PromptView",
+          "command": "promptfold.clearChecks",
+          "when": "view == promptfoldView",
           "group": "navigation@5"
         },
         {
-          "command": "files2prompt.copyOpenFiles",
-          "when": "view == files2PromptView",
+          "command": "promptfold.copyOpenFiles",
+          "when": "view == promptfoldView",
           "group": "1_overflow@1"
         },
         {
-          "command": "files2prompt.refresh",
-          "when": "view == files2PromptView",
+          "command": "promptfold.refresh",
+          "when": "view == promptfoldView",
           "group": "1_overflow@2"
         },
         {
-          "command": "files2prompt.showDetails",
-          "when": "view == files2PromptView",
+          "command": "promptfold.showDetails",
+          "when": "view == promptfoldView",
           "group": "1_overflow@3"
         },
         {
-          "command": "files2prompt.savePromptAs",
-          "when": "view == files2PromptView",
+          "command": "promptfold.savePromptAs",
+          "when": "view == promptfoldView",
           "group": "1_overflow@4"
         },
         {
-          "command": "files2prompt.copyAsFile",
-          "when": "view == files2PromptView",
+          "command": "promptfold.copyAsFile",
+          "when": "view == promptfoldView",
           "group": "1_overflow@5"
         }
       ],
-      "files2prompt.select": [
+      "promptfold.select": [
         {
-          "command": "files2prompt.selectAll",
+          "command": "promptfold.selectAll",
           "group": "1_select@1"
         },
         {
-          "command": "files2prompt.selectByExtension",
+          "command": "promptfold.selectByExtension",
           "group": "1_select@2"
         },
         {
-          "command": "files2prompt.clearChecks",
+          "command": "promptfold.clearChecks",
           "group": "1_select@3"
         }
       ]
     },
     "viewsWelcome": [
       {
-        "view": "files2PromptView",
+        "view": "promptfoldView",
         "when": "workbenchState == empty",
-        "contents": "%files2prompt.welcome%"
+        "contents": "%promptfold.welcome%"
       }
     ],
     "keybindings": [
       {
-        "command": "files2prompt.refresh",
+        "command": "promptfold.refresh",
         "key": "ctrl+r",
         "mac": "cmd+r",
-        "when": "focusedView == 'files2PromptView'",
-        "title": "%files2prompt.refresh.title%"
+        "when": "focusedView == 'promptfoldView'",
+        "title": "%promptfold.refresh.title%"
       },
       {
-        "command": "files2prompt.copyFiles",
+        "command": "promptfold.copyFiles",
         "key": "ctrl+c",
         "mac": "cmd+c",
-        "when": "focusedView == 'files2PromptView'",
-        "title": "%files2prompt.copyFiles.title%"
+        "when": "focusedView == 'promptfoldView'",
+        "title": "%promptfold.copyFiles.title%"
       },
       {
-        "command": "files2prompt.clearChecks",
+        "command": "promptfold.clearChecks",
         "key": "ctrl+shift+x",
         "mac": "cmd+shift+x",
-        "when": "focusedView == 'files2PromptView'",
-        "title": "%files2prompt.clearChecks.title%"
+        "when": "focusedView == 'promptfoldView'",
+        "title": "%promptfold.clearChecks.title%"
       },
       {
-        "command": "files2prompt.copyOpenFiles",
+        "command": "promptfold.copyOpenFiles",
         "key": "ctrl+shift+c",
         "mac": "cmd+shift+c",
-        "when": "focusedView == 'files2PromptView'",
-        "title": "%files2prompt.copyOpenFiles.title%"
+        "when": "focusedView == 'promptfoldView'",
+        "title": "%promptfold.copyOpenFiles.title%"
       }
     ],
     "configuration": {
       "type": "object",
-      "title": "%files2prompt.config.title%",
+      "title": "%promptfold.config.title%",
       "properties": {
-        "files2prompt.systemMessage": {
+        "promptfold.systemMessage": {
           "type": "string",
-          "description": "%files2prompt.systemMessage.description%",
+          "description": "%promptfold.systemMessage.description%",
           "default": ""
         },
-        "files2prompt.exclude": {
+        "promptfold.exclude": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "default": [],
-          "description": "%files2prompt.exclude.description%"
+          "description": "%promptfold.exclude.description%"
         },
-        "files2prompt.allowSensitive": {
+        "promptfold.allowSensitive": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "default": [],
-          "description": "%files2prompt.allowSensitive.description%"
+          "description": "%promptfold.allowSensitive.description%"
         },
-        "files2prompt.maxFileBytes": {
+        "promptfold.maxFileBytes": {
           "type": "number",
           "default": 1048576,
-          "description": "%files2prompt.maxFileBytes.description%"
+          "description": "%promptfold.maxFileBytes.description%"
         },
-        "files2prompt.maxFiles": {
+        "promptfold.maxFiles": {
           "type": "number",
           "default": 5000,
-          "description": "%files2prompt.maxFiles.description%"
+          "description": "%promptfold.maxFiles.description%"
         },
-        "files2prompt.maxTotalBytes": {
+        "promptfold.maxTotalBytes": {
           "type": "number",
           "default": 8388608,
-          "description": "%files2prompt.maxTotalBytes.description%"
+          "description": "%promptfold.maxTotalBytes.description%"
         },
-        "files2prompt.tokenBudget": {
+        "promptfold.tokenBudget": {
           "type": "number",
           "default": 0,
           "minimum": 0,
-          "description": "%files2prompt.tokenBudget.description%"
+          "description": "%promptfold.tokenBudget.description%"
         },
-        "files2prompt.includeGenerated": {
+        "promptfold.includeGenerated": {
           "type": "boolean",
           "default": false,
-          "description": "%files2prompt.includeGenerated.description%"
+          "description": "%promptfold.includeGenerated.description%"
         },
-        "files2prompt.includeTree": {
+        "promptfold.includeTree": {
           "type": "boolean",
           "default": true,
-          "description": "%files2prompt.includeTree.description%"
+          "description": "%promptfold.includeTree.description%"
         },
-        "files2prompt.compactWhitespace": {
+        "promptfold.compactWhitespace": {
           "type": "boolean",
           "default": false,
-          "description": "%files2prompt.compactWhitespace.description%"
+          "description": "%promptfold.compactWhitespace.description%"
         },
-        "files2prompt.confirmIgnoredFolders": {
+        "promptfold.confirmIgnoredFolders": {
           "type": "boolean",
           "default": true,
-          "description": "%files2prompt.confirmIgnoredFolders.description%"
+          "description": "%promptfold.confirmIgnoredFolders.description%"
         },
-        "files2prompt.outputFormat": {
+        "promptfold.outputFormat": {
           "type": "string",
           "enum": ["xml", "markdown", "plain"],
           "default": "xml",
-          "description": "%files2prompt.outputFormat.description%"
+          "description": "%promptfold.outputFormat.description%"
         },
-        "files2prompt.diffMode": {
+        "promptfold.diffMode": {
           "type": "string",
           "enum": ["diffAndFiles", "diffOnly", "filesOnly"],
           "default": "diffAndFiles",
-          "description": "%files2prompt.diffMode.description%"
+          "description": "%promptfold.diffMode.description%"
         },
-        "files2prompt.extensionPresets": {
+        "promptfold.extensionPresets": {
           "type": "object",
           "default": {},
-          "description": "%files2prompt.extensionPresets.description%"
+          "description": "%promptfold.extensionPresets.description%"
         },
-        "files2prompt.ignoredExtensions": {
+        "promptfold.ignoredExtensions": {
           "type": "string",
-          "description": "%files2prompt.ignoredExtensions.description%",
+          "description": "%promptfold.ignoredExtensions.description%",
           "default": "png,jpg,jpeg,gif,svg"
         }
       }

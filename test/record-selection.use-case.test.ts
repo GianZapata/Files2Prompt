@@ -34,7 +34,7 @@ test('record-selection: records snapshot, persists state, and triggers notificat
   assert.equal(history.position(), 0);
   assert.equal(history.entries().length, 1);
   assert.equal(notified, true);
-  assert.deepEqual(state['files2prompt.selectionHistory'], {
+  assert.deepEqual(state['promptfold.selectionHistory'], {
     entries: [snapshot],
     position: 0
   });

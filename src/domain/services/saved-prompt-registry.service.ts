@@ -2,7 +2,7 @@ import * as path from 'path';
 
 import { isSameOrInside } from '../helpers/path-containment';
 
-export const SAVED_PROMPTS_KEY = 'files2prompt.savedPrompts';
+export const SAVED_PROMPTS_KEY = 'promptfold.savedPrompts';
 
 const SAVED_PROMPT_LIMIT = 500;
 

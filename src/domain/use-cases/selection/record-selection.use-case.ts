@@ -20,7 +20,7 @@ export class RecordSelection implements RecordSelectionUseCase {
   execute = async (request: RecordSelectionRequest): Promise<void> => {
     this.history.record(request.snapshot);
 
-    await this.stateDataSource.update('files2prompt.selectionHistory', {
+    await this.stateDataSource.update('promptfold.selectionHistory', {
       entries: this.history.entries().slice(-20),
       position: this.history.position()
     });

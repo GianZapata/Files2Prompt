@@ -157,12 +157,12 @@ test('saved-prompt-file: reveal label depends on the platform', () => {
   assert.equal(revealLabelFor('linux'), 'Reveal in file manager');
 });
 
-test('saved-prompt-file: copy as file lands in a files2prompt folder of the temp dir', () => {
+test('saved-prompt-file: copy as file lands in a promptfold folder of the temp dir', () => {
   const moment = new Date(2026, 9, 14, 8, 5);
 
   assert.equal(
     tempPromptFilePath('/tmp', OutputFormat.Markdown, moment, path.posix),
-    '/tmp/files2prompt/prompt-2026-10-14-0805.md'
+    '/tmp/promptfold/prompt-2026-10-14-0805.md'
   );
 
   assert.equal(
@@ -172,6 +172,6 @@ test('saved-prompt-file: copy as file lands in a files2prompt folder of the temp
       moment,
       path.win32
     ),
-    'C:\\Users\\ana\\AppData\\Local\\Temp\\files2prompt\\prompt-2026-10-14-0805.xml'
+    'C:\\Users\\ana\\AppData\\Local\\Temp\\promptfold\\prompt-2026-10-14-0805.xml'
   );
 });

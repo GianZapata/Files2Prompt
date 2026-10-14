@@ -115,7 +115,7 @@ export const previewStatusMessage = (
   if (input.stop === 'total-bytes') {
     return {
       message:
-        'Preview includes {0} files. {1} were left out because the prompt is too large. Change files2prompt.maxTotalBytes.',
+        'Preview includes {0} files. {1} were left out because the prompt is too large. Change promptfold.maxTotalBytes.',
       args: [input.included, input.pending]
     };
   }
@@ -123,7 +123,7 @@ export const previewStatusMessage = (
   if (input.stop === 'file-budget') {
     return {
       message:
-        'Preview includes {0} files. {1} were left out because the file limit was reached. Change files2prompt.maxFiles.',
+        'Preview includes {0} files. {1} were left out because the file limit was reached. Change promptfold.maxFiles.',
       args: [input.included, input.pending]
     };
   }

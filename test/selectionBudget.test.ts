@@ -53,8 +53,8 @@ test('choosing a format does not write the clipboard', () => {
   assert.equal(changed.format, 'markdown');
   assert.equal(changed.changed, true);
   assert.equal(changed.wroteClipboard, false);
-  assert.equal(shouldRefreshSummary('files2prompt.outputFormat'), true);
-  assert.equal(shouldRefreshSummary('files2prompt.maxFiles'), false);
+  assert.equal(shouldRefreshSummary('promptfold.outputFormat'), true);
+  assert.equal(shouldRefreshSummary('promptfold.maxFiles'), false);
   assert.equal(formatForCopy('markdown'), 'markdown');
   assert.equal(formatForCopy('markdown', 'xml'), 'xml');
 });
@@ -84,6 +84,6 @@ test('over-limit notice names the setting and hides internal codes', () => {
 
   assert.equal(notice.over, true);
   assert.equal(notice.message.includes('file-budget'), false);
-  assert.match(notice.message, /files2prompt\.maxFiles/);
+  assert.match(notice.message, /promptfold\.maxFiles/);
   assert.equal(notice.args[1], 1);
 });

@@ -4,9 +4,9 @@ import path from 'path';
 
 import * as vscode from 'vscode';
 
-const EXTENSION_ID = 'gianzapata.files2prompt';
+const EXTENSION_ID = 'gianzapata.promptfold';
 
-suite('Files2Prompt installed from the packaged VSIX', () => {
+suite('Promptfold installed from the packaged VSIX', () => {
   test('activates the installed copy, not the development folder', async () => {
     const extension = vscode.extensions.getExtension(EXTENSION_ID);
 
@@ -30,9 +30,9 @@ suite('Files2Prompt installed from the packaged VSIX', () => {
     const commands = await vscode.commands.getCommands(true);
 
     for (const command of [
-      'files2prompt.copyFiles',
-      'files2prompt.selectChanges',
-      'files2prompt.savePromptAs'
+      'promptfold.copyFiles',
+      'promptfold.selectChanges',
+      'promptfold.savePromptAs'
     ]) {
       assert.ok(commands.includes(command), `${command} is not registered`);
     }

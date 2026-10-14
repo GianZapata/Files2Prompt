@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-const EXTENSION_ID = 'gianzapata.files2prompt';
+const EXTENSION_ID = 'gianzapata.promptfold';
 const GIT_EXTENSION_ID = 'vscode.git';
 const GIT_READY_TIMEOUT_MS = 30000;
 const GIT_POLL_MS = 200;

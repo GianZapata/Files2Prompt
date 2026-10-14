@@ -2,7 +2,7 @@ import * as path from 'path';
 
 import { OutputFormat } from '../entities/output-format.enum';
 
-export const LAST_SAVE_FOLDER_KEY = 'files2prompt.lastSaveFolder';
+export const LAST_SAVE_FOLDER_KEY = 'promptfold.lastSaveFolder';
 
 const FORMAT_BY_EXTENSION = new Map<string, OutputFormat>([
   ['md', OutputFormat.Markdown],
@@ -70,11 +70,7 @@ export const tempPromptFilePath = (
   moment: Date,
   flavor: path.PlatformPath = path
 ): string =>
-  flavor.join(
-    tmpDir,
-    'files2prompt',
-    timestampedPromptFileName(format, moment)
-  );
+  flavor.join(tmpDir, 'promptfold', timestampedPromptFileName(format, moment));
 
 export const formatFromExtension = (
   filePath: string

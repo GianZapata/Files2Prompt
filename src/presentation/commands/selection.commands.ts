@@ -75,7 +75,7 @@ export const folderFromTarget = (
 export const registerSelectionCommands = (
   deps: SelectionCommandDeps
 ): vscode.Disposable[] => [
-  vscode.commands.registerCommand('files2prompt.clearChecks', async () => {
+  vscode.commands.registerCommand('promptfold.clearChecks', async () => {
     await deps.recordSelection.execute({ snapshot: deps.currentSnapshot() });
     deps.fileTreeProvider.clearChecks();
     await deps.recordSelection.execute({ snapshot: deps.currentSnapshot() });
@@ -83,7 +83,7 @@ export const registerSelectionCommands = (
       vscode.l10n.t('All checks have been cleared.')
     );
   }),
-  vscode.commands.registerCommand('files2prompt.selectAll', async () => {
+  vscode.commands.registerCommand('promptfold.selectAll', async () => {
     const outcome = await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
@@ -103,7 +103,7 @@ export const registerSelectionCommands = (
     await deps.recordSelection.execute({ snapshot: deps.currentSnapshot() });
   }),
   vscode.commands.registerCommand(
-    'files2prompt.selectByExtension',
+    'promptfold.selectByExtension',
     async (target?: vscode.Uri | SelectionTargetPort) => {
       const folderPath = folderFromTarget(target, deps.workspaceRoot);
       const listed = await filesSelectedByFolderAsync(
@@ -117,7 +117,7 @@ export const registerSelectionCommands = (
       );
 
       const presets = vscode.workspace
-        .getConfiguration('files2prompt')
+        .getConfiguration('promptfold')
         .get<Record<string, string[]>>('extensionPresets', {});
 
       const detected: ExtensionChoiceItem[] = [

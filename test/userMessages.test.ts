@@ -66,49 +66,48 @@ test('the view title keeps five codicon actions and a select submenu', () => {
   assert.deepEqual(
     navigation.map(item => item.command ?? item.submenu),
     [
-      'files2prompt.copyFiles',
-      'files2prompt.previewPrompt',
-      'files2prompt.select',
-      'files2prompt.selectChanges',
-      'files2prompt.clearChecks'
+      'promptfold.copyFiles',
+      'promptfold.previewPrompt',
+      'promptfold.select',
+      'promptfold.selectChanges',
+      'promptfold.clearChecks'
     ]
   );
 
   assert.equal(
-    manifest.contributes.submenus?.find(
-      item => item.id === 'files2prompt.select'
-    )?.icon,
+    manifest.contributes.submenus?.find(item => item.id === 'promptfold.select')
+      ?.icon,
     '$(checklist)'
   );
 
   assert.deepEqual(
-    manifest.contributes.menus['files2prompt.select'].map(item => item.command),
+    manifest.contributes.menus['promptfold.select'].map(item => item.command),
     [
-      'files2prompt.selectAll',
-      'files2prompt.selectByExtension',
-      'files2prompt.clearChecks'
+      'promptfold.selectAll',
+      'promptfold.selectByExtension',
+      'promptfold.clearChecks'
     ]
   );
 
   assert.equal(
-    title.some(item => item.submenu === 'files2prompt.copyAs'),
+    title.some(item => item.submenu === 'promptfold.copyAs'),
     false
   );
 
   assert.equal(
     manifest.contributes.submenus?.some(
-      item => item.id === 'files2prompt.copyAs'
+      item => item.id === 'promptfold.copyAs'
     ),
     false
   );
 
   assert.equal(
-    navigation.some(item => item.command === 'files2prompt.selectChanges'),
+    navigation.some(item => item.command === 'promptfold.selectChanges'),
     true
   );
 
   assert.equal(
-    title.some(item => item.command === 'files2prompt.pasteXml'),
+    title.some(item => item.command === 'promptfold.pasteXml'),
     false
   );
 
@@ -117,79 +116,85 @@ test('the view title keeps five codicon actions and a select submenu', () => {
       .filter(item => item.group?.startsWith('1_overflow'))
       .map(item => item.command),
     [
-      'files2prompt.copyOpenFiles',
-      'files2prompt.refresh',
-      'files2prompt.showDetails',
-      'files2prompt.savePromptAs',
-      'files2prompt.copyAsFile'
+      'promptfold.copyOpenFiles',
+      'promptfold.refresh',
+      'promptfold.showDetails',
+      'promptfold.savePromptAs',
+      'promptfold.copyAsFile'
     ]
   );
 
   assert.equal(
     title.some(
       item =>
-        item.command === 'files2prompt.goBack' ||
-        item.command === 'files2prompt.goForward'
+        item.command === 'promptfold.goBack' ||
+        item.command === 'promptfold.goForward'
     ),
     false
   );
 
   assert.equal(
     manifest.contributes.commands.some(
-      item => item.command === 'files2prompt.goBack'
+      item => item.command === 'promptfold.goBack'
     ),
     true
   );
 
   assert.equal(
     manifest.contributes.commands.some(
-      item => item.command === 'files2prompt.savePromptAs'
+      item => item.command === 'promptfold.savePromptAs'
     ),
     true
   );
 
   assert.equal(
     manifest.contributes.commands.some(
-      item => item.command === 'files2prompt.changeOutputFormat'
+      item => item.command === 'promptfold.changeOutputFormat'
     ),
     true
   );
 
   assert.equal(
-    title.some(item => item.command === 'files2prompt.changeOutputFormat'),
+    title.some(item => item.command === 'promptfold.changeOutputFormat'),
     false
   );
 
   assert.equal(
     manifest.contributes.commands.some(
-      item => item.command === 'files2prompt.copyAsMarkdown'
+      item => item.command === 'promptfold.copyAsMarkdown'
     ),
     true
   );
 });
 
+interface ViewVisibility {
+  id: string;
+  visibility?: string;
+}
+
+interface ViewsManifest {
+  contributes: { views: { promptfold: ViewVisibility[] } };
+}
+
 test('git changes and extensions start collapsed', () => {
   const manifest = JSON.parse(
     fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8')
-  ) as {
-    contributes: {
-      views: {
-        files2prompt: Array<{ id: string; visibility?: string }>;
-      };
-    };
-  };
-  const views = manifest.contributes.views.files2prompt;
+  ) as ViewsManifest;
+
+  const views = manifest.contributes.views.promptfold;
 
   assert.equal(
-    views.find(view => view.id === 'files2PromptView')?.visibility,
+    views.find(view => view.id === 'promptfoldView')?.visibility,
     undefined
   );
+
   assert.equal(
-    views.find(view => view.id === 'files2prompt.gitChanges')?.visibility,
+    views.find(view => view.id === 'promptfold.gitChanges')?.visibility,
     'collapsed'
   );
+
   assert.equal(
-    views.find(view => view.id === 'files2prompt.extensions')?.visibility,
+    views.find(view => view.id === 'promptfold.extensions')?.visibility,
     'collapsed'
   );
 });
@@ -200,15 +205,12 @@ test('view shortcuts use the focused view, not a custom active flag', () => {
   ) as { contributes: { keybindings: Array<{ when?: string }> } };
 
   for (const binding of manifest.contributes.keybindings) {
-    assert.equal(
-      (binding.when ?? '').includes('files2PromptView.active'),
-      false
-    );
+    assert.equal((binding.when ?? '').includes('promptfoldView.active'), false);
   }
 
   assert.equal(
     manifest.contributes.keybindings.some(
-      binding => binding.when === "focusedView == 'files2PromptView'"
+      binding => binding.when === "focusedView == 'promptfoldView'"
     ),
     true
   );
@@ -218,7 +220,7 @@ test('details content is served from a virtual document', () => {
   const details = createDetailsSource();
 
   details.set('Stop: total-bytes');
-  assert.equal(details.uri.startsWith('files2prompt-details:'), true);
+  assert.equal(details.uri.startsWith('promptfold-details:'), true);
   assert.equal(details.get(), 'Stop: total-bytes');
 });
 
@@ -227,17 +229,17 @@ test('preview names its virtual document after the output format', () => {
 
   assert.equal(
     preview.uriFor(OutputFormat.Markdown),
-    'files2prompt-preview:prompt.md'
+    'promptfold-preview:prompt.md'
   );
 
   assert.equal(
     preview.uriFor(OutputFormat.Plain),
-    'files2prompt-preview:prompt.txt'
+    'promptfold-preview:prompt.txt'
   );
 
   assert.equal(
     preview.uriFor(OutputFormat.Xml),
-    'files2prompt-preview:prompt.xml'
+    'promptfold-preview:prompt.xml'
   );
 });
 

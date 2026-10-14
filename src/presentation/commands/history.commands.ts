@@ -19,7 +19,7 @@ export interface HistoryCommandDeps {
 export const registerHistoryCommands = (
   deps: HistoryCommandDeps
 ): vscode.Disposable[] => [
-  vscode.commands.registerCommand('files2prompt.goBack', async () => {
+  vscode.commands.registerCommand('promptfold.goBack', async () => {
     const previousSelection = deps.history.back();
 
     if (previousSelection) {
@@ -33,7 +33,7 @@ export const registerHistoryCommands = (
       );
     }
   }),
-  vscode.commands.registerCommand('files2prompt.goForward', async () => {
+  vscode.commands.registerCommand('promptfold.goForward', async () => {
     const nextSelection = deps.history.forward();
 
     if (nextSelection) {

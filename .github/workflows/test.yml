@@ -49,14 +49,14 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       - run: npm ci
-      - run: npx vsce package --out files2prompt.vsix
+      - run: npx vsce package --out promptfold.vsix
       - name: Record SHA-256
-        run: sha256sum files2prompt.vsix | tee -a "$GITHUB_STEP_SUMMARY"
+        run: sha256sum promptfold.vsix | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Upload VSIX
         uses: actions/upload-artifact@v6
         with:
-          name: files2prompt-vsix
-          path: files2prompt.vsix
+          name: promptfold-vsix
+          path: promptfold.vsix
           if-no-files-found: error
 
   smoke:
@@ -78,10 +78,10 @@ jobs:
       - name: Download VSIX
         uses: actions/download-artifact@v7
         with:
-          name: files2prompt-vsix
+          name: promptfold-vsix
       - name: Smoke test the installed extension
         if: runner.os == 'Linux'
-        run: xvfb-run -a npm run test:smoke -- files2prompt.vsix
+        run: xvfb-run -a npm run test:smoke -- promptfold.vsix
       - name: Smoke test the installed extension
         if: runner.os != 'Linux'
-        run: npm run test:smoke -- files2prompt.vsix
+        run: npm run test:smoke -- promptfold.vsix

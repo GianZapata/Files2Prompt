@@ -26,13 +26,13 @@ const initRepository = name => {
 
   fs.mkdirSync(repository, { recursive: true });
   git(repository, 'init', '--quiet', '--initial-branch=main');
-  git(repository, 'config', '--local', 'user.name', 'Files2Prompt Tests');
+  git(repository, 'config', '--local', 'user.name', 'Promptfold Tests');
   git(
     repository,
     'config',
     '--local',
     'user.email',
-    'tests@files2prompt.invalid'
+    'tests@promptfold.invalid'
   );
   git(repository, 'config', '--local', 'commit.gpgsign', 'false');
   git(repository, 'config', '--local', 'core.autocrlf', 'false');

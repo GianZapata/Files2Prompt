@@ -2,8 +2,8 @@ import type { OutputFormat } from '../../domain/entities/output-format.enum';
 
 import { defaultPromptFileName } from '../../domain/services/saved-prompt-file.service';
 
-export const PREVIEW_SCHEME = 'files2prompt-preview';
-export const DETAILS_SCHEME = 'files2prompt-details';
+export const PREVIEW_SCHEME = 'promptfold-preview';
+export const DETAILS_SCHEME = 'promptfold-details';
 
 export const createPreviewSource = () => {
   const contents = new Map<string, string>();

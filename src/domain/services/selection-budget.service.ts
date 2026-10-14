@@ -13,7 +13,7 @@ export const formatForCopy = <T extends string>(setting: T, override?: T) =>
   override ?? setting;
 
 export const shouldRefreshSummary = (section: string) =>
-  section === 'files2prompt.outputFormat';
+  section === 'promptfold.outputFormat';
 
 export const outputFormatLabel = (format: string) => {
   if (format === OutputFormat.Markdown || format === 'markdown') {
@@ -91,7 +91,7 @@ export const overLimitNotice = (input: OverLimitNoticeInput): LimitNotice => {
     return {
       over: true,
       message:
-        'This selection has {0} files, {1} over the limit of {2}. Change files2prompt.maxFiles, copy what fits, or cancel.',
+        'This selection has {0} files, {1} over the limit of {2}. Change promptfold.maxFiles, copy what fits, or cancel.',
       args: [input.fileCount, input.fileCount - input.maxFiles, input.maxFiles]
     };
   }
@@ -100,7 +100,7 @@ export const overLimitNotice = (input: OverLimitNoticeInput): LimitNotice => {
     return {
       over: true,
       message:
-        'This selection is about {0}, {1} over the limit of {2}. Change files2prompt.maxTotalBytes, copy what fits, or cancel.',
+        'This selection is about {0}, {1} over the limit of {2}. Change promptfold.maxTotalBytes, copy what fits, or cancel.',
       args: [
         formatByteSize(input.byteCount),
         formatByteSize(input.byteCount - input.maxTotalBytes),
@@ -112,7 +112,7 @@ export const overLimitNotice = (input: OverLimitNoticeInput): LimitNotice => {
   return { over: false, message: '', args: [] };
 };
 
-export const SKIP_TOKEN_NOTICE_KEY = 'files2prompt.skipTokenBudgetNotice';
+export const SKIP_TOKEN_NOTICE_KEY = 'promptfold.skipTokenBudgetNotice';
 
 export interface CopyNotice extends LimitNotice {
   kind?: CopyNoticeKind;

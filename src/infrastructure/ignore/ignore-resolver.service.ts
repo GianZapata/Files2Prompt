@@ -306,7 +306,7 @@ export const createIgnoreResolver = (
 
     for (const pattern of options.excludePatterns ?? []) {
       if (pattern.trim()) {
-        marked.add({ pattern: pattern.trim(), mark: 'files2prompt.exclude' });
+        marked.add({ pattern: pattern.trim(), mark: 'promptfold.exclude' });
       }
     }
 
@@ -314,7 +314,7 @@ export const createIgnoreResolver = (
       if (pattern.trim()) {
         marked.add({
           pattern: pattern.trim(),
-          mark: 'files2prompt.ignoredExtensions'
+          mark: 'promptfold.ignoredExtensions'
         });
       }
     }
@@ -431,11 +431,11 @@ const reasonFromMark = (mark: string) => {
     return IgnoreReason.Gitignore;
   }
 
-  if (mark === 'files2prompt.exclude') {
+  if (mark === 'promptfold.exclude') {
     return IgnoreReason.WorkspaceExclude;
   }
 
-  if (mark === 'files2prompt.ignoredExtensions') {
+  if (mark === 'promptfold.ignoredExtensions') {
     return IgnoreReason.IgnoredExtension;
   }
 

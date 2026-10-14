@@ -42,7 +42,7 @@ test('only files inside the workspace become a relative registry path', () => {
   );
 
   assert.equal(
-    savedPromptRelativePath('/ws', '/tmp/files2prompt/p.md', path.posix),
+    savedPromptRelativePath('/ws', '/tmp/promptfold/p.md', path.posix),
     undefined
   );
 

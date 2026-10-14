@@ -78,11 +78,11 @@ export class FileTreeProvider
       this.watcher.onDidChange(uri => this.onFileSystemChanged(uri)),
       vscode.workspace.onDidChangeConfiguration(event => {
         if (
-          event.affectsConfiguration('files2prompt.ignoredExtensions') ||
-          event.affectsConfiguration('files2prompt.exclude') ||
-          event.affectsConfiguration('files2prompt.allowSensitive') ||
-          event.affectsConfiguration('files2prompt.includeGenerated') ||
-          event.affectsConfiguration('files2prompt.maxFileBytes')
+          event.affectsConfiguration('promptfold.ignoredExtensions') ||
+          event.affectsConfiguration('promptfold.exclude') ||
+          event.affectsConfiguration('promptfold.allowSensitive') ||
+          event.affectsConfiguration('promptfold.includeGenerated') ||
+          event.affectsConfiguration('promptfold.maxFileBytes')
         ) {
           this.reloadRules();
           this.refresh();
@@ -732,7 +732,7 @@ export class FileTreeProvider
   }
 
   private reloadRules(): void {
-    const config = vscode.workspace.getConfiguration('files2prompt');
+    const config = vscode.workspace.getConfiguration('promptfold');
     const extensionsString = config.get<string>(
       'ignoredExtensions',
       'png,jpg,jpeg,gif,svg'

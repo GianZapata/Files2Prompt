@@ -63,7 +63,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   const fileTreeProvider = new FileTreeProvider(workspaceRoot, savedPrompts);
   const copyGate = createCopyGate();
-  const details = vscode.window.createOutputChannel('Files2Prompt');
+  const details = vscode.window.createOutputChannel('Promptfold');
   const detailBook = createDetailBook();
 
   const filesDataSource = new NodeWorkspaceFilesDataSource();
@@ -92,27 +92,21 @@ export function activate(context: vscode.ExtensionContext) {
 
   const virtualDocs = createPromptVirtualDocuments();
   const gitChanges = new GitChangesProvider();
-  const treeView = vscode.window.createTreeView('files2PromptView', {
+  const treeView = vscode.window.createTreeView('promptfoldView', {
     treeDataProvider: fileTreeProvider,
     manageCheckboxStateManually: true
   });
 
-  const gitChangesView = vscode.window.createTreeView(
-    'files2prompt.gitChanges',
-    {
-      treeDataProvider: gitChanges,
-      manageCheckboxStateManually: true
-    }
-  );
+  const gitChangesView = vscode.window.createTreeView('promptfold.gitChanges', {
+    treeDataProvider: gitChanges,
+    manageCheckboxStateManually: true
+  });
 
   const extensions = new ExtensionsProvider();
-  const extensionsView = vscode.window.createTreeView(
-    'files2prompt.extensions',
-    {
-      treeDataProvider: extensions,
-      manageCheckboxStateManually: true
-    }
-  );
+  const extensionsView = vscode.window.createTreeView('promptfold.extensions', {
+    treeDataProvider: extensions,
+    manageCheckboxStateManually: true
+  });
 
   const statusBar = createSelectionStatusBar({
     fileTreeProvider,
@@ -120,7 +114,7 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   const stored = stateDataSource.get<SelectionHistoryState>(
-    'files2prompt.selectionHistory'
+    'promptfold.selectionHistory'
   );
 
   const history = createSelectionHistory(
@@ -141,7 +135,7 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   const saveHistory = async () => {
-    await stateDataSource.update('files2prompt.selectionHistory', {
+    await stateDataSource.update('promptfold.selectionHistory', {
       entries: history.entries().slice(-20),
       position: history.position()
     });
@@ -198,18 +192,18 @@ export function activate(context: vscode.ExtensionContext) {
   const ignoredPrompt = () => ({
     confirm: shouldConfirmIgnored({
       setting: vscode.workspace
-        .getConfiguration('files2prompt')
+        .getConfiguration('promptfold')
         .get<boolean>('confirmIgnoredFolders', true),
       remembered:
-        context.workspaceState.get('files2prompt.skipIgnoredConfirm') === true
+        context.workspaceState.get('promptfold.skipIgnoredConfirm') === true
     }),
     remember: () =>
-      context.workspaceState.update('files2prompt.skipIgnoredConfirm', true)
+      context.workspaceState.update('promptfold.skipIgnoredConfirm', true)
   });
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(event => {
-      if (event.affectsConfiguration('files2prompt.tokenBudget')) {
+      if (event.affectsConfiguration('promptfold.tokenBudget')) {
         void stateDataSource.update(SKIP_TOKEN_NOTICE_KEY, undefined);
       }
     }),
@@ -223,7 +217,7 @@ export function activate(context: vscode.ExtensionContext) {
     watchGitRepositories(workspaceRoot, fileTreeProvider, found =>
       gitChanges.setRepositories(found)
     ),
-    vscode.commands.registerCommand('files2prompt.refresh', () =>
+    vscode.commands.registerCommand('promptfold.refresh', () =>
       fileTreeProvider.refresh()
     ),
     ...registerPromptCommands({

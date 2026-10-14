@@ -109,13 +109,13 @@ export const registerGitCommands = (
   };
 
   return [
-    vscode.commands.registerCommand('files2prompt.clearGitChanges', () => {
+    vscode.commands.registerCommand('promptfold.clearGitChanges', () => {
       deps.publishChanges([]);
       deps.scheduleDescription();
     }),
 
     vscode.commands.registerCommand(
-      'files2prompt.gitChanges.setScope',
+      'promptfold.gitChanges.setScope',
       async (item?: GitChangeItem) => {
         if (!item) {
           return;
@@ -134,7 +134,7 @@ export const registerGitCommands = (
     ),
 
     vscode.commands.registerCommand(
-      'files2prompt.gitChanges.setBase',
+      'promptfold.gitChanges.setBase',
       async (item?: GitChangeItem) => {
         if (!item) {
           return;
@@ -153,7 +153,7 @@ export const registerGitCommands = (
     ),
 
     vscode.commands.registerCommand(
-      'files2prompt.selectChanges',
+      'promptfold.selectChanges',
       async (
         target?: { resourceUri?: vscode.Uri } | string,
         presetScope?: AnyGitScope,

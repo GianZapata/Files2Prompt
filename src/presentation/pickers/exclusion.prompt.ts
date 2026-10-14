@@ -75,7 +75,7 @@ export const confirmExcluded = async (
   if (decision.reason === 'saved-prompt') {
     await vscode.window.showWarningMessage(
       vscode.l10n.t(
-        '{0} was saved by Files2Prompt, so it stays out of the prompt.',
+        '{0} was saved by Promptfold, so it stays out of the prompt.',
         relativePath
       )
     );

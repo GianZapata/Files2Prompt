@@ -1,7 +1,7 @@
 {
-  "name": "files2prompt-smoke-host",
-  "displayName": "Files2Prompt smoke host",
-  "publisher": "files2prompt-tests",
+  "name": "promptfold-smoke-host",
+  "displayName": "Promptfold smoke host",
+  "publisher": "promptfold-tests",
   "version": "0.0.0",
   "engines": {
     "vscode": "*"

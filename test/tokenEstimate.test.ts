@@ -41,7 +41,7 @@ test('a prompt over the budget names the setting and the excess', () => {
   const notice = tokenBudgetNotice({ tokens: 160000, budget: 150000 });
 
   assert.equal(notice.over, true);
-  assert.match(notice.message, /files2prompt\.tokenBudget/);
+  assert.match(notice.message, /promptfold\.tokenBudget/);
   assert.deepEqual(notice.args, ['160k', '10k', '150k']);
 });
 
@@ -57,7 +57,7 @@ test('over both the byte limit and the token budget raises one notice, bytes fir
 
   assert.equal(both.over, true);
   assert.equal(both.kind, CopyNoticeKind.Limit);
-  assert.match(both.message, /files2prompt\.maxTotalBytes/);
+  assert.match(both.message, /promptfold\.maxTotalBytes/);
 });
 
 test('only the token budget exceeded raises the token notice', () => {
@@ -71,7 +71,7 @@ test('only the token budget exceeded raises the token notice', () => {
   });
 
   assert.equal(tokens.kind, CopyNoticeKind.Tokens);
-  assert.match(tokens.message, /files2prompt\.tokenBudget/);
+  assert.match(tokens.message, /promptfold\.tokenBudget/);
 });
 
 test('inside every limit raises nothing', () => {

@@ -47,7 +47,7 @@ export const tokenBudgetNotice = (
   return {
     over: true,
     message:
-      'This selection is about {0} tokens, {1} over the budget of {2}. Change files2prompt.tokenBudget, copy anyway, or cancel.',
+      'This selection is about {0} tokens, {1} over the budget of {2}. Change promptfold.tokenBudget, copy anyway, or cancel.',
     args: [
       compactTokenCount(input.tokens),
       compactTokenCount(input.tokens - input.budget),
