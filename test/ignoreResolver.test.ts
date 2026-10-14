@@ -5,6 +5,7 @@ import os from 'os';
 import path from 'path';
 
 import { IgnoreReason } from '../src/domain/entities/ignore-reason.enum';
+import { toPosixRelative } from '../src/domain/helpers/to-posix-relative';
 import { checkboxForFolder } from '../src/domain/services/parent-check.service';
 import { createSavedPromptRegistry } from '../src/domain/services/saved-prompt-registry.service';
 import { filesSelectedByFolder } from '../src/infrastructure/filesystem/select-files.walker';
@@ -103,7 +104,7 @@ test('checking the workspace root does not force a gitignored folder', () => {
   write(root, 'src/app.ts', 'export const app = 1;\n');
   const resolver = createIgnoreResolver({ workspaceRoot: root });
   const selected = filesSelectedByFolder(root, root, resolver.resolve).map(
-    file => path.relative(root, file)
+    file => toPosixRelative(root, file)
   );
 
   assert.equal(selected.includes('odd/keep.ts'), false);
@@ -201,7 +202,7 @@ test('folder selection includes allowed files and skips pycache', () => {
   write(root, 'src/__pycache__/main.cpython-313.pyc', 'bin');
   const resolver = createIgnoreResolver({ workspaceRoot: root });
   const selected = filesSelectedByFolder(root, root, resolver.resolve).map(
-    file => path.relative(root, file)
+    file => toPosixRelative(root, file)
   );
 
   assert.deepEqual(selected, ['src/main.py']);
@@ -216,7 +217,7 @@ test('a folder that contains gitignore still selects its direct file', () => {
   write(root, 'pkg/nested/also.ts');
   const resolver = createIgnoreResolver({ workspaceRoot: root });
   const fromFolder = filesSelectedByFolder(root, folder, resolver.resolve).map(
-    file => path.relative(root, file)
+    file => toPosixRelative(root, file)
   );
   const individual = [
     'pkg/.gitignore',
