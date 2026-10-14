@@ -53,39 +53,6 @@ test('treats a NUL sample as binary', async () => {
   assert.equal(result.omittedFiles[0]?.reason, 'binary');
 });
 
-test('omits a file reached through a link that leaves the workspace', async () => {
-  const outside = root();
-  const workspace = root();
-  const inside = path.join(workspace, 'real.txt');
-  const secret = path.join(outside, 'id_rsa');
-  const link = path.join(workspace, 'ext');
-
-  fs.writeFileSync(inside, 'kept');
-  fs.writeFileSync(secret, 'PRIVATE KEY');
-  fs.symlinkSync(outside, link, 'junction');
-
-  const result = await buildPrompt({
-    workspaceRoot: workspace,
-    filePaths: [inside, path.join(link, 'id_rsa')],
-    resolve: () => ({ included: true }),
-    openText: () => undefined,
-    isCancelled: () => false,
-    maxFileBytes: 1048576,
-    maxTotalBytes: 8388608,
-    maxFiles: 5000
-  });
-
-  assert.deepEqual(
-    result.included.map(file => file.name),
-    ['real.txt']
-  );
-  assert.equal(result.output.includes('PRIVATE KEY'), false);
-  assert.deepEqual(
-    result.omittedFiles.map(file => file.reason),
-    ['symlink']
-  );
-});
-
 test('cancel returns no payload', async () => {
   const workspace = root();
   const filePath = path.join(workspace, 'a.ts');

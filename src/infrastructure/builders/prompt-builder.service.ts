@@ -11,7 +11,6 @@ import type {
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { isSameOrInside } from '../../domain/helpers/path-containment';
 import { renderPrompt } from '../../domain/services/prompt-formats.service';
 
 export type { OmittedFile, PromptBuild };
@@ -42,7 +41,6 @@ export const buildPrompt = async (
   const omittedFiles: OmittedFile[] = [];
   const omittedFolders: string[] = [];
   const seen = new Set<string>();
-  const realRoot = fs.realpathSync(input.workspaceRoot);
 
   const rendered = (files: PromptFile[]) =>
     renderPrompt(input.format ?? 'xml', {
@@ -104,13 +102,6 @@ export const buildPrompt = async (
     }
 
     const name = relativeName(input.workspaceRoot, normalized);
-
-    if (!isSameOrInside(realRoot, fs.realpathSync(normalized))) {
-      omittedFiles.push({ path: name, reason: 'symlink' });
-
-      continue;
-    }
-
     const decision = input.resolve(name, 'file');
 
     if (!decision.included) {

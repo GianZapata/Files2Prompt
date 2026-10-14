@@ -15,6 +15,14 @@ export class NodeWorkspaceFilesDataSource extends WorkspaceFilesDataSource {
     }
   };
 
+  realPathOf = async (filePath: string): Promise<string | undefined> => {
+    try {
+      return await fs.promises.realpath(filePath);
+    } catch {
+      return undefined;
+    }
+  };
+
   sizeOf = async (filePath: string): Promise<number | undefined> => {
     try {
       const stat = await fs.promises.stat(filePath);

@@ -11,6 +11,8 @@ import type {
 
 import { CopyStop } from '../../domain/entities/copy-stop.enum';
 import { DiffMode } from '../../domain/entities/diff-mode.enum';
+import { IgnoreReason } from '../../domain/entities/ignore-reason.enum';
+import { isSameOrInside } from '../../domain/helpers/path-containment';
 import { toPosixRelative } from '../../domain/helpers/to-posix-relative';
 import {
   PromptRepository,
@@ -59,6 +61,7 @@ export class PromptRepositoryImpl extends PromptRepository {
     ].sort();
 
     const seen = new Set<string>();
+    const realRoot = await this.files.realPathOf(this.workspaceRoot);
 
     const rendered = (files: PromptFile[]) =>
       renderPrompt(format, {
@@ -129,6 +132,18 @@ export class PromptRepositoryImpl extends PromptRepository {
       }
 
       const name = toPosixRelative(this.workspaceRoot, normalized);
+      const realFile = await this.files.realPathOf(normalized);
+
+      if (
+        realRoot === undefined ||
+        realFile === undefined ||
+        !isSameOrInside(realRoot, realFile)
+      ) {
+        omittedFiles.push({ path: name, reason: IgnoreReason.Symlink });
+
+        continue;
+      }
+
       const decision = this.resolver.resolvePath(name, 'file');
 
       if (!decision.included) {
