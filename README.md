@@ -4,7 +4,7 @@
 
 Copy files and Git changes as XML, Markdown or plain text for LLM prompts, with an estimate of the tokens they use. No telemetry, no network access.
 
-![Demo](demo.gif)
+<!-- screenshots: add before publishing -->
 
 ## Features
 
@@ -268,8 +268,8 @@ Azure DevOps retires global PATs on 2026-12-01. After that date, publishing to t
 To release, bump `version` in `package.json`, update `CHANGELOG.md`, commit, then tag:
 
 ```sh
-git tag v2.0.0
-git push origin v2.0.0
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 ## Credits
