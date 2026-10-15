@@ -21,9 +21,9 @@
     "markdown",
     "files2prompt"
   ],
-  "homepage": "https://github.com/GianZapata/Files2Prompt#readme",
+  "homepage": "https://github.com/GianZapata/PromptFold#readme",
   "bugs": {
-    "url": "https://github.com/GianZapata/Files2Prompt/issues"
+    "url": "https://github.com/GianZapata/PromptFold/issues"
   },
   "galleryBanner": {
     "color": "#2b3a4a",
@@ -31,7 +31,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/GianZapata/Files2Prompt"
+    "url": "https://github.com/GianZapata/PromptFold"
   },
   "capabilities": {
     "untrustedWorkspaces": {

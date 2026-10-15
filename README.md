@@ -1,6 +1,6 @@
 # Promptfold
 
-[![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/GianZapata/Files2Prompt)
+[![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/GianZapata/PromptFold)
 
 Copy files and Git changes as XML, Markdown or plain text for LLM prompts, with an estimate of the tokens they use. No telemetry, no network access.
 
