@@ -21,6 +21,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Require the tag to point at main
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag ${GITHUB_REF_NAME} (${GITHUB_SHA}) is not contained in origin/main."
+            exit 1
+          fi
       - name: Install Node.js
         uses: actions/setup-node@v5
         with:
@@ -51,6 +59,8 @@ jobs:
     name: Publish the packaged VSIX
     needs: verify
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -95,3 +105,21 @@ jobs:
       - name: Skip Open VSX
         if: steps.secrets.outputs.ovsx == 'false'
         run: echo "::warning::OVSX_PAT is not set, so nothing was published to Open VSX."
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v version="$version" '
+            $0 ~ "^## \\[" version "\\]" { found = 1; print; next }
+            found && /^## \[/ { exit }
+            found && /^\[[0-9]/ { next }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::CHANGELOG.md has no section for ${version}."
+            exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" promptfold.vsix \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md
