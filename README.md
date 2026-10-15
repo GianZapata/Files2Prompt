@@ -263,6 +263,8 @@ Pushing a tag that starts with `v` runs `.github/workflows/publish.yml` in two j
 
 If a secret is missing, that registry is skipped with a warning and the job still passes.
 
+Azure DevOps retires global PATs on 2026-12-01. After that date, publishing to the Marketplace requires `vsce publish --azure-credential` (Microsoft Entra ID) instead of `VSCE_PAT`.
+
 To release, bump `version` in `package.json`, update `CHANGELOG.md`, commit, then tag:
 
 ```sh
