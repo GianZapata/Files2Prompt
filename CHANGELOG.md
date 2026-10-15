@@ -24,4 +24,4 @@ Initial release of Promptfold, based on Files2Prompt 1.8.0 by Thomas McKanna (MI
 - Sensitive files such as credentials and keys are never included, in files or in diffs.
 - Links that point outside the workspace are skipped.
 
-[1.0.0]: https://github.com/GianZapata/Files2Prompt/releases/tag/v1.0.0
+[1.0.0]: https://github.com/GianZapata/PromptFold/releases/tag/v1.0.0
