@@ -4,7 +4,6 @@ import test from 'node:test';
 import {
   applyChangeSelection,
   changeBadge,
-  changesNodeLabel,
   changesForScope,
   gitScopeMenu,
   mergeChanges,
@@ -48,8 +47,7 @@ test('adding changes merges by repository and path', () => {
   assert.equal(merged.find(change => change.path === 'api/a.ts')?.diff, 'new');
 });
 
-test('git changes node names the count and badges each status', () => {
-  assert.equal(changesNodeLabel(4, 2), 'Git changes · 4 (2 repositories)');
+test('git changes badge each status', () => {
   assert.equal(changeBadge('modified'), 'M');
   assert.equal(changeBadge('added'), 'A');
   assert.equal(changeBadge('deleted'), 'D');

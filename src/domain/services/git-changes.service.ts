@@ -41,11 +41,6 @@ export const changesForScope = (
   return source.map(change => toPromptChange(input.repo, change));
 };
 
-export const changesNodeLabel = (
-  changeCount: number,
-  repositoryCount: number
-) => `Git changes · ${changeCount} (${repositoryCount} repositories)`;
-
 export const gitScopeMenu = () =>
   [
     {
