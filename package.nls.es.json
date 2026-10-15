@@ -35,7 +35,7 @@
   "promptfold.outputFormat.description": "Formato usado al copiar el prompt. XML es el predeterminado.",
   "promptfold.diffMode.description": "Cómo aparecen los cambios de Git en el prompt: diff y archivos, solo diff, o solo archivos.",
   "promptfold.extensionPresets.description": "Listas de extensiones con nombre que aparecen primero en Seleccionar por extensión. Ejemplo: { \"Web\": [\"ts\", \"php\"] }.",
-  "promptfold.config.title": "Ajustes de Promptfold",
+  "promptfold.config.title": "Promptfold",
   "promptfold.systemMessage.description": "Mensaje de sistema opcional para incluir en la salida.",
   "promptfold.exclude.description": "Patrones extra estilo gitignore excluidos del contexto copiado.",
   "promptfold.allowSensitive.description": "Patrones estilo gitignore de archivos que parecen secretos (como .env, claves o .npmrc) y que sí pueden ir al prompt. Todo lo demás de ese tipo se deja fuera siempre.",

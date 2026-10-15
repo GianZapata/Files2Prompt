@@ -81,7 +81,7 @@ To install a `.vsix` instead:
 ### System message:
 
 1. Open Settings (`Ctrl+,` or `Cmd+,` on macOS).
-2. Search for `promptfold.systemMessage`, or go to Extensions > Promptfold Settings.
+2. Search for `promptfold.systemMessage`, or go to Extensions > Promptfold.
 3. Enter your message in the System Message field.
 4. When you copy, the message goes at the top of the output. If the field is empty, no system message is included.
 
