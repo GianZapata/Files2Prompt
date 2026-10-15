@@ -333,11 +333,14 @@ test('the package ships only the dependency it uses', () => {
   assert.equal(ignored.includes('fast-xml-parser'), false);
 });
 
-test('the test workflow also runs on pushes to integration branches', () => {
+test('CI runs on pull requests and on pushes to main', () => {
   const workflow = fs.readFileSync(
-    path.join(__dirname, '../../.github/workflows/test.yml'),
+    path.join(__dirname, '../../.github/workflows/ci.yml'),
     'utf8'
   );
 
-  assert.match(workflow, /branches: \[main, 'integration\/\*\*'\]/);
+  assert.match(workflow, /^name: CI$/m);
+  assert.match(workflow, /^ {2}pull_request:$/m);
+  assert.match(workflow, /branches: \[main\]/);
+  assert.doesNotMatch(workflow, /integration\/\*\*/);
 });
