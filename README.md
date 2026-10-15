@@ -167,6 +167,7 @@ web/
 ## Git changes — web (uncommitted, — → HEAD)
 
 ### web/docs/mi archivo.md (modified)
+
 ```diff
 diff --git a/docs/mi archivo.md b/docs/mi archivo.md
 index 4387e04..467b83a 100644
@@ -180,17 +181,17 @@ index 4387e04..467b83a 100644
 ```
 
 ### web/docs/mi archivo.md
+
 ```markdown
 # Guía
 
 Segunda versión con acción.
-
 ```
 
 ### web/src/app.ts
+
 ```ts
 export const app = 'web';
-
 ```
 ````
 
@@ -251,7 +252,11 @@ Copy the selected files into the LLM, then edit the project yourself from the re
 
 ### Release
 
-Pushing a tag that starts with `v` runs `.github/workflows/publish.yml`. It checks that the tag matches the `version` in `package.json`, packages one VSIX, and publishes that same file to both registries. Set these repository secrets first:
+Pushing a tag that starts with `v` runs `.github/workflows/publish.yml` in two jobs.
+
+`verify` runs without any secrets. It checks that the tag matches the `version` in `package.json`, then runs lint, the format check, compile and the unit tests. Only if those pass does it package one VSIX and upload it.
+
+`publish` starts after `verify`. It installs dependencies with `npm ci --ignore-scripts`, still without tokens in that step, downloads that same VSIX, and publishes it. Each token is visible only to its own publish step. Set these repository secrets first:
 
 - `VSCE_PAT`: a Personal Access Token for the Visual Studio Marketplace publisher `gianzapata`.
 - `OVSX_PAT`: an access token for Open VSX.

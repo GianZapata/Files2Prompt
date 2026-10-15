@@ -11,12 +11,9 @@ permissions:
   contents: read
 
 jobs:
-  publish:
-    name: Package and publish
+  verify:
+    name: Test and package
     runs-on: ubuntu-latest
-    env:
-      VSCE_PAT: ${{ secrets.VSCE_PAT }}
-      OVSX_PAT: ${{ secrets.OVSX_PAT }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -32,18 +29,65 @@ jobs:
             echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version"
             exit 1
           fi
-      - run: npx vsce package --out promptfold.vsix
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run compile
+      - run: npm run test:unit
+      - run: npx --no-install vsce package --out promptfold.vsix
       - name: Record SHA-256
         run: sha256sum promptfold.vsix | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v6
+        with:
+          name: promptfold-vsix
+          path: promptfold.vsix
+          if-no-files-found: error
+
+  publish:
+    name: Publish the packaged VSIX
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Install Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: npm ci --ignore-scripts
+      - name: Download VSIX
+        uses: actions/download-artifact@v7
+        with:
+          name: promptfold-vsix
+      - name: Check which publish tokens exist
+        id: secrets
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          if [ -n "$VSCE_PAT" ]; then
+            echo "vsce=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "vsce=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$OVSX_PAT" ]; then
+            echo "ovsx=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ovsx=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Publish to the Visual Studio Marketplace
-        if: env.VSCE_PAT != ''
-        run: npx vsce publish --packagePath promptfold.vsix -p "$VSCE_PAT"
+        if: steps.secrets.outputs.vsce == 'true'
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx --no-install vsce publish --packagePath promptfold.vsix -p "$VSCE_PAT"
       - name: Skip the Visual Studio Marketplace
-        if: env.VSCE_PAT == ''
+        if: steps.secrets.outputs.vsce == 'false'
         run: echo "::warning::VSCE_PAT is not set, so nothing was published to the Visual Studio Marketplace."
       - name: Publish to Open VSX
-        if: env.OVSX_PAT != ''
-        run: npx ovsx publish promptfold.vsix -p "$OVSX_PAT"
+        if: steps.secrets.outputs.ovsx == 'true'
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: npx --no-install ovsx publish promptfold.vsix -p "$OVSX_PAT"
       - name: Skip Open VSX
-        if: env.OVSX_PAT == ''
+        if: steps.secrets.outputs.ovsx == 'false'
         run: echo "::warning::OVSX_PAT is not set, so nothing was published to Open VSX."
