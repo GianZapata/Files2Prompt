@@ -4,6 +4,7 @@ import path from 'path';
 export interface ManifestCommand {
   command: string;
   title: string;
+  category?: string;
   icon?: string | { light?: string };
 }
 

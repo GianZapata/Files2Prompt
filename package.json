@@ -91,100 +91,121 @@
     "commands": [
       {
         "command": "promptfold.changeOutputFormat",
+        "category": "Promptfold",
         "title": "%promptfold.changeOutputFormat.title%"
       },
       {
         "command": "promptfold.refresh",
+        "category": "Promptfold",
         "title": "%promptfold.refresh.title%",
         "icon": "$(refresh)"
       },
       {
         "command": "promptfold.copyFiles",
+        "category": "Promptfold",
         "title": "%promptfold.copyFiles.title%",
         "icon": "$(copy)"
       },
       {
         "command": "promptfold.copyAsXml",
+        "category": "Promptfold",
         "title": "%promptfold.copyAsXml.title%"
       },
       {
         "command": "promptfold.copyAsMarkdown",
+        "category": "Promptfold",
         "title": "%promptfold.copyAsMarkdown.title%"
       },
       {
         "command": "promptfold.copyAsPlain",
+        "category": "Promptfold",
         "title": "%promptfold.copyAsPlain.title%"
       },
       {
         "command": "promptfold.savePromptAs",
+        "category": "Promptfold",
         "title": "%promptfold.savePromptAs.title%",
         "icon": "$(save-as)"
       },
       {
         "command": "promptfold.copyAsFile",
+        "category": "Promptfold",
         "title": "%promptfold.copyAsFile.title%"
       },
       {
         "command": "promptfold.clearChecks",
+        "category": "Promptfold",
         "title": "%promptfold.clearChecks.title%",
         "icon": "$(clear-all)"
       },
       {
         "command": "promptfold.goBack",
+        "category": "Promptfold",
         "title": "%promptfold.goBack.title%",
         "icon": "$(arrow-left)"
       },
       {
         "command": "promptfold.goForward",
+        "category": "Promptfold",
         "title": "%promptfold.goForward.title%",
         "icon": "$(arrow-right)"
       },
       {
         "command": "promptfold.copyOpenFiles",
+        "category": "Promptfold",
         "title": "%promptfold.copyOpenFiles.title%",
         "icon": "$(files)"
       },
       {
         "command": "promptfold.copyExplorerSelection",
+        "category": "Promptfold",
         "title": "%promptfold.copyExplorerSelection.title%"
       },
       {
         "command": "promptfold.previewPrompt",
+        "category": "Promptfold",
         "title": "%promptfold.previewPrompt.title%",
         "icon": "$(open-preview)"
       },
       {
         "command": "promptfold.showDetails",
+        "category": "Promptfold",
         "title": "%promptfold.showDetails.title%",
         "icon": "$(list-selection)"
       },
       {
         "command": "promptfold.selectAll",
+        "category": "Promptfold",
         "title": "%promptfold.selectAll.title%",
         "icon": "$(checklist)"
       },
       {
         "command": "promptfold.selectByExtension",
+        "category": "Promptfold",
         "title": "%promptfold.selectByExtension.title%",
         "icon": "$(symbol-misc)"
       },
       {
         "command": "promptfold.selectChanges",
+        "category": "Promptfold",
         "title": "%promptfold.selectChanges.title%",
         "icon": "$(git-compare)"
       },
       {
         "command": "promptfold.gitChanges.setScope",
+        "category": "Promptfold",
         "title": "%promptfold.gitChanges.setScope.title%",
         "icon": "$(list-selection)"
       },
       {
         "command": "promptfold.gitChanges.setBase",
+        "category": "Promptfold",
         "title": "%promptfold.gitChanges.setBase.title%",
         "icon": "$(git-branch)"
       },
       {
         "command": "promptfold.clearGitChanges",
+        "category": "Promptfold",
         "title": "%promptfold.clearGitChanges.title%",
         "icon": "$(close)"
       }

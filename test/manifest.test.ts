@@ -248,6 +248,12 @@ test('whitespace compaction is opt-in and documented', () => {
   );
 });
 
+test('every command sits under the Promptfold category', () => {
+  for (const command of manifest.contributes.commands) {
+    assert.equal(command.category, 'Promptfold', command.command);
+  }
+});
+
 test('nothing in the manifest or its translations uses the old prefix', () => {
   const manifest = readJson<NamingManifest>('package.json');
 
